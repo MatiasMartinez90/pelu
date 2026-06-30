@@ -1,106 +1,76 @@
-import { Scissors, MapPin, Phone, Clock } from "lucide-react";
-import { Instagram } from "@/components/icons";
-import { site, waLink } from "@/lib/site";
+const SERIF = "'Bodoni Moda', Georgia, serif";
+const SANS = "'Archivo', system-ui, sans-serif";
 
-export function Footer() {
+const WA = "https://wa.me/5491155550123";
+const IG = "https://instagram.com/noxbarber";
+
+export function Footer({ brand = "NOX" }: { brand?: string }) {
   return (
-    <footer className="border-t border-border bg-card/40">
-      <div className="container-px mx-auto grid max-w-6xl gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="sm:col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-2">
-            <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Scissors className="size-5" />
-            </span>
-            <span className="font-heading text-xl font-bold tracking-wide">
-              {site.name}
-            </span>
+    <footer style={{ background: "#0a0a0a", color: "#fff", borderTop: "1px solid rgba(255,255,255,0.16)", fontFamily: SANS }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)" }}>
+        {/* Newsletter */}
+        <div style={{ padding: "48px 36px", borderRight: "1px solid rgba(255,255,255,0.12)" }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.28em", textTransform: "uppercase", opacity: 0.6 }}>Newsletter</div>
+          <p style={{ marginTop: 14, fontFamily: SERIF, fontSize: 24, lineHeight: 1.15, maxWidth: 300 }}>Sumate y enterate de novedades y promos.</p>
+          <div style={{ marginTop: 24, display: "flex", alignItems: "stretch", maxWidth: 340 }}>
+            <input className="nox-foot-input" type="email" placeholder="Tu email" style={{ flex: 1, background: "none", border: "none", borderBottom: "1px solid rgba(255,255,255,0.3)", color: "#fff", fontFamily: SANS, fontSize: 14, padding: "12px 4px", outline: "none" }} />
+            <button type="button" className="nox-news">Suscribirme</button>
           </div>
-          <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-            {site.tagline} en {site.city}. {site.description.split(".")[1]}.
-          </p>
         </div>
 
-        <div>
-          <h4 className="font-heading text-sm font-semibold uppercase tracking-wide">
-            Navegación
-          </h4>
-          <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-            <li>
-              <a href="#servicios" className="hover:text-foreground">
-                Servicios
-              </a>
-            </li>
-            <li>
-              <a href="#equipo" className="hover:text-foreground">
-                Equipo
-              </a>
-            </li>
-            <li>
-              <a href="#galeria" className="hover:text-foreground">
-                Galería
-              </a>
-            </li>
-            <li>
-              <a href="#visitanos" className="hover:text-foreground">
-                Visitanos
-              </a>
-            </li>
-          </ul>
+        {/* Explorar */}
+        <div style={{ padding: "48px 36px", borderRight: "1px solid rgba(255,255,255,0.12)" }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.28em", textTransform: "uppercase", opacity: 0.6 }}>Explorar</div>
+          <nav style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 13, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            <a href="/servicios" className="nox-link" style={{ opacity: 0.85 }}>Servicios</a>
+            <a href="/equipo" className="nox-link" style={{ opacity: 0.85 }}>Equipo</a>
+            <a href="/galeria" className="nox-link" style={{ opacity: 0.85 }}>Galería</a>
+            <a href="#tienda" className="nox-link" style={{ opacity: 0.85 }}>Tienda</a>
+            <a href="/agendar" className="nox-link" style={{ opacity: 0.85 }}>Agendar Turno</a>
+          </nav>
         </div>
 
-        <div>
-          <h4 className="font-heading text-sm font-semibold uppercase tracking-wide">
-            Contacto
-          </h4>
-          <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-            <li className="flex items-start gap-2">
-              <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
-              {site.address}
-            </li>
-            <li className="flex items-start gap-2">
-              <Phone className="mt-0.5 size-4 shrink-0 text-primary" />
-              <a href={waLink()} className="hover:text-foreground">
-                {site.phoneDisplay}
-              </a>
-            </li>
-            <li className="flex items-start gap-2">
-              <Instagram className="mt-0.5 size-4 shrink-0 text-primary" />
-              <a
-                href={site.instagramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-foreground"
-              >
-                @{site.instagram}
-              </a>
-            </li>
-          </ul>
+        {/* Info */}
+        <div style={{ padding: "48px 36px", borderRight: "1px solid rgba(255,255,255,0.12)" }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.28em", textTransform: "uppercase", opacity: 0.6 }}>Información</div>
+          <nav style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 13, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            <a href={WA} target="_blank" rel="noreferrer" className="nox-link" style={{ opacity: 0.85 }}>Atención al Cliente</a>
+            <a href="/faq" className="nox-link" style={{ opacity: 0.85 }}>Preguntas Frecuentes</a>
+            <a href="/nosotros" className="nox-link" style={{ opacity: 0.85 }}>Nosotros</a>
+            <a href="/empleos" className="nox-link" style={{ opacity: 0.85 }}>Trabajá con Nosotros</a>
+          </nav>
         </div>
 
-        <div>
-          <h4 className="font-heading text-sm font-semibold uppercase tracking-wide">
-            Horarios
-          </h4>
-          <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-            {site.hours.map((h) => (
-              <li key={h.day} className="flex items-start gap-2">
-                <Clock className="mt-0.5 size-4 shrink-0 text-primary" />
-                <span>
-                  {h.day}: {h.time}
-                </span>
-              </li>
-            ))}
-          </ul>
+        {/* Social */}
+        <div style={{ padding: "48px 36px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+          <nav style={{ display: "flex", flexDirection: "column", gap: 13, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            <a href={IG} target="_blank" rel="noreferrer" className="nox-link" style={{ opacity: 0.85 }}>Instagram</a>
+            <a href="#" className="nox-link" style={{ opacity: 0.85 }}>Facebook</a>
+            <a href={WA} target="_blank" rel="noreferrer" className="nox-link" style={{ opacity: 0.85 }}>WhatsApp</a>
+          </nav>
+          <div style={{ marginTop: 30, fontFamily: SERIF, fontWeight: 700, fontSize: 64, lineHeight: 0.8, opacity: 0.92 }}>{brand}</div>
         </div>
       </div>
 
-      <div className="border-t border-border">
-        <div className="container-px mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 py-6 text-xs text-muted-foreground sm:flex-row">
-          <p>
-            © {new Date().getFullYear()} {site.name}. Todos los derechos
-            reservados.
-          </p>
-          <p>Hecho con ✂️ en {site.city}.</p>
+      {/* Bottom bar */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.4fr) minmax(0,2fr) minmax(0,1fr)", borderTop: "1px solid rgba(255,255,255,0.16)", fontSize: 12, lineHeight: 1.7 }}>
+        <div style={{ padding: "30px 36px", borderRight: "1px solid rgba(255,255,255,0.12)" }}>
+          <div style={{ letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.55, marginBottom: 8 }}>Horarios</div>
+          <div style={{ opacity: 0.8 }}>Lunes a Viernes · 10:00 – 21:00</div>
+          <div style={{ opacity: 0.8 }}>Sábados · 11:00 – 20:00</div>
+          <div style={{ opacity: 0.5 }}>Domingos · Cerrado</div>
+        </div>
+        <div style={{ padding: "30px 36px", borderRight: "1px solid rgba(255,255,255,0.12)", opacity: 0.8 }}>
+          <div style={{ letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.7, marginBottom: 8 }}>NOX Barber</div>
+          Av. Cabildo 2200, CABA · Buenos Aires, Argentina<br />
+          El pago se realiza en el local · Efectivo y transferencia
+        </div>
+        <div style={{ padding: "30px 36px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", gap: 18, fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+            <span style={{ opacity: 0.9 }}>ES</span>
+            <span style={{ opacity: 0.4 }}>EN</span>
+          </div>
+          <div style={{ opacity: 0.5, marginTop: 24 }}>© 2026 NOX Barber</div>
         </div>
       </div>
     </footer>

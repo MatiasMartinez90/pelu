@@ -141,3 +141,82 @@
 .animate-marquee {
   animation: marquee 28s linear infinite;
 }
+
+/* === NOX editorial — pegar al final de src/app/globals.css === */
+
+@keyframes nox-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.nox-link {
+  position: relative;
+  color: #fff;
+  display: inline-block;
+  text-decoration: none;
+}
+.nox-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 55%;
+  height: 1.5px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.34s cubic-bezier(0.65, 0, 0.18, 1);
+}
+.nox-link:hover::after { transform: scaleX(1); }
+
+.nox-cta {
+  position: relative;
+  background: var(--cta-bg, #fff);
+  color: var(--cta-fg, #0a0a0a);
+  padding: 5px 12px 6px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  transition: background 0.25s, color 0.25s;
+}
+.nox-cta::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 52%;
+  height: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.34s cubic-bezier(0.65, 0, 0.18, 1);
+}
+.nox-cta:hover { background: var(--cta-fg, #0a0a0a); color: var(--cta-bg, #fff); }
+.nox-cta:hover::after { transform: scaleX(1); }
+
+.nox-prod { display: block; color: #fff; min-width: 0; text-decoration: none; }
+.nox-prod__media { position: relative; overflow: hidden; height: 100%; background: #141414; }
+.nox-prod__grad {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 58%;
+  background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.78));
+  pointer-events: none; z-index: 1;
+}
+.nox-prod__shade { position: absolute; inset: 0; background: rgba(0,0,0,0.28); opacity: 0; transition: opacity 0.35s; z-index: 1; }
+.nox-prod:hover .nox-prod__shade { opacity: 1; }
+.nox-prod__info { position: absolute; left: 22px; right: 22px; bottom: 22px; z-index: 2; }
+.nox-prod__cta {
+  position: absolute; top: 16px; right: 16px;
+  background: #fff; color: #0a0a0a;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700;
+  padding: 8px 14px; opacity: 0; transform: translateY(-6px);
+  transition: opacity 0.35s, transform 0.35s; z-index: 3;
+}
+.nox-prod:hover .nox-prod__cta { opacity: 1; transform: translateY(0); }
+
+.nox-news {
+  border: 1px solid rgba(255,255,255,0.45); background: none; color: #fff;
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
+  padding: 13px 22px; cursor: pointer; transition: background 0.25s, color 0.25s;
+}
+.nox-news:hover { background: #fff; color: #0a0a0a; }
+.nox-foot-input::placeholder { color: rgba(255,255,255,0.4); }
