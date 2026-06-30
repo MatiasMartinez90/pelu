@@ -5,10 +5,9 @@ import { useEffect, useRef } from "react";
 const SERIF = "'Bodoni Moda', Georgia, serif";
 const SANS = "'Archivo', system-ui, sans-serif";
 
-// Hero video (Mixkit, licencia gratuita). Reemplazá por tu propio .mp4.
-const DEFAULT_VIDEO = "https://assets.mixkit.co/videos/357/357-360.mp4";
-const DEFAULT_POSTER =
-  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=1600&q=85&auto=format&fit=crop";
+// Hero video + poster self-hosteados en /public (no dependen de servicios externos).
+const DEFAULT_VIDEO = "/videos/hero.mp4";
+const DEFAULT_POSTER = "/img/hero-poster.jpg";
 
 type HeroProps = {
   brand?: string;
@@ -36,7 +35,7 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, poster = DEFAULT
         width: "100%",
         minHeight: "100vh",
         overflow: "hidden",
-        background: "#0a0a0a",
+        background: `#0a0a0a url(${poster}) center 26% / cover no-repeat`,
         fontFamily: SANS,
         color: "#fff",
       }}
