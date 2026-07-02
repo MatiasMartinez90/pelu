@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { Navbar } from "@/components/sections/navbar";
-import { Footer } from "@/components/sections/footer";
+import { EditorialWizard } from "@/components/booking/editorial-wizard";
 import { WhatsappFab } from "@/components/whatsapp-fab";
-import { Wizard } from "@/components/booking/wizard";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -18,11 +16,7 @@ export default async function AgendarPage({
   const { servicio } = await searchParams;
   return (
     <>
-      <Navbar />
-      <main className="flex-1 pb-24 pt-28">
-        <Wizard preselectServiceId={servicio} />
-      </main>
-      <Footer />
+      <EditorialWizard preselectServiceId={servicio} />
       <WhatsappFab />
     </>
   );
