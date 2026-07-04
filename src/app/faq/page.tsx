@@ -24,12 +24,12 @@ export default function FaqPage() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <EditorialNav />
 
-      <section style={{ padding: "84px 40px 56px", maxWidth: 900, margin: "0 auto" }}>
+      <section className="px-fluid" style={{ paddingTop: "clamp(48px,8vw,84px)", paddingBottom: 56, maxWidth: 900, margin: "0 auto" }}>
         <div style={{ fontSize: 12, letterSpacing: "0.4em", textTransform: "uppercase", opacity: 0.6 }}>Ayuda</div>
         <h1 style={{ marginTop: 18, fontFamily: SERIF, fontWeight: 700, fontSize: "clamp(56px,9vw,120px)", lineHeight: 0.88 }}>Preguntas<br />Frecuentes</h1>
       </section>
 
-      <section style={{ maxWidth: 900, margin: "0 auto", padding: "0 40px 60px" }}>
+      <section className="px-fluid" style={{ maxWidth: 900, margin: "0 auto", paddingBottom: 60 }}>
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.14)" }}>
           {faqs.map((f, i) => {
             const isOpen = open === i;
@@ -47,7 +47,7 @@ export default function FaqPage() {
           })}
         </div>
 
-        <div style={{ marginTop: 56, border: "1px solid rgba(255,255,255,0.16)", padding: "44px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 28, flexWrap: "wrap" }}>
+        <div className="cta-box" style={{ marginTop: 56 }}>
           <div>
             <h2 style={{ fontFamily: SERIF, fontSize: "clamp(26px,3.4vw,38px)", fontWeight: 600 }}>¿No encontrás tu respuesta?</h2>
             <p style={{ marginTop: 10, opacity: 0.65, fontSize: 15 }}>Escribinos por WhatsApp y te ayudamos al toque.</p>

@@ -41,7 +41,7 @@ export default function MiCuentaPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       {/* Topbar */}
-      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 40px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
+      <header className="acct-top">
         <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
           <a href="/" style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 24, color: "#fff" }}>NOX</a>
           <span style={{ fontSize: 11, letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.5 }}>Mi Cuenta</span>
@@ -52,7 +52,7 @@ export default function MiCuentaPage() {
         </div>
       </header>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "56px 40px 100px" }}>
+      <div className="acct-wrap">
         <div style={{ fontSize: 12, letterSpacing: "0.4em", textTransform: "uppercase", opacity: 0.55 }}>Cliente desde 2022</div>
         <h1 style={{ marginTop: 14, fontFamily: SERIF, fontWeight: 700, fontSize: "clamp(44px,6vw,76px)", lineHeight: 0.9 }}>Hola, Juan</h1>
 
@@ -60,7 +60,7 @@ export default function MiCuentaPage() {
         <div style={{ marginTop: 44 }}>
           <div style={{ fontSize: 11, letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.55, marginBottom: 16 }}>Próximo turno</div>
           {!cancelled ? (
-            <div style={{ border: "1px solid rgba(255,255,255,0.16)", background: "linear-gradient(120deg,#141414,#0e0e0e)", display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 28, alignItems: "center", padding: "26px 30px" }}>
+            <div className="next-card" style={{ border: "1px solid rgba(255,255,255,0.16)", background: "linear-gradient(120deg,#141414,#0e0e0e)" }}>
               <img src="https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=300&q=80&auto=format&fit=crop" alt="" style={{ width: 84, height: 84, objectFit: "cover", filter: "grayscale(1)" }} />
               <div>
                 <div style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 600, lineHeight: 1.05 }}>Corte y Barba con Bruno</div>
@@ -71,7 +71,7 @@ export default function MiCuentaPage() {
                 </div>
                 <div style={{ marginTop: 12, display: "inline-block", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", background: "rgba(255,255,255,0.1)", padding: "5px 12px" }}>En 3 días</div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="next-actions" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <button className="ghost" onClick={() => window.open("https://wa.me/5491155550123?text=" + encodeURIComponent("Hola NOX! Quiero reagendar mi turno del Jueves 02/07 18:30."), "_blank")}>Reagendar</button>
                 <button className="ghost" onClick={() => { if (confirm("¿Cancelar tu turno del Jueves 02/07 a las 18:30?")) setCancelled(true); }} style={{ borderColor: "rgba(255,90,90,0.5)", color: "#ff7a7a" }}>Cancelar</button>
               </div>
@@ -85,9 +85,9 @@ export default function MiCuentaPage() {
         </div>
 
         {/* Stats */}
-        <div style={{ marginTop: 52, display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 0, border: "1px solid rgba(255,255,255,0.14)" }}>
+        <div className="grid-stats" style={{ marginTop: 52, border: "1px solid rgba(255,255,255,0.14)" }}>
           {stats.map((st) => (
-            <div key={st.label} style={{ padding: "26px 24px", borderRight: "1px solid rgba(255,255,255,0.1)" }}>
+            <div key={st.label} className="cell-line" style={{ padding: "26px 24px" }}>
               <div style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.5 }}>{st.label}</div>
               <div style={{ marginTop: 10, fontFamily: SERIF, fontSize: 34, fontWeight: 600, lineHeight: 1 }}>{st.value}</div>
               <div style={{ marginTop: 4, fontSize: 12, opacity: 0.5 }}>{st.sub}</div>
@@ -97,7 +97,7 @@ export default function MiCuentaPage() {
 
         {/* Historial */}
         <div style={{ marginTop: 60 }}>
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.14)", paddingBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "8px 20px", borderBottom: "1px solid rgba(255,255,255,0.14)", paddingBottom: 14 }}>
             <h2 style={{ fontFamily: SERIF, fontSize: 32, fontWeight: 600 }}>Historial</h2>
             <div style={{ display: "flex", gap: 24 }}>
               {["Todos", "Web", "WhatsApp"].map((label) => (
@@ -106,22 +106,24 @@ export default function MiCuentaPage() {
             </div>
           </div>
 
-          <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "1.1fr 2fr 1.4fr 1.2fr 1fr 0.9fr", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", padding: "16px 12px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-            <span>Fecha</span><span>Servicio</span><span>Profesional</span><span>Canal</span><span>Estado</span><span style={{ textAlign: "right" }}>Importe</span>
+          <div className="hist-scroll">
+            <div className="hist-row" style={{ marginTop: 6, display: "grid", gridTemplateColumns: "1.1fr 2fr 1.4fr 1.2fr 1fr 0.9fr", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", padding: "16px 12px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+              <span>Fecha</span><span>Servicio</span><span>Profesional</span><span>Canal</span><span>Estado</span><span style={{ textAlign: "right" }}>Importe</span>
+            </div>
+            {filtered.map((h, i) => {
+              const ok = h.status === "Completado";
+              return (
+                <div key={i} className="hrow hist-row" style={{ display: "grid", gridTemplateColumns: "1.1fr 2fr 1.4fr 1.2fr 1fr 0.9fr", alignItems: "center", fontSize: 14, padding: "18px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                  <span style={{ opacity: 0.7 }}>{h.date}</span>
+                  <span style={{ fontFamily: SERIF, fontSize: 17 }}>{h.service}</span>
+                  <span style={{ opacity: 0.85 }}>{h.barber}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, letterSpacing: "0.06em" }}><Dot green={h.channel === "WhatsApp"} /> {h.channel}</span>
+                  <span><span style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "4px 9px", border: `1px solid ${ok ? "rgba(255,255,255,0.3)" : "rgba(255,90,90,0.5)"}`, color: ok ? "rgba(255,255,255,0.85)" : "#ff7a7a" }}>{h.status}</span></span>
+                  <span style={{ textAlign: "right", fontFamily: SERIF, fontSize: 17, opacity: ok ? 0.9 : 0.35 }}>{money(h.price)}</span>
+                </div>
+              );
+            })}
           </div>
-          {filtered.map((h, i) => {
-            const ok = h.status === "Completado";
-            return (
-              <div key={i} className="hrow" style={{ display: "grid", gridTemplateColumns: "1.1fr 2fr 1.4fr 1.2fr 1fr 0.9fr", alignItems: "center", fontSize: 14, padding: "18px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                <span style={{ opacity: 0.7 }}>{h.date}</span>
-                <span style={{ fontFamily: SERIF, fontSize: 17 }}>{h.service}</span>
-                <span style={{ opacity: 0.85 }}>{h.barber}</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, letterSpacing: "0.06em" }}><Dot green={h.channel === "WhatsApp"} /> {h.channel}</span>
-                <span><span style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "4px 9px", border: `1px solid ${ok ? "rgba(255,255,255,0.3)" : "rgba(255,90,90,0.5)"}`, color: ok ? "rgba(255,255,255,0.85)" : "#ff7a7a" }}>{h.status}</span></span>
-                <span style={{ textAlign: "right", fontFamily: SERIF, fontSize: 17, opacity: ok ? 0.9 : 0.35 }}>{money(h.price)}</span>
-              </div>
-            );
-          })}
         </div>
       </div>
     </div>

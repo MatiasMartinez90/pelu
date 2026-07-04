@@ -37,7 +37,7 @@ export default function ServiciosPage() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <EditorialNav active="servicios" />
 
-      <section style={{ padding: "84px 40px 56px", maxWidth: 1180, margin: "0 auto" }}>
+      <section className="px-fluid" style={{ paddingTop: "clamp(48px,8vw,84px)", paddingBottom: 56, maxWidth: 1180, margin: "0 auto" }}>
         <div style={{ fontSize: 12, letterSpacing: "0.4em", textTransform: "uppercase", opacity: 0.6 }}>
           Carta de servicios
         </div>
@@ -49,14 +49,14 @@ export default function ServiciosPage() {
         </p>
       </section>
 
-      <section style={{ maxWidth: 1180, margin: "0 auto", padding: "0 40px 120px" }}>
+      <section className="px-fluid" style={{ maxWidth: 1180, margin: "0 auto", paddingBottom: "clamp(72px,10vw,120px)" }}>
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.14)" }}>
           {services.map((s) => (
             <a
               key={s.name}
               href="/agendar"
               className="svc-row"
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 32, padding: "30px 12px", borderBottom: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}
+              style={{ padding: "30px 12px", borderBottom: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
@@ -68,7 +68,7 @@ export default function ServiciosPage() {
                 <p style={{ marginTop: 10, color: "rgba(255,255,255,0.55)", fontSize: 15, maxWidth: 560, lineHeight: 1.5 }}>{s.desc}</p>
                 <div style={{ marginTop: 12, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.42)" }}>Duración · {s.duration}</div>
               </div>
-              <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 14 }}>
+              <div className="svc-right">
                 <div style={{ fontFamily: SERIF, fontSize: "clamp(28px,3.4vw,40px)", fontWeight: 600 }}>{money(s.price)}</div>
                 <span className="svc-go" style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "#fff" }}>Reservar →</span>
               </div>
@@ -76,7 +76,7 @@ export default function ServiciosPage() {
           ))}
         </div>
 
-        <div style={{ marginTop: 72, border: "1px solid rgba(255,255,255,0.16)", padding: "56px 48px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 32, flexWrap: "wrap" }}>
+        <div className="cta-box" style={{ marginTop: 72 }}>
           <div>
             <h2 style={{ fontFamily: SERIF, fontSize: "clamp(32px,4.5vw,52px)", fontWeight: 600, lineHeight: 1 }}>¿Listo para tu próximo corte?</h2>
             <p style={{ marginTop: 12, opacity: 0.65, fontSize: 15 }}>Elegí tu profesional, servicio y horario en segundos.</p>

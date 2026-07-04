@@ -31,12 +31,12 @@ export default function ContactoPage() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <EditorialNav />
 
-      <section style={{ padding: "84px 40px 48px", maxWidth: 1180, margin: "0 auto" }}>
+      <section className="px-fluid" style={{ paddingTop: "clamp(48px,8vw,84px)", paddingBottom: 48, maxWidth: 1180, margin: "0 auto" }}>
         <div style={{ fontSize: 12, letterSpacing: "0.4em", textTransform: "uppercase", opacity: 0.6 }}>Visitanos</div>
         <h1 style={{ marginTop: 18, fontFamily: SERIF, fontWeight: 700, fontSize: "clamp(56px,9vw,120px)", lineHeight: 0.88 }}>Cómo Llegar</h1>
       </section>
 
-      <section style={{ maxWidth: 1180, margin: "0 auto", padding: "0 40px 40px", display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 32, alignItems: "stretch" }}>
+      <section className="px-fluid nox-split2" style={{ maxWidth: 1180, margin: "0 auto", paddingBottom: 40 }}>
         <div style={{ display: "flex", flexDirection: "column", border: "1px solid rgba(255,255,255,0.14)" }}>
           {info.map((i) => (
             <div key={i.label} style={{ padding: "26px 28px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
@@ -56,10 +56,10 @@ export default function ContactoPage() {
         </div>
       </section>
 
-      <section style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 40px 120px" }}>
-        <div style={{ border: "1px solid rgba(255,255,255,0.14)", display: "grid", gridTemplateColumns: "repeat(3,1fr)" }}>
+      <section className="px-fluid" style={{ maxWidth: 1180, margin: "0 auto", paddingTop: 20, paddingBottom: "clamp(72px,10vw,120px)" }}>
+        <div className="grid-3cells" style={{ border: "1px solid rgba(255,255,255,0.14)" }}>
           {hours.map((h) => (
-            <div key={h.days} style={{ padding: "32px 28px", borderRight: "1px solid rgba(255,255,255,0.1)" }}>
+            <div key={h.days} className="cell-line" style={{ padding: "32px 28px" }}>
               <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.5 }}>{h.days}</div>
               <div style={{ marginTop: 10, fontFamily: SERIF, fontSize: 26, fontWeight: 600, color: h.color }}>{h.time}</div>
             </div>

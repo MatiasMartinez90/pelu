@@ -10,20 +10,7 @@ const items = [
 
 export function EditorialNav({ active }: { active?: string }) {
   return (
-    <header
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "24px 40px",
-        borderBottom: "1px solid rgba(255,255,255,0.12)",
-        position: "sticky",
-        top: 0,
-        background: "rgba(10,10,10,0.86)",
-        backdropFilter: "blur(8px)",
-        zIndex: 30,
-      }}
-    >
+    <header className="enav">
       <a
         href="/"
         style={{
@@ -36,16 +23,7 @@ export function EditorialNav({ active }: { active?: string }) {
       >
         NOX
       </a>
-      <nav
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 28,
-          fontSize: 12,
-          letterSpacing: "0.16em",
-          textTransform: "uppercase",
-        }}
-      >
+      <nav className="enav-links">
         {items.map((it) => (
           <a
             key={it.key}

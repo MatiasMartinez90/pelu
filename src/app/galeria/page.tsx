@@ -26,7 +26,7 @@ export default function GaleriaPage() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <EditorialNav active="galeria" />
 
-      <section style={{ padding: "84px 40px 56px", maxWidth: 1180, margin: "0 auto" }}>
+      <section className="px-fluid" style={{ paddingTop: "clamp(48px,8vw,84px)", paddingBottom: 56, maxWidth: 1180, margin: "0 auto" }}>
         <div style={{ fontSize: 12, letterSpacing: "0.4em", textTransform: "uppercase", opacity: 0.6 }}>
           Nuestro trabajo
         </div>
@@ -38,7 +38,7 @@ export default function GaleriaPage() {
         </p>
       </section>
 
-      <section style={{ maxWidth: 1180, margin: "0 auto", padding: "0 40px 120px" }}>
+      <section className="px-fluid" style={{ maxWidth: 1180, margin: "0 auto", paddingBottom: "clamp(72px,10vw,120px)" }}>
         <div className="gal">
           {urls.map((src, i) => (
             <div key={src} className="gcell" style={{ aspectRatio: ars[i % ars.length] }}>

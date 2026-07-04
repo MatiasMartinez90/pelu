@@ -30,11 +30,8 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, poster = DEFAULT
 
   return (
     <section
+      className="nox-hero"
       style={{
-        position: "relative",
-        width: "100%",
-        minHeight: "100vh",
-        overflow: "hidden",
         background: `#0a0a0a url(${poster}) center 26% / cover no-repeat`,
         fontFamily: SANS,
         color: "#fff",
@@ -64,11 +61,11 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, poster = DEFAULT
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0) 22%, rgba(8,8,8,0) 62%, rgba(8,8,8,0.7) 100%)" }} />
 
       {/* Top utility bar */}
-      <header style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "26px 40px", fontSize: 11.5, letterSpacing: "0.22em", textTransform: "uppercase" }}>
+      <header className="nox-hero-top">
         <span style={{ opacity: 0.85 }}>Buenos Aires · Est. 2014</span>
         <nav style={{ display: "flex", alignItems: "center", gap: 26 }}>
           <a href="https://instagram.com/noxbarber" className="nox-link" style={{ color: "#fff", opacity: 0.85 }}>Instagram</a>
-          <span style={{ opacity: 0.45 }}>ES / EN</span>
+          <span className="nox-hero-lang" style={{ opacity: 0.45 }}>ES / EN</span>
           <span style={{ display: "flex", flexDirection: "column", gap: 4, width: 24 }}>
             <span style={{ height: 1.5, background: "#fff", width: "100%" }} />
             <span style={{ height: 1.5, background: "#fff", width: "100%" }} />
@@ -77,8 +74,8 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, poster = DEFAULT
       </header>
 
       {/* Main editorial overlay */}
-      <div style={{ position: "absolute", left: 40, top: "14%", zIndex: 10, maxWidth: 640 }}>
-        <div style={{ fontFamily: SERIF, fontWeight: 700, fontSize: "clamp(88px,13vw,196px)", lineHeight: 0.84, letterSpacing: "0.01em", color: "#fff", textShadow: "0 2px 40px rgba(0,0,0,0.35)" }}>{brand}</div>
+      <div className="nox-hero-main">
+        <div className="nox-hero-brand">{brand}</div>
         <div style={{ marginTop: 16, marginBottom: 32, fontSize: 12, letterSpacing: "0.42em", textTransform: "uppercase", opacity: 0.82, paddingLeft: 4 }}>Barbería Premium</div>
 
         <nav style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 11, fontSize: 15, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 500 }}>
@@ -97,13 +94,13 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, poster = DEFAULT
       </div>
 
       {/* Right vertical caption */}
-      <div style={{ position: "absolute", right: 30, top: "50%", transform: "translateY(-50%) rotate(180deg)", writingMode: "vertical-rl", zIndex: 10, fontSize: 11, letterSpacing: "0.34em", textTransform: "uppercase", opacity: 0.6 }}>Cortes · Fade · Barba · Color</div>
+      <div className="nox-hero-vert" style={{ position: "absolute", right: 30, top: "50%", transform: "translateY(-50%) rotate(180deg)", writingMode: "vertical-rl", zIndex: 10, fontSize: 11, letterSpacing: "0.34em", textTransform: "uppercase", opacity: 0.6 }}>Cortes · Fade · Barba · Color</div>
 
       {/* Bottom marquee */}
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 15, overflow: "hidden", borderTop: "1px solid rgba(255,255,255,0.16)", padding: "16px 0", backdropFilter: "blur(2px)" }}>
         <div style={{ display: "flex", width: "max-content", animation: "nox-marquee 26s linear infinite", whiteSpace: "nowrap" }}>
-          <span style={{ fontFamily: SERIF, fontStyle: "italic", fontWeight: 500, fontSize: 34, letterSpacing: "0.02em", opacity: 0.92 }}>{marquee}</span>
-          <span style={{ fontFamily: SERIF, fontStyle: "italic", fontWeight: 500, fontSize: 34, letterSpacing: "0.02em", opacity: 0.92 }}>{marquee}</span>
+          <span className="nox-marquee-txt">{marquee}</span>
+          <span className="nox-marquee-txt">{marquee}</span>
         </div>
       </div>
     </section>

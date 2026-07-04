@@ -86,9 +86,10 @@ export function Tienda() {
     <section
       id="tienda"
       ref={rootRef}
-      style={{ padding: "110px 40px 120px", background: "#0a0a0a", color: "#fff", fontFamily: "'Archivo', system-ui, sans-serif" }}
+      className="nox-shop"
+      style={{ background: "#0a0a0a", color: "#fff", fontFamily: "'Archivo', system-ui, sans-serif" }}
     >
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.14)", paddingBottom: 28 }}>
+      <div className="nox-shop-head">
         <div>
           <div style={{ fontSize: 12, letterSpacing: "0.4em", textTransform: "uppercase", opacity: 0.6 }}>Shop · Beauty</div>
           <h2 style={{ marginTop: 14, fontFamily: SERIF, fontWeight: 700, fontSize: "clamp(48px,7vw,92px)", lineHeight: 0.9 }}>La Tienda</h2>
@@ -96,16 +97,7 @@ export function Tienda() {
         <a href={SHOP_URL} target="_blank" rel="noreferrer" className="nox-link" style={{ color: "#fff", fontSize: 13, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.85, marginBottom: 10 }}>Ver todo →</a>
       </div>
 
-      <div
-        style={{
-          marginTop: 52,
-          display: "grid",
-          gridTemplateColumns: "repeat(12, minmax(0, 1fr))",
-          gridTemplateRows: "repeat(10, minmax(0, 1fr))",
-          gap: 18,
-          height: 880,
-        }}
-      >
+      <div className="nox-shop-grid">
         {products.map((p) => (
           <a key={p.slug} href={`${SHOP_URL}/${p.slug}`} target="_blank" rel="noreferrer" className="nox-prod" style={p.cell}>
             <div className="nox-prod__media">

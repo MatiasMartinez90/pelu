@@ -128,7 +128,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS, padding: "48px 32px 88px" }}>
+    <div className="wz-page" style={{ fontFamily: SANS }}>
       <div style={{ maxWidth: 1120, margin: "0 auto" }}>
         <header style={{ textAlign: "center" }}>
           <div style={{ fontSize: 12, letterSpacing: "0.4em", textTransform: "uppercase", opacity: 0.7 }}>
@@ -161,7 +161,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
         {step === 0 && (
           <div style={{ marginTop: 52 }}>
             <p style={{ textAlign: "center", color: "rgba(255,255,255,0.55)", fontSize: 15 }}>Elegí al profesional con el que querés atenderte</p>
-            <div style={{ marginTop: 36, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
+            <div className="wz-barbers" style={{ marginTop: 36 }}>
               {barbers.map((b) => {
                 const sel = b.id === barberId;
                 return (
@@ -197,7 +197,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                   key={s.id}
                   onClick={() => pickService(s)}
                   className="svc-row"
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 28, padding: "24px 8px", borderBottom: "1px solid rgba(255,255,255,0.12)", cursor: "pointer" }}
+                  style={{ padding: "24px 8px", borderBottom: "1px solid rgba(255,255,255,0.12)", cursor: "pointer" }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -207,9 +207,9 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                     <p style={{ marginTop: 6, color: "rgba(255,255,255,0.5)", fontSize: 14, maxWidth: 520 }}>{s.desc}</p>
                     <p style={{ marginTop: 8, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>{s.duration}</p>
                   </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div className="svc-right">
                     <div style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 600 }}>{money(s.price)}</div>
-                    <div style={{ marginTop: 8, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", background: "#fff", color: "#0a0a0a", padding: "6px 14px", display: "inline-block", fontWeight: 700 }}>Agendar</div>
+                    <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", background: "#fff", color: "#0a0a0a", padding: "6px 14px", display: "inline-block", fontWeight: 700 }}>Agendar</div>
                   </div>
                 </div>
               ))}
@@ -222,7 +222,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
         {step === 2 && (
           <div style={{ marginTop: 52 }}>
             <p style={{ textAlign: "center", color: "rgba(255,255,255,0.55)", fontSize: 15 }}>Elegí el día y horario que más te convenga</p>
-            <div style={{ marginTop: 32, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <div className="wz-2col" style={{ marginTop: 32 }}>
               {/* Calendar */}
               <div style={{ border: "1px solid rgba(255,255,255,0.14)", background: "#101010", padding: 22 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -277,7 +277,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
               </div>
             </div>
 
-            <div style={{ marginTop: 32, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ marginTop: 32, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
               <button onClick={back} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.55)", fontSize: 13, letterSpacing: "0.08em", cursor: "pointer", fontFamily: SANS }}>← Volver a servicios</button>
               <button onClick={() => canContinue && setStep(3)} style={{ background: canContinue ? "#fff" : "rgba(255,255,255,0.12)", color: canContinue ? "#0a0a0a" : "rgba(255,255,255,0.4)", border: "none", padding: "14px 38px", fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, cursor: canContinue ? "pointer" : "not-allowed", fontFamily: SANS }}>Continuar</button>
             </div>
@@ -288,7 +288,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
         {step === 3 && barber && service && selDate && time && (
           <div style={{ marginTop: 52 }}>
             <p style={{ textAlign: "center", color: "rgba(255,255,255,0.55)", fontSize: 15 }}>Revisá los datos y completá tu información</p>
-            <div style={{ marginTop: 32, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <div className="wz-2col" style={{ marginTop: 32 }}>
               {/* Summary */}
               <div style={{ border: "1px solid rgba(255,255,255,0.14)", background: "#101010", padding: 28 }}>
                 <h3 style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600 }}>Resumen del turno</h3>
