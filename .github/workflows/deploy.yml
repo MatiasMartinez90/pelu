@@ -48,10 +48,10 @@ jobs:
       # Bump del tag en el repo GitOps -> ArgoCD deploya solo.
       # Requiere el secret INFRA_REPO_TOKEN (PAT fine-grained con contents:write sobre agents-hetzner-k3s).
       - name: Actualizar manifest en repo GitOps
-        if: ${{ secrets.INFRA_REPO_TOKEN != '' }}
         env:
           GH_TOKEN: ${{ secrets.INFRA_REPO_TOKEN }}
         run: |
+          if [ -z "$GH_TOKEN" ]; then echo "Sin INFRA_REPO_TOKEN — salteo el bump (imagen igual quedó en GHCR)."; exit 0; fi
           git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/MatiasMartinez90/agents-hetzner-k3s.git" infra
           cd infra
           sed -i -E "s#(image: ghcr\.io/matiasmartinez90/nox-barber:).*#\1${{ steps.tag.outputs.sha }}#" manifests-contabo/nox-barber.yaml
