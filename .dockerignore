@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.vercel
+npm-debug.log
+Dockerfile
+.dockerignore
+README.md
+.DS_Store
