@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { EditorialNav } from "@/components/editorial/nav";
 import { EditorialWizard } from "@/components/booking/editorial-wizard";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { site } from "@/lib/site";
@@ -15,9 +16,10 @@ export default async function AgendarPage({
 }) {
   const { servicio } = await searchParams;
   return (
-    <>
+    <div style={{ background: "#0a0a0a", minHeight: "100vh" }}>
+      <EditorialNav />
       <EditorialWizard preselectServiceId={servicio} />
       <WhatsappFab />
-    </>
+    </div>
   );
 }
