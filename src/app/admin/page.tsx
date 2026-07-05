@@ -225,7 +225,7 @@ function Resumen() {
             <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6 }}>Ingresos · últimos 7 días</div>
             <div style={{ fontFamily: SERIF, fontSize: 22 }}>{weekTotal}</div>
           </div>
-          <div style={{ marginTop: 26, display: "flex", alignItems: "flex-end", gap: 14, height: 180 }}>
+          <div className="adm-chart" style={{ marginTop: 26 }}>
             {rev.map(([day, v]) => (
               <div key={day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, height: "100%", justifyContent: "flex-end" }}>
                 <div style={{ fontSize: 11, opacity: 0.6 }}>{v ? `$${v}k` : "—"}</div>
