@@ -31,6 +31,9 @@ async def require_admin(request: Request) -> dict:
     email a admin_users (o al fallback ADMIN_EMAILS por env).
     """
     settings = get_settings()
+    if settings.auth_disabled:
+        logger.warning("AUTH_DISABLED activo — solo válido en dev local")
+        return {"email": "dev@localhost", "name": "Dev"}
     if not settings.keycloak_issuer:
         raise HTTPException(503, "auth no configurada")
 

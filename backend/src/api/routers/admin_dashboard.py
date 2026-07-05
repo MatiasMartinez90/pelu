@@ -35,7 +35,8 @@ async def dashboard_summary(admin: dict = AdminUser):
         SELECT date_trunc('day', starts_at)::date AS day,
                COALESCE(SUM(price_at_booking), 0) AS revenue
         FROM appointments
-        WHERE starts_at >= $1 AND status IN ('active','completed')
+        WHERE starts_at >= $1 AND starts_at < now() + interval '1 day'
+          AND status IN ('active','completed')
         GROUP BY 1 ORDER BY 1
         """,
         week_ago,
@@ -80,6 +81,34 @@ async def list_customers(search: str = "", admin: dict = AdminUser):
         GROUP BY c.id ORDER BY last_visit DESC NULLS LAST LIMIT 100
         """,
         search,
+    )
+    return [dict(r) for r in rows]
+
+
+@router.get("/services")
+async def list_services_admin(admin: dict = AdminUser):
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT id, slug, name, price, duration_min, badge, variable_price, active
+        FROM services ORDER BY sort_order
+        """
+    )
+    return [dict(r) for r in rows]
+
+
+@router.get("/agent/events")
+async def agent_events_feed(limit: int = Query(default=20, le=100), admin: dict = AdminUser):
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT event_type, conversation_id, phone, cost_usd, latency_ms, created_at
+        FROM agent_events
+        WHERE event_type IN ('booking_created','booking_cancelled','booking_rescheduled',
+                             'handoff','rate_limited','error')
+        ORDER BY created_at DESC LIMIT $1
+        """,
+        limit,
     )
     return [dict(r) for r in rows]
 

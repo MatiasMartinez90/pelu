@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     langfuse_host: str = ""
 
     # Keycloak (validación JWT admin)
+    auth_disabled: bool = False  # SOLO dev local: desactiva el gate admin
     keycloak_issuer: str = ""  # ej: https://keycloak.../realms/cloudfleet
     keycloak_client_id: str = ""
     admin_emails: str = ""  # fallback coma-separado si admin_users está vacía
