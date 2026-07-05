@@ -12,10 +12,34 @@ permissions:
   packages: write
 
 env:
-  IMAGE: ghcr.io/matiasmartinez90/nox-barber
+  IMAGE_FRONT: ghcr.io/matiasmartinez90/nox-barber
+  IMAGE_BACKEND: ghcr.io/matiasmartinez90/nox-backend
 
 jobs:
-  build-deploy:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      front: ${{ steps.filter.outputs.front }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            front:
+              - "src/**"
+              - "public/**"
+              - "package.json"
+              - "package-lock.json"
+              - "next.config.ts"
+              - "Dockerfile"
+            backend:
+              - "backend/**"
+
+  build-front:
+    needs: changes
+    if: needs.changes.outputs.front == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,30 +57,83 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push (amd64)
+      - name: Build & push front (amd64)
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ env.IMAGE }}:${{ steps.tag.outputs.sha }}
-            ${{ env.IMAGE }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ env.IMAGE_FRONT }}:${{ steps.tag.outputs.sha }}
+            ${{ env.IMAGE_FRONT }}:latest
+          cache-from: type=gha,scope=front
+          cache-to: type=gha,mode=max,scope=front
 
-      # Bump del tag en el repo GitOps -> ArgoCD deploya solo.
-      # Requiere el secret INFRA_REPO_TOKEN (PAT fine-grained con contents:write sobre agents-hetzner-k3s).
       - name: Actualizar manifest en repo GitOps
         env:
           GH_TOKEN: ${{ secrets.INFRA_REPO_TOKEN }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then echo "Sin INFRA_REPO_TOKEN — salteo el bump (imagen igual quedó en GHCR)."; exit 0; fi
+          if [ -z "$GH_TOKEN" ]; then echo "Sin INFRA_REPO_TOKEN — salteo el bump."; exit 0; fi
           git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/MatiasMartinez90/agents-hetzner-k3s.git" infra
           cd infra
           sed -i -E "s#(image: ghcr\.io/matiasmartinez90/nox-barber:).*#\1${{ steps.tag.outputs.sha }}#" manifests-contabo/nox-barber.yaml
           if git diff --quiet; then echo "sin cambios en el tag"; exit 0; fi
           git config user.name "nox-ci"
           git config user.email "ci@noxbarber.local"
-          git commit -am "ci(nox): imagen ${{ steps.tag.outputs.sha }}"
+          git commit -am "ci(nox): imagen front ${{ steps.tag.outputs.sha }}"
           git push
+
+  build-backend:
+    # needs build-front con !cancelled(): serializa los push al repo GitOps
+    # (si corrieran en paralelo, el segundo push fallaría por non-fast-forward).
+    needs: [changes, build-front]
+    if: >
+      !cancelled() &&
+      (needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch') &&
+      (needs.build-front.result == 'success' || needs.build-front.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag corto
+        id: tag
+        run: echo "sha=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push backend (amd64)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_BACKEND }}:${{ steps.tag.outputs.sha }}
+            ${{ env.IMAGE_BACKEND }}:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Actualizar manifest en repo GitOps
+        env:
+          GH_TOKEN: ${{ secrets.INFRA_REPO_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "Sin INFRA_REPO_TOKEN — salteo el bump."; exit 0; fi
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/MatiasMartinez90/agents-hetzner-k3s.git" infra
+          cd infra
+          for i in 1 2 3; do
+            sed -i -E "s#(image: ghcr\.io/matiasmartinez90/nox-backend:).*#\1${{ steps.tag.outputs.sha }}#" manifests-contabo/nox-backend.yaml
+            if git diff --quiet; then echo "sin cambios en el tag"; exit 0; fi
+            git config user.name "nox-ci"
+            git config user.email "ci@noxbarber.local"
+            git commit -am "ci(nox): imagen backend ${{ steps.tag.outputs.sha }}"
+            git push && exit 0
+            git pull --rebase
+          done
+          exit 1
