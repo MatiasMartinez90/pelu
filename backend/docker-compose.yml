@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: nox
+      POSTGRES_PASSWORD: nox
+      POSTGRES_DB: nox
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nox"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+
+  api:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: &appenv
+      DATABASE_URL: postgresql://nox:nox@postgres:5432/nox
+      REDIS_HOST: redis
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CHATWOOT_URL: ${CHATWOOT_URL:-}
+      CHATWOOT_API_KEY: ${CHATWOOT_API_KEY:-}
+      CHATWOOT_ACCOUNT_ID: ${CHATWOOT_ACCOUNT_ID:-0}
+      WEBHOOK_TOKEN: ${WEBHOOK_TOKEN:-dev-token}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-}
+    ports:
+      - "8000:8000"
+
+  worker:
+    build: .
+    command: ["python", "-m", "src.queue.consumer"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *appenv
+
+volumes:
+  pgdata:
