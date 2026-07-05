@@ -1,7 +1,3 @@
-"use client";
-
-import { useEffect, useRef } from "react";
-
 const SERIF = "'Bodoni Moda', Georgia, serif";
 
 const ars = new Intl.NumberFormat("es-AR");
@@ -14,8 +10,7 @@ type Product = {
   name: string;
   finish: string;
   price: number;
-  video: string; // Mixkit (gratis) — reemplazá por tu .mp4
-  poster: string;
+  photo: string;
   cell: React.CSSProperties; // ubicación en la grilla irregular
 };
 
@@ -25,8 +20,7 @@ const products: Product[] = [
     name: "Texture Mash · Matte",
     finish: "Pomada · Efecto mate",
     price: 25000,
-    video: "https://assets.mixkit.co/videos/271/271-360.mp4",
-    poster: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=700&q=80&auto=format&fit=crop",
+    photo: "https://images.unsplash.com/photo-1619451334792-150fd785ee74?w=900&q=80&auto=format&fit=crop",
     cell: { gridColumn: "1 / 8", gridRow: "1 / 7", height: "100%" },
   },
   {
@@ -34,8 +28,7 @@ const products: Product[] = [
     name: "Texture Dust · Original",
     finish: "Polvo texturizador",
     price: 25000,
-    video: "https://assets.mixkit.co/videos/43231/43231-360.mp4",
-    poster: "https://images.unsplash.com/photo-1571875257727-256c39da42af?w=700&q=80&auto=format&fit=crop",
+    photo: "https://images.unsplash.com/photo-1621607512214-68297480165e?w=700&q=80&auto=format&fit=crop",
     cell: { gridColumn: "8 / 13", gridRow: "1 / 5", height: "100%" },
   },
   {
@@ -43,8 +36,7 @@ const products: Product[] = [
     name: "Texture Mash · Brillante",
     finish: "Pomada · Acabado brillo",
     price: 25000,
-    video: "https://assets.mixkit.co/videos/43279/43279-360.mp4",
-    poster: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=700&q=80&auto=format&fit=crop",
+    photo: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=700&q=80&auto=format&fit=crop",
     cell: { gridColumn: "8 / 13", gridRow: "5 / 11", height: "100%" },
   },
   {
@@ -52,8 +44,7 @@ const products: Product[] = [
     name: "Beard Oil · Cedro",
     finish: "Aceite de barba",
     price: 19000,
-    video: "https://assets.mixkit.co/videos/43232/43232-360.mp4",
-    poster: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=700&q=80&auto=format&fit=crop",
+    photo: "https://images.unsplash.com/photo-1617897903246-719242758050?w=700&q=80&auto=format&fit=crop",
     cell: { gridColumn: "1 / 4", gridRow: "7 / 11", height: "100%" },
   },
   {
@@ -61,31 +52,15 @@ const products: Product[] = [
     name: "Sea Salt Spray",
     finish: "Spray texturizante",
     price: 21000,
-    video: "https://assets.mixkit.co/videos/40127/40127-360.mp4",
-    poster: "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=700&q=80&auto=format&fit=crop",
+    photo: "https://images.unsplash.com/photo-1585751119414-ef2636f8aede?w=700&q=80&auto=format&fit=crop",
     cell: { gridColumn: "4 / 8", gridRow: "7 / 11", height: "100%" },
   },
 ];
 
 export function Tienda() {
-  const rootRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const play = () => {
-      rootRef.current?.querySelectorAll("video").forEach((v) => {
-        v.muted = true;
-        v.play().catch(() => {});
-      });
-    };
-    play();
-    const t = setTimeout(play, 500);
-    return () => clearTimeout(t);
-  }, []);
-
   return (
     <section
       id="tienda"
-      ref={rootRef}
       className="nox-shop"
       style={{ background: "#0a0a0a", color: "#fff", fontFamily: "'Archivo', system-ui, sans-serif" }}
     >
@@ -101,9 +76,7 @@ export function Tienda() {
         {products.map((p) => (
           <a key={p.slug} href={`${SHOP_URL}/${p.slug}`} target="_blank" rel="noreferrer" className="nox-prod" style={p.cell}>
             <div className="nox-prod__media">
-              <video autoPlay loop muted playsInline poster={p.poster} style={{ width: "100%", height: "100%", objectFit: "cover" }}>
-                <source src={p.video} type="video/mp4" />
-              </video>
+              <img src={p.photo} alt={p.name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               <div className="nox-prod__grad" />
               <div className="nox-prod__shade" />
               <div className="nox-prod__cta">Comprar →</div>

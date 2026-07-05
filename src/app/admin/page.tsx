@@ -141,13 +141,13 @@ export default function AdminPage() {
   const [convoFilter, setConvoFilter] = useState("Todas");
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS, display: "grid", gridTemplateColumns: "236px 1fr" }}>
-      <aside style={{ borderRight: "1px solid rgba(255,255,255,0.12)", padding: "26px 0", position: "sticky", top: 0, height: "100vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "0 22px 26px", display: "flex", alignItems: "baseline", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+    <div className="adm-shell" style={{ background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
+      <aside className="adm-side">
+        <div className="adm-brand">
           <span style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 26 }}>NOX</span>
           <span style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", opacity: 0.5 }}>Admin</span>
         </div>
-        <nav style={{ marginTop: 18, display: "flex", flexDirection: "column" }}>
+        <nav className="adm-nav">
           {NAV.map((n) => {
             const on = section === n.key;
             return (
@@ -157,15 +157,15 @@ export default function AdminPage() {
             );
           })}
         </nav>
-        <div style={{ marginTop: "auto", padding: "20px 22px", borderTop: "1px solid rgba(255,255,255,0.1)", fontSize: 12, opacity: 0.55 }}>
+        <div className="adm-user">
           Bruno · Dueño<br /><a href="/" style={{ color: "#fff", opacity: 0.7 }}>Volver al sitio →</a>
         </div>
       </aside>
 
-      <main style={{ padding: "34px 40px 90px", minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <main className="adm-main">
+        <div className="adm-head">
           <div>
-            <h1 style={{ fontFamily: SERIF, fontSize: 40, fontWeight: 600, lineHeight: 1 }}>{TITLES[section]}</h1>
+            <h1 className="adm-title">{TITLES[section]}</h1>
             <div style={{ marginTop: 6, fontSize: 13, opacity: 0.5 }}>Lunes 29 de junio, 2026</div>
           </div>
           <a href="/agendar" style={{ background: "#fff", color: "#0a0a0a", padding: "11px 20px", fontWeight: 700, fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase" }}>+ Nuevo turno</a>
@@ -208,7 +208,7 @@ function Resumen() {
   const barberPerf = [{ name: "Bruno", rev: 1240000 }, { name: "Lautaro", rev: 980000 }, { name: "Camila", rev: 910000 }, { name: "Thiago", rev: 760000 }, { name: "Ramiro", rev: 540000 }];
   return (
     <>
-      <div style={{ marginTop: 30, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+      <div className="adm-kpis" style={{ marginTop: 30, gap: 16 }}>
         {kpis.map((k) => (
           <div key={k.label} style={{ ...CARD, padding: "22px 24px" }}>
             <div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.5 }}>{k.label}</div>
@@ -219,7 +219,7 @@ function Resumen() {
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 16 }}>
+      <div className="adm-grid" style={{ marginTop: 18, "--cols": "1.6fr 1fr" } as React.CSSProperties}>
         <div style={{ ...CARD, padding: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6 }}>Ingresos · últimos 7 días</div>
@@ -256,7 +256,7 @@ function Resumen() {
           </div>
         </div>
       </div>
-      <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div className="adm-grid" style={{ marginTop: 16 }}>
         <div style={{ ...CARD, padding: 24 }}>
           <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6, marginBottom: 20 }}>Servicios más pedidos</div>
           {topServices.map((s) => (
@@ -300,8 +300,8 @@ function Agenda({ agenda, selDate, setSelDate, calOpen, setCalOpen, view, setVie
   ];
   return (
     <>
-      <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "space-between", ...CARD, padding: "14px 18px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, ...CARD, padding: "14px 18px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           <button className="qbtn" onClick={() => shiftDay(-1)} style={{ width: 32, height: 32, fontSize: 17 }}>‹</button>
           <div style={{ minWidth: 280 }}>
             <div style={{ fontFamily: SERIF, fontSize: 24, lineHeight: 1, textTransform: "capitalize" }}>{`${DOW[sel.getDay()]} ${sel.getDate()} ${MONTHS[sel.getMonth()]}`}</div>
@@ -336,9 +336,9 @@ function Agenda({ agenda, selDate, setSelDate, calOpen, setCalOpen, view, setVie
           </div>
         </div>
       )}
-      <div style={{ marginTop: 22, display: "flex", gap: 14 }}>
+      <div className="adm-kpis" style={{ marginTop: 22 }}>
         {kpis.map((k) => (
-          <div key={k.label} style={{ flex: 1, ...CARD, padding: "18px 22px" }}>
+          <div key={k.label} style={{ ...CARD, padding: "18px 22px" }}>
             <div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.5 }}>{k.label}</div>
             <div style={{ marginTop: 8, fontFamily: SERIF, fontSize: 28 }}>{k.value}</div>
           </div>
@@ -347,12 +347,12 @@ function Agenda({ agenda, selDate, setSelDate, calOpen, setCalOpen, view, setVie
       {dayAppts.length === 0 ? (
         <div style={{ marginTop: 22, border: "1px dashed rgba(255,255,255,0.2)", padding: 48, textAlign: "center", opacity: 0.6, fontSize: 15 }}>Sin turnos para este día.</div>
       ) : (
-        <div style={{ marginTop: 22, ...CARD }}>
-          <div style={{ display: "grid", gridTemplateColumns: "0.7fr 1.4fr 1.6fr 1.2fr 1.1fr 1.2fr", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
+        <div className="tbl-wrap" style={{ marginTop: 22, ...CARD }}>
+          <div className="tbl-row" style={{ display: "grid", gridTemplateColumns: "0.7fr 1.4fr 1.6fr 1.2fr 1.1fr 1.2fr", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
             <span>Hora</span><span>Cliente</span><span>Servicio</span><span>Profesional</span><span>Canal</span><span style={{ textAlign: "right" }}>Acciones</span>
           </div>
           {dayAppts.map((a) => (
-            <div key={a.id} className="arow" style={{ display: "grid", gridTemplateColumns: "0.7fr 1.4fr 1.6fr 1.2fr 1.1fr 1.2fr", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", opacity: a.state === "cancelled" ? 0.4 : 1 }}>
+            <div key={a.id} className="arow tbl-row" style={{ display: "grid", gridTemplateColumns: "0.7fr 1.4fr 1.6fr 1.2fr 1.1fr 1.2fr", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", opacity: a.state === "cancelled" ? 0.4 : 1 }}>
               <span style={{ fontFamily: SERIF, fontSize: 18 }}>{a.time}</span>
               <span style={{ fontSize: 14 }}>{a.client}</span>
               <span style={{ fontSize: 14, opacity: 0.8 }}>{a.service}</span>
@@ -381,12 +381,12 @@ function Clientes() {
     { name: "Joaquín Vera", visits: 5, last: "20/05", spent: 105000, channel: "WhatsApp" }, { name: "Tomás Gil", visits: 4, last: "14/05", spent: 92000, channel: "WhatsApp" },
   ];
   return (
-    <div style={{ marginTop: 28, ...CARD }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 0.8fr 1.1fr 1fr 1.1fr", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
+    <div className="tbl-wrap" style={{ marginTop: 28, ...CARD }}>
+      <div className="tbl-row" style={{ display: "grid", gridTemplateColumns: "1.6fr 0.8fr 1.1fr 1fr 1.1fr", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
         <span>Cliente</span><span>Visitas</span><span>Último turno</span><span>Gastado</span><span>Canal habitual</span>
       </div>
       {cl.map((c) => (
-        <div key={c.name} className="arow" style={{ display: "grid", gridTemplateColumns: "1.6fr 0.8fr 1.1fr 1fr 1.1fr", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div key={c.name} className="arow tbl-row" style={{ display: "grid", gridTemplateColumns: "1.6fr 0.8fr 1.1fr 1fr 1.1fr", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 34, height: 34, borderRadius: "50%", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SERIF, fontSize: 13 }}>{initials(c.name)}</span>{c.name}
           </span>
@@ -411,16 +411,16 @@ function Stock({ stock, adjust }: { stock: Prod[]; adjust: (i: number, d: number
   ];
   return (
     <>
-      <div style={{ marginTop: 28, display: "flex", gap: 14 }}>
+      <div className="adm-kpis" style={{ marginTop: 28 }}>
         {kpis.map((k) => (
-          <div key={k.label} style={{ flex: 1, ...CARD, padding: "18px 22px" }}>
+          <div key={k.label} style={{ ...CARD, padding: "18px 22px" }}>
             <div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.5 }}>{k.label}</div>
             <div style={{ marginTop: 8, fontFamily: SERIF, fontSize: 28, color: k.color }}>{k.value}</div>
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 22, ...CARD }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.9fr 1.3fr 1fr 1.1fr", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
+      <div className="tbl-wrap" style={{ marginTop: 22, ...CARD }}>
+        <div className="tbl-row" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.9fr 1.3fr 1fr 1.1fr", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
           <span>Producto</span><span>Precio</span><span>Stock</span><span>Ajustar</span><span>Valor</span><span style={{ textAlign: "right" }}>Estado</span>
         </div>
         {stock.map((p, i) => {
@@ -428,7 +428,7 @@ function Stock({ stock, adjust }: { stock: Prod[]; adjust: (i: number, d: number
           const col = p.qty === 0 ? "#ff7a7a" : p.qty <= p.min ? "#ffcf66" : "rgba(255,255,255,0.85)";
           const border = p.qty === 0 ? "rgba(255,90,90,0.5)" : p.qty <= p.min ? "rgba(255,200,80,0.5)" : "rgba(255,255,255,0.3)";
           return (
-            <div key={p.sku} className="arow" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.9fr 1.3fr 1fr 1.1fr", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+            <div key={p.sku} className="arow tbl-row" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.9fr 1.3fr 1fr 1.1fr", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
               <span><span style={{ fontFamily: SERIF, fontSize: 17 }}>{p.name}</span><br /><span style={{ fontSize: 11, opacity: 0.4, letterSpacing: "0.08em" }}>{p.sku}</span></span>
               <span style={{ fontFamily: SERIF, fontSize: 16 }}>{money(p.price)}</span>
               <span style={{ fontSize: 16, color: col }}>{p.qty}</span>
@@ -454,7 +454,7 @@ function IA() {
   ];
   return (
     <>
-      <div style={{ marginTop: 28, display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
+      <div className="adm-kpis" style={{ marginTop: 28 }}>
         {kpis.map((k) => (
           <div key={k.label} style={{ ...CARD, padding: "20px 22px" }}>
             <div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.5 }}>{k.label}</div>
@@ -462,7 +462,7 @@ function IA() {
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 16 }}>
+      <div className="adm-grid" style={{ marginTop: 18, "--cols": "1fr 1.3fr" } as React.CSSProperties}>
         <div style={{ ...CARD, padding: 24 }}>
           <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6 }}>Automatización</div>
           <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 22 }}>
@@ -521,9 +521,9 @@ function Conversaciones({ convos, setConvos, selConvo, setSelConvo, filter, setF
       <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, fontSize: 12, opacity: 0.5 }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#25D366" }} />Integrado con Chatwoot · WhatsApp Business · Sincronizado hace 1 min
       </div>
-      <div style={{ marginTop: 18, display: "flex", gap: 12 }}>
+      <div className="adm-kpis" style={{ marginTop: 18, gap: 12 }}>
         {kpis.map((k) => (
-          <div key={k.label} style={{ flex: 1, ...CARD, padding: "14px 18px" }}>
+          <div key={k.label} style={{ ...CARD, padding: "14px 18px" }}>
             <div style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.5 }}>{k.label}</div>
             <div style={{ marginTop: 6, fontFamily: SERIF, fontSize: 26, color: k.color }}>{k.value}</div>
           </div>
@@ -645,13 +645,13 @@ function Ajustes({ staff, setStaff, svc, setSvc, admins, setAdmins, booking, set
   const bump = (id: number, pct: number) => setSvc((s) => s.map((x) => (x.id === id ? { ...x, price: Math.max(0, Math.round((x.price * (1 + pct / 100)) / 500) * 500) } : x)));
   const channels = [{ key: "web" as const, label: "Reservas por Web", on: booking.web }, { key: "whatsapp" as const, label: "Reservas por WhatsApp", on: booking.whatsapp }];
   return (
-    <div style={{ marginTop: 28, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
+    <div className="adm-grid" style={{ marginTop: 28 }}>
       <div style={{ ...CARD, padding: 24, gridColumn: "1 / -1" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
           <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6 }}>Personal · {staff.filter((p) => p.active).length} activos</div>
           <button className="miniact" onClick={() => { const name = prompt("Nombre del nuevo profesional:"); if (!name) return; const role = prompt("Rol (Barbero / Estilista / Master Barber):", "Barbero") || "Barbero"; setStaff((s) => [...s, { id: Date.now(), name, role, active: true }]); }}>+ Agregar profesional</button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+        <div className="adm-staff">
           {staff.map((p) => (
             <div key={p.id} style={{ border: "1px solid rgba(255,255,255,0.1)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -724,7 +724,7 @@ function Disponibilidad({ availEnabled, setAvailEnabled, availMode, setAvailMode
   const toggleDay = (key: string) => setMarkedDays((d) => (d.includes(key) ? d.filter((k) => k !== key) : [...d, key]));
   return (
     <>
-      <div style={{ marginTop: 28, ...CARD, padding: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ marginTop: 28, ...CARD, padding: 24, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
         <div>
           <div style={{ fontFamily: SERIF, fontSize: 24, lineHeight: 1 }}>Estado general de la agenda</div>
           <div style={{ marginTop: 8, fontSize: 13, color: availEnabled ? "#7ee0a8" : "#ff7a7a" }}>{availEnabled ? "Agenda abierta" : "Agenda cerrada — no se aceptan reservas"}</div>
@@ -733,7 +733,7 @@ function Disponibilidad({ availEnabled, setAvailEnabled, availMode, setAvailMode
           <span style={{ position: "absolute", top: 3, left: availEnabled ? 31 : 3, width: 24, height: 24, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
         </div>
       </div>
-      <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 16, alignItems: "start" }}>
+      <div className="adm-grid" style={{ marginTop: 16, "--cols": "1.1fr 1fr" } as React.CSSProperties}>
         <div style={{ ...CARD, padding: 24 }}>
           <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6 }}>Días de apertura</div>
           <div style={{ marginTop: 16, display: "flex", border: "1px solid rgba(255,255,255,0.18)" }}>
