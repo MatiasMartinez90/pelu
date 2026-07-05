@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from ..config import get_settings
 from ..db.pool import close_pool, get_pool, init_pool
 from ..integrations.redis_client import close_redis, get_redis
-from .routers import public
+from .routers import admin_agenda, admin_dashboard, admin_settings, admin_stock, public
 
 logging.basicConfig(level=get_settings().log_level)
 logger = logging.getLogger(__name__)
@@ -37,6 +37,10 @@ app.add_middleware(
 )
 
 app.include_router(public.router)
+app.include_router(admin_dashboard.router)
+app.include_router(admin_agenda.router)
+app.include_router(admin_stock.router)
+app.include_router(admin_settings.router)
 
 
 @app.get("/health")
