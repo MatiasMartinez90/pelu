@@ -10,7 +10,15 @@ from ..config import get_settings
 from ..db.pool import close_pool, get_pool, init_pool
 from ..integrations.redis_client import close_redis, get_redis
 from ..queue.producer import get_producer
-from .routers import admin_agenda, admin_dashboard, admin_settings, admin_stock, public, webhook
+from .routers import (
+    admin_agenda,
+    admin_conversations,
+    admin_dashboard,
+    admin_settings,
+    admin_stock,
+    public,
+    webhook,
+)
 
 logging.basicConfig(level=get_settings().log_level)
 logger = logging.getLogger(__name__)
@@ -47,6 +55,7 @@ app.include_router(admin_dashboard.router)
 app.include_router(admin_agenda.router)
 app.include_router(admin_stock.router)
 app.include_router(admin_settings.router)
+app.include_router(admin_conversations.router)
 app.include_router(webhook.router)
 
 
