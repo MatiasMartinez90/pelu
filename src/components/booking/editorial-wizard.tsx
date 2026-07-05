@@ -1,55 +1,39 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const SERIF = "'Bodoni Moda', Georgia, serif";
 const SANS = "'Archivo', system-ui, sans-serif";
-const WHATSAPP = "5491155550123";
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? "https://api-nox.cloud-it.com.ar";
 
 const ars = new Intl.NumberFormat("es-AR");
 const money = (n: number) => `$${ars.format(n)}`;
 
-type Barber = { id: string; name: string; role: "BARBERO" | "ESTILISTA"; photo: string };
-type Service = { id: string; name: string; desc: string; price: number; duration: string; barberIds: string[]; badge?: string };
-
-const barbers: Barber[] = [
-  { id: "thiago", name: "Thiago", role: "BARBERO", photo: "https://images.unsplash.com/photo-1503443207922-dff7d543fd0e?w=600&q=80&auto=format&fit=crop" },
-  { id: "lautaro", name: "Lautaro", role: "BARBERO", photo: "https://images.unsplash.com/photo-1493256338651-d82f7acb2b38?w=600&q=80&auto=format&fit=crop" },
-  { id: "bruno", name: "Bruno", role: "BARBERO", photo: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=600&q=80&auto=format&fit=crop" },
-  { id: "nahuel", name: "Nahuel", role: "BARBERO", photo: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&q=80&auto=format&fit=crop" },
-  { id: "ramiro", name: "Ramiro", role: "BARBERO", photo: "https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=600&q=80&auto=format&fit=crop" },
-  { id: "camila", name: "Camila", role: "ESTILISTA", photo: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=600&q=80&auto=format&fit=crop" },
-];
-
-const services: Service[] = [
-  { id: "corte-masculino", name: "Corte Masculino", desc: "Corte personalizado con estilo.", price: 15000, duration: "30 min", barberIds: ["thiago", "lautaro", "nahuel", "ramiro", "camila"] },
-  { id: "corte-barba", name: "Corte y Barba", desc: "Corte de pelo + arreglo de barba. El pack completo.", price: 18000, duration: "30 min", barberIds: ["lautaro", "nahuel", "ramiro", "camila"], badge: "Más pedido" },
-  { id: "barba", name: "Barba", desc: "Recorte y perfilado de barba.", price: 13000, duration: "30 min", barberIds: ["thiago", "lautaro", "nahuel", "ramiro", "camila"] },
-  { id: "corte-masculino-bruno", name: "Corte Masculino con Bruno", desc: "Corte personalizado con nuestro master barber.", price: 20000, duration: "30 min", barberIds: ["bruno"] },
-  { id: "corte-barba-bruno", name: "Corte y Barba con Bruno", desc: "Corte de pelo + arreglo de barba con Bruno.", price: 23000, duration: "30 min", barberIds: ["bruno"], badge: "Premium" },
-  { id: "barba-bruno", name: "Barba con Bruno", desc: "Arreglo de barba con nuestro master barber.", price: 15000, duration: "30 min", barberIds: ["bruno"] },
-  { id: "corte-mujer", name: "Corte Mujer", desc: "Corte femenino personalizado. Estilo y técnica profesional.", price: 15000, duration: "30 min", barberIds: ["camila"] },
-  { id: "color", name: "Color", desc: "El valor varía según el trabajo a realizar. Consultá por WhatsApp.", price: 70000, duration: "2 hs", barberIds: ["camila"], badge: "Exclusivo" },
-  { id: "alisado", name: "Alisado Orgánico (sin formol)", desc: "Look liso y natural. El valor varía según largo y volumen.", price: 165000, duration: "3 hs 30 min", barberIds: ["camila"], badge: "Exclusivo" },
-];
+type Barber = { slug: string; name: string; role: string; photo_url: string | null };
+type Service = {
+  slug: string;
+  name: string;
+  description: string;
+  price: number;
+  duration_min: number;
+  badge: string | null;
+  variable_price: boolean;
+};
+type Booking = {
+  id: string;
+  barber: string;
+  service: string;
+  starts_at: string;
+  price: number;
+};
 
 const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const DOW = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-const servicesForBarber = (id: string) => services.filter((s) => s.barberIds.includes(id));
-
-function slotsForDate(d: Date): string[] {
-  const sat = d.getDay() === 6;
-  const startH = sat ? 11 : 10;
-  const endH = sat ? 20 : 21;
-  const out: string[] = [];
-  for (let h = startH; h < endH; h++) {
-    out.push(`${String(h).padStart(2, "0")}:00`);
-    out.push(`${String(h).padStart(2, "0")}:30`);
-  }
-  return out;
-}
+const isoDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const stepDefs = [
   { n: "01", label: "Barbero" },
@@ -58,38 +42,89 @@ const stepDefs = [
   { n: "04", label: "Confirmación" },
 ];
 
+async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetch(`${API}${path}`);
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  return res.json();
+}
+
 export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: string }) {
   const [step, setStep] = useState(0);
-  const [barberId, setBarberId] = useState<string | null>(null);
-  const [serviceId, setServiceId] = useState<string | null>(null);
+  const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [barberSlug, setBarberSlug] = useState<string | null>(null);
+  const [serviceSlug, setServiceSlug] = useState<string | null>(null);
   const [dateTs, setDateTs] = useState<number | null>(null);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [time, setTime] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState<Booking | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const today = useMemo(() => startOfDay(new Date()), []);
   const [view, setView] = useState({ y: today.getFullYear(), m: today.getMonth() });
 
-  const barber = barbers.find((b) => b.id === barberId) || null;
-  const service = services.find((s) => s.id === serviceId) || null;
+  const barber = barbers.find((b) => b.slug === barberSlug) || null;
+  const service = services.find((s) => s.slug === serviceSlug) || null;
   const selDate = dateTs ? new Date(dateTs) : null;
 
-  function pickBarber(b: Barber) {
-    setBarberId(b.id);
-    const pre = preselectServiceId
-      ? servicesForBarber(b.id).find((s) => s.id === preselectServiceId)
-      : undefined;
-    if (pre) {
-      setServiceId(pre.id);
-      setStep(2);
-    } else {
-      setServiceId(null);
-      setStep(1);
+  useEffect(() => {
+    apiGet<Barber[]>("/api/v1/barbers")
+      .then(setBarbers)
+      .catch(() => setLoadError(true));
+  }, []);
+
+  // Servicios del barbero elegido
+  useEffect(() => {
+    if (!barberSlug) return;
+    setServices([]);
+    apiGet<Service[]>(`/api/v1/services?barber=${barberSlug}`)
+      .then(setServices)
+      .catch(() => setLoadError(true));
+  }, [barberSlug]);
+
+  const refreshSlots = useCallback(async () => {
+    if (!barberSlug || !serviceSlug || !selDate) return;
+    setSlotsLoading(true);
+    setSlots([]);
+    try {
+      const data = await apiGet<{ slots: string[] }>(
+        `/api/v1/availability?barber=${barberSlug}&service=${serviceSlug}&date=${isoDate(selDate)}`
+      );
+      setSlots(data.slots);
+    } catch {
+      setSlots([]);
+    } finally {
+      setSlotsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [barberSlug, serviceSlug, dateTs]);
+
+  useEffect(() => {
+    refreshSlots();
+  }, [refreshSlots]);
+
+  function pickBarber(b: Barber) {
+    setBarberSlug(b.slug);
+    setServiceSlug(null);
+    setStep(1);
   }
+
+  // Preselección de servicio (?servicio=slug) una vez cargados los servicios
+  useEffect(() => {
+    if (step === 1 && preselectServiceId && services.some((s) => s.slug === preselectServiceId)) {
+      setServiceSlug(preselectServiceId);
+      setStep(2);
+    }
+  }, [step, services, preselectServiceId]);
+
   function pickService(s: Service) {
-    setServiceId(s.id);
+    setServiceSlug(s.slug);
     setStep(2);
   }
   const back = () => setStep((s) => (s > 0 ? s - 1 : 0));
@@ -98,33 +133,84 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
     ? `${DOW[selDate.getDay()]} ${String(selDate.getDate()).padStart(2, "0")}/${String(selDate.getMonth() + 1).padStart(2, "0")}`
     : "";
 
-  // calendario
   const { y, m } = view;
   const firstDow = (new Date(y, m, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   const prevDisabled = y < today.getFullYear() || (y === today.getFullYear() && m <= today.getMonth());
 
-  const slots = selDate ? slotsForDate(selDate) : [];
   const canContinue = !!(selDate && time);
   const formValid = name.trim().length > 1 && phone.trim().length > 5;
 
-  function confirm() {
-    if (!barber || !service || !selDate || !time || !formValid) return;
-    const msg = [
-      `Hola NOX Barber! Quiero reservar un turno:`,
-      ``,
-      `Profesional: ${barber.name}`,
-      `Servicio: ${service.name} (${money(service.price)})`,
-      `Fecha: ${dateLabel} - ${time} hs`,
-      ``,
-      `Mis datos:`,
-      `Nombre: ${name}`,
-      `Tel: ${phone}`,
-      email ? `Email: ${email}` : ``,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, "_blank");
+  async function confirm() {
+    if (!barber || !service || !selDate || !time || !formValid || submitting) return;
+    setSubmitting(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch(`${API}/api/v1/bookings`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          barber: barber.slug,
+          service: service.slug,
+          date: isoDate(selDate),
+          time,
+          customer: { name: name.trim(), phone: phone.trim(), email: email.trim() || null },
+        }),
+      });
+      if (res.status === 201) {
+        setConfirmed(await res.json());
+        return;
+      }
+      if (res.status === 409 || res.status === 422) {
+        const body = await res.json().catch(() => null);
+        const detail = body?.detail;
+        setErrorMsg(
+          (typeof detail === "object" ? detail?.message : detail) ||
+            "Ese horario ya no está disponible. Elegí otro."
+        );
+        setTime(null);
+        setStep(2);
+        refreshSlots();
+        return;
+      }
+      setErrorMsg("No pudimos procesar la reserva. Probá de nuevo en unos minutos.");
+    } catch {
+      setErrorMsg("No hay conexión con el servidor de reservas. Probá de nuevo.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // ── Pantalla de éxito ──
+  if (confirmed) {
+    const d = new Date(confirmed.starts_at);
+    return (
+      <div className="wz-page" style={{ fontFamily: SANS }}>
+        <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center", paddingTop: 40 }}>
+          <div style={{ fontSize: 12, letterSpacing: "0.4em", textTransform: "uppercase", opacity: 0.7 }}>Reserva confirmada</div>
+          <h1 style={{ marginTop: 14, fontFamily: SERIF, fontWeight: 700, fontSize: "clamp(40px,6vw,64px)", lineHeight: 0.95 }}>¡Te esperamos!</h1>
+          <div style={{ margin: "36px auto 0", border: "1px solid rgba(255,255,255,0.16)", background: "#101010", padding: 28, textAlign: "left", display: "flex", flexDirection: "column", gap: 14 }}>
+            {[
+              ["Servicio", confirmed.service],
+              ["Profesional", confirmed.barber],
+              ["Fecha", `${DOW[d.getDay()]} ${d.toLocaleDateString("es-AR")} · ${d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} hs`],
+              ["Precio", money(confirmed.price)],
+              ["A nombre de", name],
+            ].map(([l, v]) => (
+              <div key={l}>
+                <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>{l}</div>
+                <div style={{ fontWeight: 600, fontSize: 16, marginTop: 2 }}>{v}</div>
+              </div>
+            ))}
+          </div>
+          <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
+            El pago se realiza en el local · Av. Cabildo 2200, CABA.
+            <br />Para cancelar o reprogramar escribinos por WhatsApp.
+          </p>
+          <a href="/" className="nox-btn" style={{ display: "inline-block", marginTop: 24, padding: "14px 32px" }}>Volver al inicio</a>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -139,6 +225,17 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
           </h1>
           <div style={{ width: 64, height: 1, background: "rgba(255,255,255,0.5)", margin: "22px auto 0" }} />
         </header>
+
+        {errorMsg && (
+          <div style={{ margin: "24px auto 0", maxWidth: 640, border: "1px solid rgba(255,120,120,0.5)", background: "rgba(255,90,90,0.08)", color: "#ffb3b3", padding: "14px 18px", fontSize: 14, textAlign: "center" }}>
+            {errorMsg}
+          </div>
+        )}
+        {loadError && (
+          <div style={{ margin: "24px auto 0", maxWidth: 640, border: "1px solid rgba(255,120,120,0.5)", padding: "14px 18px", fontSize: 14, textAlign: "center", color: "#ffb3b3" }}>
+            No pudimos cargar la información de reservas. Recargá la página o escribinos por WhatsApp.
+          </div>
+        )}
 
         {/* Stepper */}
         <div style={{ marginTop: 44, display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "8px 0" }}>
@@ -161,17 +258,23 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
         {step === 0 && (
           <div style={{ marginTop: 52 }}>
             <p style={{ textAlign: "center", color: "rgba(255,255,255,0.55)", fontSize: 15 }}>Elegí al profesional con el que querés atenderte</p>
+            {barbers.length === 0 && !loadError && (
+              <p style={{ textAlign: "center", marginTop: 40, opacity: 0.5 }}>Cargando profesionales…</p>
+            )}
             <div className="wz-barbers" style={{ marginTop: 36 }}>
               {barbers.map((b) => {
-                const sel = b.id === barberId;
+                const sel = b.slug === barberSlug;
                 return (
                   <div
-                    key={b.id}
+                    key={b.slug}
                     onClick={() => pickBarber(b)}
                     style={{ cursor: "pointer", border: `1px solid ${sel ? "#fff" : "rgba(255,255,255,0.14)"}`, background: "#101010", overflow: "hidden", transition: "border-color .25s" }}
                   >
                     <div style={{ position: "relative", height: 280, overflow: "hidden" }}>
-                      <img src={b.photo} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 22%", filter: sel ? "none" : "grayscale(1) contrast(1.04)", transition: "filter .3s" }} />
+                      {b.photo_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={b.photo_url} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 22%", filter: sel ? "none" : "grayscale(1) contrast(1.04)", transition: "filter .3s" }} />
+                      )}
                       <div style={{ position: "absolute", top: 12, left: 12, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", background: b.role === "ESTILISTA" ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.55)", color: b.role === "ESTILISTA" ? "#0a0a0a" : "#fff", padding: "4px 9px" }}>{b.role}</div>
                     </div>
                     <div style={{ padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -191,10 +294,13 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
             <p style={{ textAlign: "center", color: "rgba(255,255,255,0.55)", fontSize: 15 }}>
               Servicios disponibles con <span style={{ color: "#fff", fontWeight: 600 }}>{barber.name}</span>
             </p>
+            {services.length === 0 && (
+              <p style={{ textAlign: "center", marginTop: 40, opacity: 0.5 }}>Cargando servicios…</p>
+            )}
             <div style={{ marginTop: 32, borderTop: "1px solid rgba(255,255,255,0.12)" }}>
-              {servicesForBarber(barber.id).map((s) => (
+              {services.map((s) => (
                 <div
-                  key={s.id}
+                  key={s.slug}
                   onClick={() => pickService(s)}
                   className="svc-row"
                   style={{ padding: "24px 8px", borderBottom: "1px solid rgba(255,255,255,0.12)", cursor: "pointer" }}
@@ -204,11 +310,11 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                       <h3 style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600 }}>{s.name}</h3>
                       {s.badge && <span style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", border: "1px solid rgba(255,255,255,0.4)", padding: "3px 8px" }}>{s.badge}</span>}
                     </div>
-                    <p style={{ marginTop: 6, color: "rgba(255,255,255,0.5)", fontSize: 14, maxWidth: 520 }}>{s.desc}</p>
-                    <p style={{ marginTop: 8, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>{s.duration}</p>
+                    <p style={{ marginTop: 6, color: "rgba(255,255,255,0.5)", fontSize: 14, maxWidth: 520 }}>{s.description}</p>
+                    <p style={{ marginTop: 8, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>{s.duration_min} min</p>
                   </div>
                   <div className="svc-right">
-                    <div style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 600 }}>{money(s.price)}</div>
+                    <div style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 600 }}>{s.variable_price ? `desde ${money(s.price)}` : money(s.price)}</div>
                     <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", background: "#fff", color: "#0a0a0a", padding: "6px 14px", display: "inline-block", fontWeight: 700 }}>Agendar</div>
                   </div>
                 </div>
@@ -259,18 +365,24 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                 </div>
               </div>
 
-              {/* Slots */}
+              {/* Slots (server-side: reglas − bloqueos − turnos) */}
               <div style={{ border: "1px solid rgba(255,255,255,0.14)", background: "#101010", padding: 22 }}>
                 <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600 }}>{selDate ? `Horarios — ${dateLabel}` : "Elegí una fecha"}</h3>
                 {selDate ? (
-                  <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-                    {slots.map((t) => {
-                      const sel = time === t;
-                      return (
-                        <div key={t} onClick={() => setTime(t)} style={{ textAlign: "center", padding: "11px 0", fontSize: 14, cursor: "pointer", border: `1px solid ${sel ? "#fff" : "rgba(255,255,255,0.18)"}`, background: sel ? "#fff" : "transparent", color: sel ? "#0a0a0a" : "#fff", transition: "background .15s" }}>{t}</div>
-                      );
-                    })}
-                  </div>
+                  slotsLoading ? (
+                    <p style={{ marginTop: 16, color: "rgba(255,255,255,0.45)", fontSize: 14 }}>Buscando horarios…</p>
+                  ) : slots.length === 0 ? (
+                    <p style={{ marginTop: 16, color: "rgba(255,255,255,0.45)", fontSize: 14 }}>No quedan horarios libres ese día. Probá con otra fecha.</p>
+                  ) : (
+                    <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+                      {slots.map((t) => {
+                        const sel = time === t;
+                        return (
+                          <div key={t} onClick={() => setTime(t)} style={{ textAlign: "center", padding: "11px 0", fontSize: 14, cursor: "pointer", border: `1px solid ${sel ? "#fff" : "rgba(255,255,255,0.18)"}`, background: sel ? "#fff" : "transparent", color: sel ? "#0a0a0a" : "#fff", transition: "background .15s" }}>{t}</div>
+                        );
+                      })}
+                    </div>
+                  )
                 ) : (
                   <p style={{ marginTop: 16, color: "rgba(255,255,255,0.45)", fontSize: 14 }}>Seleccioná un día en el calendario para ver los horarios disponibles.</p>
                 )}
@@ -294,7 +406,10 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                 <h3 style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600 }}>Resumen del turno</h3>
                 <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                    <img src={barber.photo} alt="" style={{ width: 48, height: 48, objectFit: "cover", filter: "grayscale(1)" }} />
+                    {barber.photo_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={barber.photo_url} alt="" style={{ width: 48, height: 48, objectFit: "cover", filter: "grayscale(1)" }} />
+                    )}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>Profesional</div>
                       <div style={{ fontWeight: 600, fontSize: 16, marginTop: 2 }}>{barber.name}</div>
@@ -305,7 +420,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                       <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>Servicio</div>
                       <div style={{ fontWeight: 600, fontSize: 16, marginTop: 2 }}>{service.name}</div>
                     </div>
-                    <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600 }}>{money(service.price)}</div>
+                    <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600 }}>{service.variable_price ? `desde ${money(service.price)}` : money(service.price)}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>Fecha y hora</div>
@@ -334,8 +449,10 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                       />
                     </label>
                   ))}
-                  <button onClick={confirm} style={{ marginTop: 6, width: "100%", background: formValid ? "#fff" : "rgba(255,255,255,0.12)", color: formValid ? "#0a0a0a" : "rgba(255,255,255,0.4)", border: "none", padding: 16, fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, cursor: formValid ? "pointer" : "not-allowed", fontFamily: SANS }}>Confirmar turno</button>
-                  <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Al confirmar se abre WhatsApp con tu reserva lista para enviar.</p>
+                  <button onClick={confirm} disabled={submitting} style={{ marginTop: 6, width: "100%", background: formValid && !submitting ? "#fff" : "rgba(255,255,255,0.12)", color: formValid && !submitting ? "#0a0a0a" : "rgba(255,255,255,0.4)", border: "none", padding: 16, fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, cursor: formValid && !submitting ? "pointer" : "not-allowed", fontFamily: SANS }}>
+                    {submitting ? "Reservando…" : "Confirmar turno"}
+                  </button>
+                  <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Al confirmar, tu turno queda reservado. El pago se realiza en el local.</p>
                 </div>
               </div>
             </div>

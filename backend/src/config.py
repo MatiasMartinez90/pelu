@@ -61,6 +61,7 @@ class Settings(BaseSettings):
 
     # API
     cors_origins: str = "https://nox.cloud-it.com.ar,http://localhost:3000"
+    cors_origin_regex: str = r"^http://localhost:\d+$"  # dev; vaciar para desactivar
     log_level: str = "INFO"
 
 
