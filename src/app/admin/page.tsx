@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { signOut } from "next-auth/react";
 
 const SERIF = "'Bodoni Moda', Georgia, serif";
 const SANS = "'Archivo', system-ui, sans-serif";
@@ -82,8 +83,14 @@ export default function AdminPage() {
             );
           })}
         </nav>
-        <div className="adm-user">
+        <div className="adm-user" style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start" }}>
           <a href="/" style={{ color: "#fff", opacity: 0.7 }}>Volver al sitio →</a>
+          <button
+            onClick={() => signOut({ callbackUrl: "/" })}
+            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "rgba(255,255,255,0.5)", fontFamily: SANS, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase" }}
+          >
+            Cerrar sesión
+          </button>
         </div>
       </aside>
 
