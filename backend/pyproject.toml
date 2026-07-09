@@ -21,6 +21,7 @@ dependencies = [
     "langgraph>=0.2.60",
     "langgraph-checkpoint-postgres>=2.0.13",
     "psycopg[binary]>=3.2",
+    "langchain>=0.3.0",
     "langchain-openai>=0.2.10",
     "langfuse>=3.0.0",
     "prometheus-client>=0.21",
