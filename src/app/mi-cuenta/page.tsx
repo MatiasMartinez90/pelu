@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { site } from "@/lib/site";
 
 const SERIF = "'Bodoni Moda', Georgia, serif";
 const SANS = "'Archivo', system-ui, sans-serif";
@@ -101,6 +102,17 @@ export default function MiCuentaPage() {
 
   const greeting = data ? firstName(data.name, data.email) : "";
 
+  async function linkWhatsapp() {
+    try {
+      const res = await fetch("/api/me/link/whatsapp/start", { method: "POST", headers: { "content-type": "application/json" } });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      const { code } = (await res.json()) as { code: string };
+      window.open(`https://wa.me/${site.whatsapp}?text=${encodeURIComponent(code)}`, "_blank");
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <header className="acct-top">
@@ -125,6 +137,14 @@ export default function MiCuentaPage() {
 
         {data && (
           <>
+            {/* Vincular WhatsApp: para ver turnos hechos por WhatsApp */}
+            <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
+              <span>¿Reservaste por WhatsApp con otro número?</span>
+              <button onClick={linkWhatsapp} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.5)", color: "#25D366", padding: "7px 14px", fontFamily: SANS, fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
+                <Dot green /> Vincular mi WhatsApp
+              </button>
+            </div>
+
             {/* Próximo turno */}
             <div style={{ marginTop: 44 }}>
               <div style={{ fontSize: 11, letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.55, marginBottom: 16 }}>Próximo turno</div>

@@ -16,6 +16,7 @@ from ...agent import events
 from ...config import get_settings
 from ...integrations.redis_client import get_redis, key, rate_limit_exceeded
 from ...queue.producer import get_producer
+from ...services import link_service
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,10 @@ async def chatwoot_webhook(body: ChatwootWebhook, token: str = Query(default="")
         phone = sender.get("phone_number") or ""
     if not phone and body.message and body.message.sender:
         phone = body.message.sender.get("phone_number") or ""
+
+    # Vinculación de cuenta: si es un claim de /mi-cuenta, se procesa acá y no va al agente.
+    if await link_service.try_claim_whatsapp(content, phone, conversation_id):
+        return {"status": "linked"}
 
     if phone and await rate_limit_exceeded(f"wa:{phone}"):
         await events.log_event("rate_limited", conversation_id=conversation_id, phone=phone)
