@@ -53,6 +53,7 @@ class BarberPatch(BaseModel):
     active: bool | None = None
     name: str | None = None
     photo_url: str | None = None
+    email: str | None = None  # vincula al barbero con su login Keycloak (portal /barbero)
 
 
 @router.patch("/barbers/{barber_id}")
@@ -63,13 +64,15 @@ async def patch_barber(barber_id: UUID, body: BarberPatch, admin: dict = AdminUs
         UPDATE barbers SET
             active = COALESCE($2, active),
             name = COALESCE($3, name),
-            photo_url = COALESCE($4, photo_url)
-        WHERE id = $1 RETURNING id, slug, name, role, active
+            photo_url = COALESCE($4, photo_url),
+            email = COALESCE($5, email)
+        WHERE id = $1 RETURNING id, slug, name, role, active, email
         """,
         barber_id,
         body.active,
         body.name,
         body.photo_url,
+        (body.email or "").strip().lower() or None,
     )
     if row is None:
         raise HTTPException(404, "barbero no encontrado")

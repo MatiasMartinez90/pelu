@@ -16,6 +16,7 @@ from .routers import (
     admin_dashboard,
     admin_settings,
     admin_stock,
+    barber,
     me,
     public,
     webhook,
@@ -54,6 +55,7 @@ app.add_middleware(
 
 app.include_router(public.router)
 app.include_router(me.router)
+app.include_router(barber.router)
 app.include_router(admin_dashboard.router)
 app.include_router(admin_agenda.router)
 app.include_router(admin_stock.router)

@@ -110,5 +110,32 @@ async def require_customer(request: Request) -> dict:
     return {"email": email, "name": claims.get("name", ""), "sub": claims.get("sub", "")}
 
 
+async def require_barber(request: Request) -> dict:
+    """El email del token debe corresponder a un barbero activo (barbers.email).
+
+    Devuelve {id, slug, name, email} del barbero; su agenda/stats se filtran por ese id.
+    """
+    settings = get_settings()
+    if settings.auth_disabled:
+        logger.warning("AUTH_DISABLED activo — solo válido en dev local")
+        pool = await get_pool()
+        row = await pool.fetchrow("SELECT id, slug, name, email FROM barbers WHERE active ORDER BY sort_order LIMIT 1")
+        return dict(row) if row else {"id": None, "slug": "dev", "name": "Dev", "email": "dev@localhost"}
+
+    claims = _decode_keycloak_token(request)
+    email = (claims.get("email") or "").lower()
+    if not email:
+        raise HTTPException(403, "token sin email")
+
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        "SELECT id, slug, name, email FROM barbers WHERE lower(email) = $1 AND active", email
+    )
+    if row is None:
+        raise HTTPException(403, "no sos un barbero registrado")
+    return dict(row)
+
+
 AdminUser = Depends(require_admin)
 CustomerUser = Depends(require_customer)
+BarberUser = Depends(require_barber)
