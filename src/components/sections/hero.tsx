@@ -99,6 +99,9 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFA
           <a href="/agendar" className="nox-cta">Agendar Turno</a>
           <a href="#tienda" className="nox-cta">Tienda</a>
           <div style={{ height: 14 }} />
+          <div style={{ height: 14 }} />
+          <a href="/login" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Ingresar</a>
+          <div style={{ height: 14 }} />
           <a href="/nosotros" className="nox-link" style={{ color: "#fff", opacity: 0.78, fontSize: 14 }}>Nosotros</a>
           <a href="/faq" className="nox-link" style={{ color: "#fff", opacity: 0.78, fontSize: 14 }}>Preguntas Frecuentes</a>
           <a href="/contacto" className="nox-link" style={{ color: "#fff", opacity: 0.78, fontSize: 14 }}>Cómo Llegar</a>

@@ -34,6 +34,9 @@ export function EditorialNav({ active }: { active?: string }) {
             {it.label}
           </a>
         ))}
+        <a href="/login" className="nox-link" style={{ opacity: 0.7 }}>
+          Ingresar
+        </a>
         <a href="/agendar" className="nox-btn">
           Agendar Turno
         </a>
