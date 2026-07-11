@@ -37,6 +37,41 @@ async def send_whatsapp_typing(phone: str, message_id: str = "") -> None:
         logger.warning("WhatsApp typing error: %s", e)
 
 
+async def send_whatsapp_template(phone: str, template: str, lang: str = "es_AR", params: list[str] | None = None) -> bool:
+    """Envía un template de WhatsApp (necesario fuera de la ventana de 24h).
+
+    Devuelve True si se envió. Requiere WHATSAPP_FOLLOWUP_TEMPLATE + creds; si
+    falta config o el envío falla, loguea y devuelve False (no rompe el job).
+    """
+    s = get_settings()
+    if not (s.whatsapp_phone_number_id and s.whatsapp_api_token and template and phone):
+        logger.info("template no enviado (falta config o phone)")
+        return False
+    url = f"https://graph.facebook.com/v22.0/{s.whatsapp_phone_number_id}/messages"
+    components = []
+    if params:
+        components = [{"type": "body", "parameters": [{"type": "text", "text": p} for p in params]}]
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone.lstrip("+"),
+        "type": "template",
+        "template": {"name": template, "language": {"code": lang}, "components": components},
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url,
+                headers={"Authorization": f"Bearer {s.whatsapp_api_token}"},
+                json=payload,
+                timeout=10.0,
+            )
+            resp.raise_for_status()
+        return True
+    except Exception as e:  # noqa: BLE001
+        logger.warning("WhatsApp template error: %s", e)
+        return False
+
+
 class ChatwootClient:
     def __init__(self) -> None:
         s = get_settings()

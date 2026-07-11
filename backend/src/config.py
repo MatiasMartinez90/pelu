@@ -36,9 +36,13 @@ class Settings(BaseSettings):
     chatwoot_handoff_assignee_id: int = 0
     webhook_token: str = ""  # token secreto del webhook (?token=)
 
-    # WhatsApp Cloud API (typing indicator)
+    # WhatsApp Cloud API (typing indicator + re-contacto por template)
     whatsapp_phone_number_id: str = ""
     whatsapp_api_token: str = ""
+    whatsapp_followup_template: str = ""  # nombre del template aprobado para re-contacto
+    whatsapp_followup_lang: str = "es_AR"
+    followup_after_hours: int = 20  # horas sin respuesta del cliente → abandonado
+    discard_after_hours: int = 48  # horas tras el follow-up sin respuesta → descartado
 
     # Langfuse
     langfuse_public_key: str = ""

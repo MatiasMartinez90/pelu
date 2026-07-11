@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from ...db.pool import get_pool
 from ...integrations.chatwoot import ChatwootClient
 from ...integrations.redis_client import get_redis, key
+from ...services import conversation_state as cstate
 from ..deps import AdminUser
 
 logger = logging.getLogger(__name__)
@@ -52,11 +53,21 @@ async def list_conversations(status: str | None = None, admin: dict = AdminUser)
 
     r = await get_redis()
     payload = (data.get("data") or {}).get("payload") or data.get("payload") or []
+
+    pool = await get_pool()
+    states = await cstate.get_states_map(pool, [c["id"] for c in payload])
+
     out = []
     for conv in payload:
         bot_off = bool(await r.exists(key(f"bot_off:{conv['id']}")))
-        st = _derive_status(conv, bot_off)
-        if status and st != status:
+        local = (states.get(conv["id"]) or {}).get("state")
+        # El estado local (archivado/abandonado/descartado) pisa al derivado de Chatwoot.
+        st = local or _derive_status(conv, bot_off)
+        if status:
+            if st != status:
+                continue
+        elif st == "archivado":
+            # Sin filtro explícito, los archivados no aparecen en la lista principal.
             continue
         sender = (conv.get("meta") or {}).get("sender") or {}
         out.append(
@@ -140,6 +151,41 @@ async def return_to_bot(conversation_id: int, admin: dict = AdminUser):
     await chatwoot.assign_conversation(conversation_id, None)
     await chatwoot.toggle_status(conversation_id, "open")
     return {"status": "bot"}
+
+
+@router.post("/{conversation_id}/archive")
+async def archive_conversation(conversation_id: int, admin: dict = AdminUser):
+    """Archiva: resuelve en Chatwoot + label 'archivado' + estado local."""
+    chatwoot = ChatwootClient()
+    try:
+        await chatwoot.toggle_status(conversation_id, "resolved")
+        await chatwoot.add_label(conversation_id, ["archivado"])
+    except Exception as e:  # noqa: BLE001
+        logger.warning("archive chatwoot error: %s", e)
+    pool = await get_pool()
+    await cstate.set_state(pool, conversation_id, "archivado")
+    return {"status": "archivado"}
+
+
+@router.post("/{conversation_id}/unarchive")
+async def unarchive_conversation(conversation_id: int, admin: dict = AdminUser):
+    """Desarchiva: reabre en Chatwoot y limpia el estado local."""
+    chatwoot = ChatwootClient()
+    try:
+        await chatwoot.toggle_status(conversation_id, "open")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("unarchive chatwoot error: %s", e)
+    pool = await get_pool()
+    await cstate.set_state(pool, conversation_id, None)
+    return {"status": "bot"}
+
+
+@router.post("/{conversation_id}/discard")
+async def discard_conversation(conversation_id: int, admin: dict = AdminUser):
+    """Marca la conversación como descartada (sin re-contacto)."""
+    pool = await get_pool()
+    await cstate.set_state(pool, conversation_id, "descartado")
+    return {"status": "descartado"}
 
 
 @router.get("/{conversation_id}/customer")

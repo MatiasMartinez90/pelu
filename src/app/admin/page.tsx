@@ -637,6 +637,9 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   pendiente: { label: "Pendiente", color: "#ffcf66" },
   humano: { label: "Atendido por humano", color: "#7ee0a8" },
   resuelta: { label: "Resuelta", color: "rgba(255,255,255,0.5)" },
+  abandonado: { label: "Abandonado", color: "#e0a86a" },
+  descartado: { label: "Descartado", color: "rgba(255,120,120,0.7)" },
+  archivado: { label: "Archivado", color: "rgba(255,255,255,0.4)" },
 };
 
 function Conversaciones() {
@@ -648,9 +651,12 @@ function Conversaciones() {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
 
+  const FILTERS: Record<string, string | null> = { Todas: null, Pendientes: "pendiente", Bot: "bot", Humano: "humano", Resueltas: "resuelta", Abandonadas: "abandonado", Descartadas: "descartado", Archivadas: "archivado" };
+  const backendStatus = FILTERS[filter];
   const loadList = useCallback(() => {
-    api<Convo[]>("/conversations").then(setConvos).catch((e) => setError(e.message));
-  }, []);
+    const q = backendStatus ? `?status=${backendStatus}` : "";
+    api<Convo[]>(`/conversations${q}`).then(setConvos).catch((e) => setError(e.message));
+  }, [backendStatus]);
   useEffect(loadList, [loadList]);
 
   const loadThread = useCallback((id: number) => {
@@ -681,8 +687,7 @@ function Conversaciones() {
     } catch (e) { setError((e as Error).message); }
   }
 
-  const FILTERS: Record<string, string | null> = { Todas: null, Pendientes: "pendiente", Bot: "bot", Humano: "humano", Resueltas: "resuelta" };
-  const list = (convos ?? []).filter((c) => !FILTERS[filter] || c.status === FILTERS[filter]);
+  const list = (convos ?? []).filter((c) => !backendStatus || c.status === backendStatus);
   const active = (convos ?? []).find((c) => c.id === selId) || null;
 
   if (error) return <ErrorBox msg={error} />;
@@ -730,9 +735,16 @@ function Conversaciones() {
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{active.name}</div>
                   <div style={{ fontSize: 12, opacity: 0.5 }}>{active.phone}</div>
                 </div>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: (STATUS_META[active.status] ?? STATUS_META.bot).color }}>
-                  <Dot color={(STATUS_META[active.status] ?? STATUS_META.bot).color} />{(STATUS_META[active.status] ?? STATUS_META.bot).label}
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: (STATUS_META[active.status] ?? STATUS_META.bot).color }}>
+                    <Dot color={(STATUS_META[active.status] ?? STATUS_META.bot).color} />{(STATUS_META[active.status] ?? STATUS_META.bot).label}
+                  </span>
+                  {active.status === "archivado" ? (
+                    <button className="miniact" onClick={() => action("unarchive")}>Desarchivar</button>
+                  ) : (
+                    <button className="miniact" onClick={() => action("archive")}>Archivar</button>
+                  )}
+                </div>
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 14, minHeight: 0, background: "#0c0c0c" }}>
                 {msgs.map((msg) => {
