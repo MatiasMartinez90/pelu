@@ -9,6 +9,8 @@ const allow = (process.env.ADMIN_EMAILS ?? "")
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Keycloak],
+  // Página de login propia (estilo del sitio) en vez de la default de Auth.js.
+  pages: { signIn: "/login" },
   callbacks: {
     // Solo emails de la allowlist pueden loguearse (si la lista está vacía, permite a cualquiera que pase por Keycloak).
     signIn({ profile }) {
