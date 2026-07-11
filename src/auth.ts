@@ -89,10 +89,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return token;
     },
-    // Expone accessToken + roles en la sesión.
+    // Expone roles en la sesión. accessToken NO se forwardea acá a propósito:
+    // este callback moldea lo que ve /api/auth/session y useSession() en el
+    // browser. auth() server-side (BFF en src/app/api/{backoffice,barber,me})
+    // y el middleware (authorized(), abajo) leen el token completo del jwt()
+    // callback sin pasar por session(), así que siguen viendo accessToken.
     session({ session, token }) {
-      const s = session as { accessToken?: string; roles?: Role[] };
-      s.accessToken = token.accessToken as string | undefined;
+      const s = session as { roles?: Role[] };
       s.roles = (token.roles as Role[] | undefined) ?? [];
       return session;
     },

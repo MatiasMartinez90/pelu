@@ -73,6 +73,13 @@ async def chatwoot_webhook(body: ChatwootWebhook, token: str = Query(default="")
     if not phone and body.message and body.message.sender:
         phone = body.message.sender.get("phone_number") or ""
 
+    # Rate limit por teléfono ANTES de procesar el claim: evita que alguien
+    # spamee intentos de adivinar un token de vinculación (NOX-LINK-xxxxxxxx)
+    # sin límite. Comparte presupuesto con el resto de los mensajes del agente.
+    if phone and await rate_limit_exceeded(f"wa:{phone}"):
+        await events.log_event("rate_limited", conversation_id=conversation_id, phone=phone)
+        return {"status": "rate_limited"}
+
     # Vinculación de cuenta: si es un claim de /mi-cuenta, se procesa acá y no va al agente.
     if await link_service.try_claim_whatsapp(content, phone, conversation_id):
         return {"status": "linked"}
@@ -85,10 +92,6 @@ async def chatwoot_webhook(body: ChatwootWebhook, token: str = Query(default="")
         await cstate.touch_client(await get_pool(), conversation_id, phone)
     except Exception as e:  # noqa: BLE001 — no romper el webhook
         logger.warning("touch_client error: %s", e)
-
-    if phone and await rate_limit_exceeded(f"wa:{phone}"):
-        await events.log_event("rate_limited", conversation_id=conversation_id, phone=phone)
-        return {"status": "rate_limited"}
 
     r = await get_redis()
     async with r.pipeline(transaction=False) as pipe:

@@ -82,7 +82,11 @@ async def create_booking(body: BookingIn, request: Request):
 
 
 @router.get("/bookings/{booking_id}", response_model=BookingOut)
-async def get_booking(booking_id: UUID, phone: str = Query(...)):
+async def get_booking(booking_id: UUID, request: Request, phone: str = Query(...)):
+    client_ip = request.client.host if request.client else "unknown"
+    if await rate_limit_exceeded(f"ip:{client_ip}"):
+        raise HTTPException(429, "Demasiadas solicitudes, probá más tarde.")
+
     pool = await get_pool()
     row = await pool.fetchrow(
         """

@@ -59,23 +59,42 @@ class BarberPatch(BaseModel):
 @router.patch("/barbers/{barber_id}")
 async def patch_barber(barber_id: UUID, body: BarberPatch, admin: dict = AdminUser):
     pool = await get_pool()
-    row = await pool.fetchrow(
-        """
-        UPDATE barbers SET
-            active = COALESCE($2, active),
-            name = COALESCE($3, name),
-            photo_url = COALESCE($4, photo_url),
-            email = COALESCE($5, email)
-        WHERE id = $1 RETURNING id, slug, name, role, active, email
-        """,
-        barber_id,
-        body.active,
-        body.name,
-        body.photo_url,
-        (body.email or "").strip().lower() or None,
-    )
-    if row is None:
-        raise HTTPException(404, "barbero no encontrado")
+    new_email = (body.email or "").strip().lower() or None
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            old_email = await conn.fetchval("SELECT email FROM barbers WHERE id = $1", barber_id)
+            if old_email is None and not await conn.fetchval(
+                "SELECT 1 FROM barbers WHERE id = $1", barber_id
+            ):
+                raise HTTPException(404, "barbero no encontrado")
+            row = await conn.fetchrow(
+                """
+                UPDATE barbers SET
+                    active = COALESCE($2, active),
+                    name = COALESCE($3, name),
+                    photo_url = COALESCE($4, photo_url),
+                    email = COALESCE($5, email)
+                WHERE id = $1 RETURNING id, slug, name, role, active, email
+                """,
+                barber_id,
+                body.active,
+                body.name,
+                body.photo_url,
+                new_email,
+            )
+            # Rebind de login (barbers.email) es sensible: auditar quién y cuándo,
+            # igual que service_price_history para cambios de precio.
+            if new_email is not None and new_email != old_email:
+                await conn.execute(
+                    """
+                    INSERT INTO barber_email_history (barber_id, old_email, new_email, changed_by)
+                    VALUES ($1, $2, $3, $4)
+                    """,
+                    barber_id,
+                    old_email,
+                    new_email,
+                    admin["email"],
+                )
     return dict(row)
 
 
