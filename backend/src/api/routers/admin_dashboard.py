@@ -1,6 +1,6 @@
 """Admin: KPIs del resumen, clientes y métricas del agente."""
 
-from datetime import date, timedelta
+from datetime import date
 
 from fastapi import APIRouter, Query
 
@@ -10,12 +10,28 @@ from ..deps import AdminUser
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 
-@router.get("/dashboard/summary")
-async def dashboard_summary(admin: dict = AdminUser):
-    pool = await get_pool()
+def _month_bounds(month: str | None) -> tuple[date, date, str]:
+    """Devuelve (inicio_mes, inicio_mes_siguiente, 'YYYY-MM'). Default = mes actual.
+    No permite meses futuros: si piden uno posterior al actual, cae al actual."""
     today = date.today()
-    month_start = today.replace(day=1)
-    week_ago = today - timedelta(days=6)
+    current_start = today.replace(day=1)
+    start = current_start
+    if month:
+        try:
+            y, m = (int(x) for x in month.split("-", 1))
+            start = date(y, m, 1)
+        except (ValueError, TypeError):
+            start = current_start
+    if start > current_start:
+        start = current_start
+    nxt = date(start.year + 1, 1, 1) if start.month == 12 else date(start.year, start.month + 1, 1)
+    return start, nxt, start.strftime("%Y-%m")
+
+
+@router.get("/dashboard/summary")
+async def dashboard_summary(month: str | None = Query(default=None), admin: dict = AdminUser):
+    pool = await get_pool()
+    month_start, month_end, month_str = _month_bounds(month)
 
     kpis = await pool.fetchrow(
         """
@@ -26,40 +42,45 @@ async def dashboard_summary(admin: dict = AdminUser):
           COUNT(*) FILTER (WHERE status = 'cancelled') AS month_cancelled,
           COUNT(*) FILTER (WHERE channel = 'whatsapp' AND status IN ('active','completed')) AS month_whatsapp,
           COUNT(*) FILTER (WHERE channel = 'web' AND status IN ('active','completed')) AS month_web
-        FROM appointments WHERE starts_at >= $1
+        FROM appointments WHERE starts_at >= $1 AND starts_at < $2
         """,
         month_start,
+        month_end,
     )
     daily = await pool.fetch(
         """
         SELECT date_trunc('day', starts_at)::date AS day,
                COALESCE(SUM(price_at_booking), 0) AS revenue
         FROM appointments
-        WHERE starts_at >= $1 AND starts_at < now() + interval '1 day'
+        WHERE starts_at >= $1 AND starts_at < $2
           AND status IN ('active','completed')
         GROUP BY 1 ORDER BY 1
         """,
-        week_ago,
+        month_start,
+        month_end,
     )
     top_services = await pool.fetch(
         """
         SELECT s.name, COUNT(*) AS count
         FROM appointments a JOIN services s ON s.id = a.service_id
-        WHERE a.starts_at >= $1 AND a.status IN ('active','completed')
+        WHERE a.starts_at >= $1 AND a.starts_at < $2 AND a.status IN ('active','completed')
         GROUP BY s.name ORDER BY count DESC LIMIT 5
         """,
         month_start,
+        month_end,
     )
     barber_perf = await pool.fetch(
         """
         SELECT b.name, COALESCE(SUM(a.price_at_booking), 0) AS revenue, COUNT(*) AS count
         FROM appointments a JOIN barbers b ON b.id = a.barber_id
-        WHERE a.starts_at >= $1 AND a.status IN ('active','completed')
+        WHERE a.starts_at >= $1 AND a.starts_at < $2 AND a.status IN ('active','completed')
         GROUP BY b.name ORDER BY revenue DESC
         """,
         month_start,
+        month_end,
     )
     return {
+        "month": month_str,
         "kpis": dict(kpis),
         "revenue_daily": [dict(r) for r in daily],
         "top_services": [dict(r) for r in top_services],

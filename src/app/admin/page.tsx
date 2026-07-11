@@ -139,16 +139,39 @@ type Summary = {
   barber_performance: { name: string; revenue: number; count: number }[];
 };
 
+const curMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
+const monthLabel = (m: string) => { const [y, mm] = m.split("-").map(Number); return `${MONTHS[mm - 1]} ${y}`; };
+
 function Resumen() {
+  const [selMonth, setSelMonth] = useState(curMonth());
   const [data, setData] = useState<Summary | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api<Summary>("/dashboard/summary").then(setData).catch((e) => setError(e.message));
-  }, []);
+    setData(null);
+    setError("");
+    api<Summary>(`/dashboard/summary?month=${selMonth}`).then(setData).catch((e) => setError(e.message));
+  }, [selMonth]);
 
-  if (error) return <ErrorBox msg={error} />;
-  if (!data) return <Loading />;
+  const shiftMonth = (delta: number) => {
+    const [y, m] = selMonth.split("-").map(Number);
+    const dt = new Date(y, m - 1 + delta, 1);
+    const next = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+    if (next <= curMonth()) setSelMonth(next);
+  };
+  const atCurrent = selMonth >= curMonth();
+
+  const header = (
+    <div style={{ marginTop: 26, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", ...CARD, padding: "14px 18px" }}>
+      <button className="qbtn" onClick={() => shiftMonth(-1)} style={{ width: 32, height: 32, fontSize: 17 }}>‹</button>
+      <div style={{ fontFamily: SERIF, fontSize: 24, lineHeight: 1, textTransform: "capitalize", minWidth: 180 }}>{monthLabel(selMonth)}</div>
+      <button className="qbtn" onClick={() => shiftMonth(1)} disabled={atCurrent} style={{ width: 32, height: 32, fontSize: 17, opacity: atCurrent ? 0.3 : 1, cursor: atCurrent ? "default" : "pointer" }}>›</button>
+      {!atCurrent && <button className="miniact" onClick={() => setSelMonth(curMonth())} style={{ marginLeft: 6 }}>Mes actual</button>}
+    </div>
+  );
+
+  if (error) return <>{header}<ErrorBox msg={error} /></>;
+  if (!data) return <>{header}<Loading /></>;
 
   const k = data.kpis;
   const total = Number(k.month_whatsapp) + Number(k.month_web) || 1;
@@ -169,7 +192,8 @@ function Resumen() {
 
   return (
     <>
-      <div className="adm-kpis" style={{ marginTop: 30, gap: 16 }}>
+      {header}
+      <div className="adm-kpis" style={{ marginTop: 18, gap: 16 }}>
         {kpis.map((x) => (
           <div key={x.label} style={{ ...CARD, padding: "22px 24px" }}>
             <div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.5 }}>{x.label}</div>
@@ -180,15 +204,14 @@ function Resumen() {
       <div className="adm-grid" style={{ marginTop: 18, "--cols": "1.6fr 1fr" } as React.CSSProperties}>
         <div style={{ ...CARD, padding: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6 }}>Ingresos · últimos 7 días</div>
+            <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6 }}>Ingresos · {monthLabel(selMonth)}</div>
             <div style={{ fontFamily: SERIF, fontSize: 22 }}>{money(weekTotal)}</div>
           </div>
           <div className="adm-chart" style={{ marginTop: 26 }}>
             {data.revenue_daily.map((d) => (
-              <div key={d.day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, height: "100%", justifyContent: "flex-end", minWidth: 0 }}>
-                <div style={{ fontSize: 11, opacity: 0.6 }}>{Number(d.revenue) ? `$${Math.round(Number(d.revenue) / 1000)}k` : "—"}</div>
+              <div key={d.day} title={`${new Date(d.day + "T12:00:00").getDate()} · ${money(Number(d.revenue))}`} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, height: "100%", justifyContent: "flex-end", minWidth: 0 }}>
                 <div style={{ width: "100%", background: "linear-gradient(180deg,#fff,#cfcfcf)", height: `${Math.max(2, Math.round((Number(d.revenue) / maxDay) * 100))}%` }} />
-                <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", opacity: 0.45 }}>{new Date(d.day + "T12:00:00").toLocaleDateString("es-AR", { weekday: "short" })}</div>
+                <div style={{ fontSize: 9, opacity: 0.45 }}>{new Date(d.day + "T12:00:00").getDate()}</div>
               </div>
             ))}
             {data.revenue_daily.length === 0 && <div style={{ opacity: 0.4, fontSize: 14 }}>Sin datos todavía.</div>}
