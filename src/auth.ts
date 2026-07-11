@@ -62,10 +62,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         | undefined;
       return session;
     },
-    // Gatea /admin: sin sesión → redirige a login.
+    // Gatea /admin: sin sesión O sin accessToken (refresh vencido) → redirige a login.
+    // Exigir accessToken evita renderizar el panel con sesión válida pero token muerto,
+    // que terminaría en "Error 401" del BFF.
     authorized({ auth, request }) {
       const onAdmin = request.nextUrl.pathname.startsWith("/admin");
-      if (onAdmin) return !!auth?.user;
+      if (onAdmin) {
+        const accessToken = (auth as { accessToken?: string } | null)?.accessToken;
+        return !!auth?.user && !!accessToken;
+      }
       return true;
     },
   },

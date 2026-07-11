@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { signOut } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 
 const SERIF = "'Bodoni Moda', Georgia, serif";
 const SANS = "'Archivo', system-ui, sans-serif";
@@ -13,11 +13,23 @@ const CARD = { border: "1px solid rgba(255,255,255,0.14)" } as const;
 // En dev se puede apuntar directo a la API local con AUTH_DISABLED=1.
 const API_BASE = process.env.NEXT_PUBLIC_ADMIN_API ?? "/api/backoffice";
 
+// Guard anti-loop: si ya disparamos el re-login, no lo repetimos por cada fetch en vuelo.
+let reauthing = false;
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
   });
+  if (res.status === 401) {
+    // Sesión sin accessToken (refresh Keycloak vencido). Re-autenticar en vez de mostrar "Error 401".
+    if (!reauthing) {
+      reauthing = true;
+      signIn("keycloak", { callbackUrl: "/admin" });
+    }
+    // Promesa que no resuelve: el redirect de signIn desmonta la página.
+    return new Promise<T>(() => {});
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     const detail = body?.detail;
