@@ -78,15 +78,21 @@ async def run() -> None:
             state, n_aband = "abandonado", n_aband + 1
 
         if state == "abandonado" and sent == 0:
+            # Marcamos el envío ANTES de mandarlo: si el proceso muere entre
+            # el 200 de WhatsApp y este UPDATE, el peor caso es "no se marcó
+            # y no se reintenta hasta mañana" en vez de "se manda duplicado" —
+            # un follow-up perdido es mucho menos grave que uno repetido.
+            await pool.execute(
+                "UPDATE conversation_states SET followups_sent = followups_sent + 1, updated_at = now() WHERE conversation_id = $1",
+                cid,
+            )
             ok = await send_whatsapp_template(
                 phone, s.whatsapp_followup_template, s.whatsapp_followup_lang
             )
             if ok:
-                await pool.execute(
-                    "UPDATE conversation_states SET followups_sent = followups_sent + 1, updated_at = now() WHERE conversation_id = $1",
-                    cid,
-                )
                 n_follow += 1
+            else:
+                logger.warning("followup marcado pero el envío falló para conv %s", cid)
         elif state == "abandonado" and sent >= 1 and age_h >= s.discard_after_hours:
             await cstate.set_state(pool, cid, "descartado", phone)
             n_discard += 1

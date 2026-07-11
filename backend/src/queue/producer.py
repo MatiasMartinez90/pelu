@@ -11,6 +11,7 @@ import aio_pika
 from aio_pika import DeliveryMode, Message
 
 from ..config import get_settings
+from ..utils.retry import retry_with_backoff
 from .topology import declare_topology
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,12 @@ class RabbitMQProducer:
 
     async def connect(self) -> None:
         if self._connection is None or self._connection.is_closed:
-            self._connection = await aio_pika.connect_robust(self.url)
+            # connect_robust ya reconecta solo ante cortes posteriores; el
+            # retry acá es solo para el primer intento (ej. RabbitMQ todavía
+            # no está listo cuando arranca la API).
+            self._connection = await retry_with_backoff(
+                lambda: aio_pika.connect_robust(self.url), name="rabbitmq (producer)", attempts=3
+            )
             self._channel = await self._connection.channel()
             await declare_topology(self._channel)
             logger.info("RabbitMQ producer connected")

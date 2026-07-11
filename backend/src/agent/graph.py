@@ -24,6 +24,12 @@ BUDGET_REPLY = (
     "Podés reservar desde la web: https://nox.cloud-it.com.ar/agendar 🙏"
 )
 
+AGENT_ERROR_REPLY = (
+    "Perdón, tuve un problema técnico y no pude procesar tu mensaje. "
+    "Probá de nuevo en un ratito, o reservá directo desde "
+    "https://nox.cloud-it.com.ar/agendar 🙏"
+)
+
 _langfuse_handler = None
 
 
@@ -34,6 +40,11 @@ def create_agent(checkpointer):
         temperature=0.3,
         api_key=settings.openai_api_key,
         parallel_tool_calls=False,
+        # Reintento nativo del SDK (backoff exponencial incluido) para 429/5xx/
+        # timeouts transitorios de OpenAI, antes de que la falla se propague
+        # hasta el nivel de la cola.
+        max_retries=3,
+        timeout=30,
     )
     return create_react_agent(
         model=llm,
@@ -96,15 +107,25 @@ async def run_agent(agent, conversation_id: int, phone: str, message: str) -> st
     thread_id = f"chatwoot_{conversation_id}"
     started = time.monotonic()
 
-    result = await agent.ainvoke(
-        {
-            "messages": [{"role": "user", "content": message}],
-            "phone": phone,
-            "conversation_id": conversation_id,
-            "customer_name": None,
-        },
-        config=_build_run_config(thread_id, phone),
-    )
+    try:
+        result = await agent.ainvoke(
+            {
+                "messages": [{"role": "user", "content": message}],
+                "phone": phone,
+                "conversation_id": conversation_id,
+                "customer_name": None,
+            },
+            config=_build_run_config(thread_id, phone),
+        )
+    except Exception:
+        # Ya agotó los reintentos nativos del cliente de OpenAI (max_retries
+        # en create_agent). En vez de dejar que esto se propague hasta la
+        # cola (y potencialmente termine en la DLQ sin que el cliente reciba
+        # nada), devolvemos una respuesta de disculpa: el cliente siempre se
+        # lleva algo, y no perdemos el mensaje por una falla de OpenAI.
+        logger.exception("run_agent: fallo el turno para conv %s", conversation_id)
+        await events.log_event("agent_error", conversation_id=conversation_id, phone=phone)
+        return AGENT_ERROR_REPLY
 
     reply = ""
     tokens_in = tokens_out = 0

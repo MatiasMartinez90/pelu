@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ..config import get_settings
 from ..db.pool import close_pool, get_pool, init_pool
-from ..integrations.redis_client import close_redis, get_redis
+from ..integrations.redis_client import close_redis, get_redis, wait_for_redis
 from ..queue.producer import get_producer
 from .routers import (
     admin_agenda,
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_pool()
-    await get_redis()
+    await wait_for_redis()
     try:
         await get_producer().connect()
     except Exception:  # noqa: BLE001 — la API puede servir el sitio sin Rabbit

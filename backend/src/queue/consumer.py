@@ -21,12 +21,15 @@ from ..agent.graph import create_agent, run_agent
 from ..config import get_settings
 from ..db.pool import close_pool, init_pool
 from ..integrations.chatwoot import ChatwootClient, send_whatsapp_typing
-from ..integrations.redis_client import close_redis, get_redis, key
+from ..integrations.redis_client import close_redis, get_redis, key, wait_for_redis
+from ..utils.retry import retry_with_backoff
+from . import health
 from .topology import declare_topology
 
 logger = logging.getLogger(__name__)
 
 LOCK_TTL = 120
+MAX_NACK_BACKOFF = 30
 
 
 async def _drain_buffer(conversation_id: int) -> list[dict]:
@@ -78,8 +81,14 @@ class Worker:
         self._checkpointer_cm = None
 
     async def start(self) -> None:
+        # Arranca primero y solo: si esto no responde, el event loop está
+        # trabado y el liveness probe lo va a detectar aunque el resto del
+        # startup (pool/redis/rabbit, con sus propios reintentos) todavía no
+        # haya terminado.
+        health_task = asyncio.create_task(health.serve())
+
         await init_pool()
-        await get_redis()
+        await wait_for_redis()
 
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
@@ -90,14 +99,17 @@ class Worker:
         self.agent = create_agent(checkpointer)
         logger.info("nox-worker: agente listo")
 
-        connection = await aio_pika.connect_robust(self.settings.rabbitmq_url)
+        connection = await retry_with_backoff(
+            lambda: aio_pika.connect_robust(self.settings.rabbitmq_url), name="rabbitmq (worker)"
+        )
         async with connection:
             channel = await connection.channel()
             await channel.set_qos(prefetch_count=4)
             queue = await declare_topology(channel)
             logger.info("nox-worker: consumiendo %s", self.settings.queue_name)
             await queue.consume(self.on_message)
-            await asyncio.Future()  # correr para siempre
+            health.state["ready"] = True
+            await asyncio.gather(health_task, asyncio.Future())  # correr para siempre
 
     async def on_message(self, message: aio_pika.abc.AbstractIncomingMessage) -> None:
         try:
@@ -115,8 +127,23 @@ class Worker:
         except Exception:  # noqa: BLE001
             logger.exception("error procesando conv %s", conversation_id)
             await events.log_event("error", conversation_id=conversation_id, phone=phone)
-            # nack sin requeue explícito: quorum queue re-entrega hasta
-            # x-delivery-limit y después manda a la DLQ.
+            # Backoff exponencial antes de reencolar: sin esto, una queue
+            # quorum reentrega casi instantáneo y una falla transitoria (ej.
+            # un hipo de OpenAI de unos segundos) agota x-delivery-limit en
+            # menos de un segundo y manda mensajes reales a la DLQ que se
+            # hubieran resuelto solos con un poco de espera. Con
+            # prefetch_count=4 este sleep solo ocupa el slot de este mensaje,
+            # no bloquea el resto del consumer (aio-pika corre on_message
+            # como task independiente por mensaje).
+            delivery_count = int((message.headers or {}).get("x-delivery-count") or 0)
+            backoff = min(2**delivery_count, MAX_NACK_BACKOFF)
+            logger.warning(
+                "conv %s: reintento en %ds (delivery_count=%d)",
+                conversation_id,
+                backoff,
+                delivery_count,
+            )
+            await asyncio.sleep(backoff)
             await message.nack(requeue=True)
 
     async def process(self, conversation_id: int, phone: str) -> None:
@@ -134,6 +161,17 @@ class Worker:
             return
 
         try:
+            # Si un intento anterior ya generó una respuesta pero no llegó a
+            # mandarse (crash o falla de Chatwoot entre el turno del agente y
+            # el ack), no volvemos a correr el agente — eso duplicaría efectos
+            # secundarios como crear una reserva. Solo reintentamos el envío.
+            pending_key = key(f"pending_reply:{conversation_id}")
+            pending_reply = await r.get(pending_key)
+            if pending_reply:
+                await self.chatwoot.send_message(conversation_id, pending_reply)
+                await r.delete(pending_key)
+                return
+
             await _wait_debounce(conversation_id)
             pending = await _drain_buffer(conversation_id)
             if not pending:
@@ -147,6 +185,11 @@ class Worker:
 
             reply = await run_agent(self.agent, conversation_id, phone, text)
 
+            # Persistimos la respuesta ANTES de mandarla: si el envío falla o
+            # el proceso muere acá, el próximo intento (arriba) reintenta solo
+            # el envío en vez de perder la respuesta para siempre.
+            await r.set(pending_key, reply, ex=3600)
+
             # Mínimo de "escribiendo…" para que no responda instantáneo
             elapsed = time.monotonic() - started
             if elapsed < self.settings.min_typing_seconds:
@@ -154,6 +197,7 @@ class Worker:
             await typing_task
 
             await self.chatwoot.send_message(conversation_id, reply)
+            await r.delete(pending_key)
 
             # Si entraron mensajes durante la corrida, quedará un trigger en la
             # cola que los procesa; el buffer los conserva.

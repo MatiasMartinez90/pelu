@@ -9,6 +9,7 @@ import logging
 import asyncpg
 
 from ..config import get_settings
+from ..utils.retry import retry_with_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +28,19 @@ async def init_pool() -> asyncpg.Pool:
         return _pool
 
     settings = get_settings()
-    _pool = await asyncpg.create_pool(
-        dsn=settings.database_url,
-        min_size=2,
-        max_size=10,
-        command_timeout=30,
-        statement_cache_size=0,
-    )
+
+    async def _connect() -> asyncpg.Pool:
+        return await asyncpg.create_pool(
+            dsn=settings.database_url,
+            min_size=2,
+            max_size=10,
+            command_timeout=30,
+            statement_cache_size=0,
+        )
+
+    # Reintento solo para la conexión inicial: una vez creado, el pool de
+    # asyncpg ya descarta y repone conexiones rotas solas en cada acquire().
+    _pool = await retry_with_backoff(_connect, name="postgres")
     logger.info("PostgreSQL pool created")
     return _pool
 
