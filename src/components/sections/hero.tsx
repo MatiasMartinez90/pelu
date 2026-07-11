@@ -1,28 +1,34 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const SERIF = "'Bodoni Moda', Georgia, serif";
 const SANS = "'Archivo', system-ui, sans-serif";
 
 // Hero video + poster self-hosteados en /public (no dependen de servicios externos).
+// El poster es el frame 0 exacto del video → sin salto en la transición.
 const DEFAULT_VIDEO = "/videos/hero.mp4";
+const DEFAULT_VIDEO_WEBM = "/videos/hero.webm";
 const DEFAULT_POSTER = "/img/hero-poster.jpg";
 
 type HeroProps = {
   brand?: string;
   videoSrc?: string;
+  videoWebm?: string;
   poster?: string;
 };
 
-export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, poster = DEFAULT_POSTER }: HeroProps) {
+export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFAULT_VIDEO_WEBM, poster = DEFAULT_POSTER }: HeroProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const v = videoRef.current;
     if (v) {
       v.muted = true;
       v.play().catch(() => {});
+      // Si el video ya estaba listo antes de montar el listener (cache), marcar ready.
+      if (v.readyState >= 3) setReady(true);
     }
   }, [videoSrc]);
 
@@ -32,7 +38,7 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, poster = DEFAULT
     <section
       className="nox-hero"
       style={{
-        background: `#0a0a0a url(${poster}) center 26% / cover no-repeat`,
+        background: `#0a0a0a url(${poster}) 55% 26% / cover no-repeat`,
         fontFamily: SANS,
         color: "#fff",
       }}
@@ -44,6 +50,9 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, poster = DEFAULT
         muted
         playsInline
         poster={poster}
+        preload="metadata"
+        onPlaying={() => setReady(true)}
+        onCanPlay={() => setReady(true)}
         style={{
           position: "absolute",
           inset: 0,
@@ -52,8 +61,11 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, poster = DEFAULT
           objectFit: "cover",
           objectPosition: "55% 26%",
           filter: "saturate(1.02) contrast(1.02)",
+          opacity: ready ? 1 : 0,
+          transition: "opacity 600ms ease-in",
         }}
       >
+        <source src={videoWebm} type="video/webm" />
         <source src={videoSrc} type="video/mp4" />
       </video>
 
