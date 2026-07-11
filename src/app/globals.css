@@ -439,3 +439,7 @@
 .miniact.dng:hover { background: #ff5a5a; color: #fff; border-color: #ff5a5a; }
 .arow:hover { background: rgba(255,255,255,0.03); }
 .wz-input::placeholder { color: rgba(255,255,255,0.32); }
+
+/* Skeletons del admin (shimmer) */
+.adm-sk { background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.11) 37%, rgba(255,255,255,0.05) 63%); background-size: 400% 100%; animation: adm-shimmer 1.4s ease infinite; }
+@keyframes adm-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }

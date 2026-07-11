@@ -16,7 +16,15 @@ const API_BASE = process.env.NEXT_PUBLIC_ADMIN_API ?? "/api/backoffice";
 // Guard anti-loop: si ya disparamos el re-login, no lo repetimos por cada fetch en vuelo.
 let reauthing = false;
 
+// Cache en memoria de respuestas GET por path: al volver a una sección los datos
+// aparecen al instante (stale-while-revalidate) en vez de flashear un skeleton.
+const GET_CACHE = new Map<string, unknown>();
+function getCached<T>(path: string): T | null {
+  return (GET_CACHE.get(path) as T | undefined) ?? null;
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
@@ -37,7 +45,9 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
       (typeof detail === "object" ? detail?.message : detail) || `Error ${res.status}`
     );
   }
-  return res.status === 204 ? (undefined as T) : res.json();
+  const val = res.status === 204 ? (undefined as T) : await res.json();
+  if (method === "GET") GET_CACHE.set(path, val);
+  return val;
 }
 
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
@@ -61,8 +71,46 @@ function ErrorBox({ msg }: { msg: string }) {
     </div>
   );
 }
-function Loading() {
-  return <div style={{ marginTop: 30, opacity: 0.5, fontSize: 14 }}>Cargando…</div>;
+// ── Skeletons ──────────────────────────────────────────────────────────
+// Placeholders con shimmer que respetan el layout de cada sección → sin flash de vacío.
+function Sk({ w = "100%", h = 16, r = 4, style }: { w?: number | string; h?: number; r?: number; style?: React.CSSProperties }) {
+  return <div className="adm-sk" style={{ width: w, height: h, borderRadius: r, ...style }} />;
+}
+function SkKpis({ n = 6 }: { n?: number }) {
+  return (
+    <div className="adm-kpis" style={{ marginTop: 18, gap: 16 }}>
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} style={{ ...CARD, padding: "22px 24px" }}>
+          <Sk w={90} h={9} />
+          <Sk w={110} h={30} style={{ marginTop: 14 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+function SkTable({ rows = 6, cols = 5 }: { rows?: number; cols?: number }) {
+  return (
+    <div style={{ marginTop: 20, ...CARD }}>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 16, padding: "16px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          {Array.from({ length: cols }).map((__, j) => <Sk key={j} w={j === 0 ? "60%" : "80%"} h={13} />)}
+        </div>
+      ))}
+    </div>
+  );
+}
+function SkChart() {
+  return (
+    <div style={{ ...CARD, padding: 24, marginTop: 18 }}>
+      <Sk w={180} h={11} />
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 160, marginTop: 26 }}>
+        {Array.from({ length: 14 }).map((_, i) => <Sk key={i} w="100%" h={30 + ((i * 37) % 110)} r={2} style={{ alignSelf: "flex-end" }} />)}
+      </div>
+    </div>
+  );
+}
+function SkResumen() {
+  return <><SkKpis /><SkChart /></>;
 }
 
 const NAV = [
@@ -144,13 +192,15 @@ const monthLabel = (m: string) => { const [y, mm] = m.split("-").map(Number); re
 
 function Resumen() {
   const [selMonth, setSelMonth] = useState(curMonth());
-  const [data, setData] = useState<Summary | null>(null);
+  const [data, setData] = useState<Summary | null>(() => getCached<Summary>(`/dashboard/summary?month=${curMonth()}`));
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setData(null);
     setError("");
-    api<Summary>(`/dashboard/summary?month=${selMonth}`).then(setData).catch((e) => setError(e.message));
+    const path = `/dashboard/summary?month=${selMonth}`;
+    const cached = getCached<Summary>(path);
+    setData(cached); // instantáneo si está cacheado; si no, skeleton
+    api<Summary>(path).then(setData).catch((e) => setError(e.message));
   }, [selMonth]);
 
   const shiftMonth = (delta: number) => {
@@ -171,7 +221,7 @@ function Resumen() {
   );
 
   if (error) return <>{header}<ErrorBox msg={error} /></>;
-  if (!data) return <>{header}<Loading /></>;
+  if (!data) return <>{header}<SkResumen /></>;
 
   const k = data.kpis;
   const total = Number(k.month_whatsapp) + Number(k.month_web) || 1;
@@ -274,7 +324,7 @@ type Appt = { id: string; starts_at: string; ends_at: string; status: string; pr
 
 function Agenda() {
   const [selDate, setSelDate] = useState(dateKey(new Date()));
-  const [appts, setAppts] = useState<Appt[] | null>(null);
+  const [appts, setAppts] = useState<Appt[] | null>(() => getCached<Appt[]>(`/agenda?date=${dateKey(new Date())}`));
   const [error, setError] = useState("");
 
   const load = useCallback(() => {
@@ -343,7 +393,7 @@ function Agenda() {
       </div>
 
       {appts === null ? (
-        <Loading />
+        <SkTable rows={6} cols={4} />
       ) : appts.length === 0 ? (
         <div style={{ marginTop: 22, border: "1px dashed rgba(255,255,255,0.2)", padding: 48, textAlign: "center", opacity: 0.6, fontSize: 15 }}>Sin turnos para este día.</div>
       ) : (
@@ -403,7 +453,7 @@ function Clientes() {
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre o teléfono…" style={{ width: "100%", maxWidth: 420, background: "#161616", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "12px 14px", fontFamily: SANS, fontSize: 14, outline: "none" }} />
       </div>
       {rows === null ? (
-        <Loading />
+        <SkTable rows={7} cols={5} />
       ) : (
         <div className="tbl-wrap" style={{ marginTop: 18, ...CARD }}>
           <div className="tbl-row" style={{ display: "grid", gridTemplateColumns: "1.6fr 1.2fr 0.8fr 1.1fr 1fr 1.1fr", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
@@ -433,7 +483,7 @@ function Clientes() {
 type Product = { id: string; name: string; sku: string; qty: number; min_qty: number; price: number };
 
 function Stock() {
-  const [products, setProducts] = useState<Product[] | null>(null);
+  const [products, setProducts] = useState<Product[] | null>(() => getCached<Product[]>("/products"));
   const [error, setError] = useState("");
 
   const load = useCallback(() => {
@@ -449,7 +499,7 @@ function Stock() {
   }
 
   if (error) return <ErrorBox msg={error} />;
-  if (!products) return <Loading />;
+  if (!products) return <SkTable rows={6} cols={5} />;
 
   const invValue = products.reduce((s, p) => s + p.price * p.qty, 0);
   const lowCount = products.filter((p) => p.qty > 0 && p.qty <= p.min_qty).length;
@@ -509,7 +559,7 @@ const EVENT_LABELS: Record<string, { label: string; dot: string }> = {
 };
 
 function IA() {
-  const [metrics, setMetrics] = useState<AgentMetrics | null>(null);
+  const [metrics, setMetrics] = useState<AgentMetrics | null>(() => getCached<AgentMetrics>("/agent/metrics"));
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [error, setError] = useState("");
 
@@ -519,7 +569,7 @@ function IA() {
   }, []);
 
   if (error) return <ErrorBox msg={error} />;
-  if (!metrics) return <Loading />;
+  if (!metrics) return <SkKpis n={6} />;
 
   const automated = Number(metrics.messages_out);
   const handled = automated + Number(metrics.handoffs);
@@ -590,7 +640,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
 };
 
 function Conversaciones() {
-  const [convos, setConvos] = useState<Convo[] | null>(null);
+  const [convos, setConvos] = useState<Convo[] | null>(() => getCached<Convo[]>("/conversations"));
   const [filter, setFilter] = useState("Todas");
   const [selId, setSelId] = useState<number | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -636,7 +686,7 @@ function Conversaciones() {
   const active = (convos ?? []).find((c) => c.id === selId) || null;
 
   if (error) return <ErrorBox msg={error} />;
-  if (convos === null) return <Loading />;
+  if (convos === null) return <SkTable rows={7} cols={4} />;
 
   return (
     <div style={{ marginTop: 24, overflowX: "auto", ...CARD }}>
@@ -779,7 +829,7 @@ function Ajustes() {
   }
 
   if (error) return <ErrorBox msg={error} />;
-  if (staff === null) return <Loading />;
+  if (staff === null) return <SkTable rows={5} cols={3} />;
 
   return (
     <div className="adm-grid" style={{ marginTop: 28 }}>
@@ -884,7 +934,7 @@ function Disponibilidad() {
   }
 
   if (error) return <ErrorBox msg={error} />;
-  if (!settings || blocks === null) return <Loading />;
+  if (!settings || blocks === null) return <SkTable rows={5} cols={2} />;
 
   const agendaOpen = settings.agenda_open;
   const { y, m } = view;
