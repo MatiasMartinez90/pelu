@@ -218,5 +218,50 @@ async def get_bookings_by_phone(
     return [dict(r) for r in rows]
 
 
+async def get_bookings_by_email(
+    pool: asyncpg.Pool, email: str, *, only_future: bool = True
+) -> list[dict[str, Any]]:
+    """Turnos de un cliente identificado por email (portal /mi-cuenta)."""
+    rows = await pool.fetch(
+        """
+        SELECT a.id, a.starts_at, a.ends_at, a.status, a.price_at_booking, a.channel,
+               b.name AS barber, s.name AS service
+        FROM appointments a
+        JOIN customers c ON c.id = a.customer_id
+        JOIN barbers b ON b.id = a.barber_id
+        JOIN services s ON s.id = a.service_id
+        WHERE lower(c.email) = lower($1)
+          AND (NOT $2 OR (a.status = 'active' AND a.starts_at > now()))
+        ORDER BY a.starts_at DESC
+        LIMIT 50
+        """,
+        email,
+        only_future,
+    )
+    return [dict(r) for r in rows]
+
+
+async def cancel_booking_by_email(
+    pool: asyncpg.Pool, appointment_id, *, email: str, reason: str = "cliente"
+) -> dict[str, Any]:
+    """Cancela un turno activo futuro validando que sea del cliente (por email)."""
+    row = await pool.fetchrow(
+        """
+        UPDATE appointments a SET status = 'cancelled', cancelled_at = now(),
+               cancel_reason = $2, updated_at = now()
+        FROM customers c
+        WHERE a.id = $1 AND a.customer_id = c.id AND a.status = 'active'
+          AND a.starts_at > now() AND lower(c.email) = lower($3)
+        RETURNING a.id, a.starts_at
+        """,
+        appointment_id,
+        reason,
+        email,
+    )
+    if row is None:
+        raise BookingError("No encontré un turno activo futuro tuyo con esos datos.")
+    return dict(row)
+
+
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)

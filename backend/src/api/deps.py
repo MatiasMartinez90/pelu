@@ -24,16 +24,12 @@ def _get_jwk_client() -> PyJWKClient:
     return _jwk_client
 
 
-async def require_admin(request: Request) -> dict:
-    """Valida Bearer JWT de Keycloak y que el email sea admin.
+def _decode_keycloak_token(request: Request) -> dict:
+    """Valida firma/issuer/expiración del Bearer JWT de Keycloak y el cliente (azp/aud).
 
-    Auth de dos niveles: firma/issuer/expiración del token, y pertenencia del
-    email a admin_users (o al fallback ADMIN_EMAILS por env).
+    Devuelve los claims. No hace autorización por rol/email: eso lo hace cada dep.
     """
     settings = get_settings()
-    if settings.auth_disabled:
-        logger.warning("AUTH_DISABLED activo — solo válido en dev local")
-        return {"email": "dev@localhost", "name": "Dev"}
     if not settings.keycloak_issuer:
         raise HTTPException(503, "auth no configurada")
 
@@ -63,6 +59,21 @@ async def require_admin(request: Request) -> dict:
         if settings.keycloak_client_id not in {azp, *aud_list}:
             raise HTTPException(401, "token de otro cliente")
 
+    return claims
+
+
+async def require_admin(request: Request) -> dict:
+    """Valida Bearer JWT de Keycloak y que el email sea admin.
+
+    Auth de dos niveles: firma/issuer/expiración del token, y pertenencia del
+    email a admin_users (o al fallback ADMIN_EMAILS por env).
+    """
+    settings = get_settings()
+    if settings.auth_disabled:
+        logger.warning("AUTH_DISABLED activo — solo válido en dev local")
+        return {"email": "dev@localhost", "name": "Dev"}
+
+    claims = _decode_keycloak_token(request)
     email = (claims.get("email") or "").lower()
     if not email:
         raise HTTPException(403, "token sin email")
@@ -79,4 +90,25 @@ async def require_admin(request: Request) -> dict:
     return {"email": email, "name": claims.get("name", "")}
 
 
+async def require_customer(request: Request) -> dict:
+    """Cualquier usuario Keycloak válido con email verificado = cliente.
+
+    Identidad del cliente = email del token (se mapea a customers.email).
+    """
+    settings = get_settings()
+    if settings.auth_disabled:
+        logger.warning("AUTH_DISABLED activo — solo válido en dev local")
+        return {"email": "dev@localhost", "name": "Dev", "sub": "dev"}
+
+    claims = _decode_keycloak_token(request)
+    email = (claims.get("email") or "").lower()
+    if not email:
+        raise HTTPException(403, "token sin email")
+    if claims.get("email_verified") is False:
+        raise HTTPException(403, "email no verificado")
+
+    return {"email": email, "name": claims.get("name", ""), "sub": claims.get("sub", "")}
+
+
 AdminUser = Depends(require_admin)
+CustomerUser = Depends(require_customer)
