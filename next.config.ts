@@ -15,10 +15,12 @@ const securityHeaders = [
       "frame-ancestors 'none'",
       "form-action 'self' https://auth.cloud-it.com.ar",
       "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
+      // layout.tsx carga Bodoni Moda/Archivo directo de Google Fonts (Geist/
+      // Oswald ya van por next/font, self-hosted, y no necesitan esto).
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: https://images.unsplash.com",
       "media-src 'self'",
-      "font-src 'self' data:",
+      "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https://api-nox.cloud-it.com.ar https://auth.cloud-it.com.ar",
       "upgrade-insecure-requests",
     ].join("; "),

@@ -487,3 +487,86 @@ unrelated to this audit. Preserve and review them separately:
   and recorded it in GitOps commit `8133803`.
 - Argo CD reconciled the digest and API, worker and both signer replicas
   completed their rollouts successfully.
+
+### 2026-07-13 - Independent verification pass (second reviewer)
+
+An independent pass (different agent, same operator) re-verified the audit
+by running the actual test suite, building both images from source, and
+probing the live production endpoints, rather than trusting this log alone.
+Everything above this entry was confirmed correct except two deployment gaps,
+both now fixed.
+
+**Confirmed correct, with evidence:**
+
+- `backend/tests/test_security.py`: reran the full suite in a fresh container
+  after the local performance changes were merged in. `16 passed`.
+- Rebuilt `backend/Dockerfile` from `requirements.lock` with
+  `--require-hashes`: succeeded, matches the digest already running in
+  production.
+- Rebuilt the frontend (`npm install`, `tsc --noEmit`, `next build`):
+  succeeded, `npm audit` reports 0 vulnerabilities.
+- `upsert_customer()` account-takeover fix: confirmed the `ON CONFLICT`
+  clause no longer writes `email`, and confirmed the only three callers
+  (`public.py`, `admin_agenda.py`, the WhatsApp agent tool) never pass a
+  public-supplied email into it.
+- Keycloak OIDC secret: confirmed `manifests-contabo/keycloak.yaml` now holds
+  only `${NOX_CLIENT_SECRET}` resolved from a SealedSecret, no plaintext.
+- Webhook HMAC path: sent live requests to
+  `https://api-nox.cloud-it.com.ar/webhook/chatwoot` with the old
+  `?token=` scheme and with no signature at all — both returned `401` in
+  production. Confirmed `nox-webhook-signer` has no `HTTPRoute` and its
+  `NetworkPolicy` accepts ingress only from the `chatwoot` namespace on port
+  8080.
+- WhatsApp link tokens: confirmed `secrets.token_hex(16)` (128 bits, up from
+  32) and atomic `GETDEL`.
+
+**Found and fixed:**
+
+1. **`ENVIRONMENT` and `TRUSTED_PROXY_CIDRS` were declared on the `migrate`
+   initContainer instead of the `nox-api` container** in
+   `manifests-contabo/nox-backend.yaml`. The initContainer runs once during
+   rollout and exits; it never affects the long-running process that serves
+   traffic. Effect verified against the live pod before the fix:
+   - `GET https://api-nox.cloud-it.com.ar/docs` returned `200` with a real
+     Swagger UI, i.e. `is_production` was `False` in the running container
+     despite the changelog above recording this as closed.
+   - The `Strict-Transport-Security` header was absent from live API
+     responses (gated behind the same `is_production` flag).
+   - `TRUSTED_PROXY_CIDRS` was empty in the running container, so
+     `client_ip.py`'s trusted-proxy check never matched. This fails safe (it
+     falls back to the raw peer IP rather than trusting a spoofable
+     `X-Forwarded-For`), but it meant rate limiting was keying off the KEDA
+     HTTP interceptor's pod IP for all public traffic instead of the real
+     client IP — not exploitable, but not doing what it was built for.
+
+   Fix: moved both `env` entries from the `migrate` initContainer to the
+   `nox-api` container in `manifests-contabo/nox-backend.yaml`. Validated
+   with `kubectl apply --dry-run=server` against the live cluster.
+
+2. **The new CSP silently blocked the site's display fonts.** `src/app/
+   layout.tsx` loads Bodoni Moda and Archivo via a direct `<link>` to
+   `fonts.googleapis.com`/`fonts.gstatic.com` (Geist and Oswald already go
+   through `next/font/google`, which self-hosts and was unaffected). The CSP
+   added in `47af10e` only allowed `style-src 'self' 'unsafe-inline'` and
+   `font-src 'self' data:`, so a real browser would drop both the stylesheet
+   and the font files and fall back to system fonts — no error visible to
+   `curl`, which is why the "production home and login returned HTTP 200"
+   check in this log did not catch it. This is the exact gap already flagged
+   above as not done ("Perform an authenticated browser smoke test ...
+   representative images/fonts").
+
+   Fix: added `https://fonts.googleapis.com` to `style-src` and
+   `https://fonts.gstatic.com` to `font-src` in `next.config.ts`, restoring
+   the original font-loading behavior without loosening anything else in the
+   policy. (A tighter alternative — migrating Bodoni Moda/Archivo to
+   `next/font/google` like the other two fonts, removing the external
+   requests entirely — was not done here to keep this fix minimal; worth
+   doing later.)
+
+**Still not verified by either pass** (carried over, unchanged):
+
+- [ ] Authenticated browser smoke test of the full Auth.js callback and
+  protected admin views (curl-based checks cannot exercise the OAuth
+  redirect flow or client-side rendering).
+- [ ] Gateway-level request/concurrency/body-size limits.
+- [ ] Git history cleanup for the historical plaintext OIDC secret.
