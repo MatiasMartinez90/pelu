@@ -22,8 +22,9 @@ or an operational decision is made.
   Keycloak client. No plaintext value was printed, logged or committed.
 - Chatwoot webhook ID 1 now targets the private signer Service. An end-to-end
   signed request reached the API and returned HTTP 200.
-- A final application commit that removes the temporary legacy-token default is
-  pending at the time of this update.
+- Application commit `cbd4d35` removed the temporary legacy-token source
+  default. Its security and build-deploy workflows passed, and the final backend
+  digest was reconciled successfully.
 - Local functional/performance changes that predated the audit were preserved
   and shipped together with the application hardening commit.
 
@@ -342,16 +343,14 @@ unrelated to this audit. Preserve and review them separately:
 
 ## Remaining execution order
 
-1. Push and deploy the final source-default change that removes temporary
-   webhook legacy compatibility.
-2. Scan the published frontend image with Trivy and close any fixable High or
+1. Scan the published frontend image with Trivy and close any fixable High or
    Critical finding.
-3. Run final Trivy filesystem secret/misconfiguration scans over both repos.
-4. Validate the exact production XFF chain and add Gateway-level request,
+2. Run final Trivy filesystem secret/misconfiguration scans over both repos.
+3. Validate the exact production XFF chain and add Gateway-level request,
    concurrency and body-size limits where supported.
-5. Run authenticated browser smoke tests for OIDC and protected application
+4. Run authenticated browser smoke tests for OIDC and protected application
    workflows.
-6. Review final diffs/status, update this log with evidence, and close or assign
+5. Review final diffs/status, update this log with evidence, and close or assign
    the longer-term verified-identity data-model item.
 
 ## Change log
@@ -477,3 +476,14 @@ unrelated to this audit. Preserve and review them separately:
   signer authenticated it, signed the exact body, and the API returned HTTP 200
   with `{"status":"ignored"}`.
 - Production explicitly rejects the old query-token path at the API.
+
+### 2026-07-13 - Legacy webhook fallback removed and redeployed
+
+- Restored `WEBHOOK_ALLOW_LEGACY_TOKEN=false` as the application source
+  default and committed the closure as `cbd4d35`.
+- The security and build-deploy workflows both completed successfully.
+- CI published backend digest
+  `sha256:09957fd9d18753711261e7e860fecbd214c18ec6f62d221d920baca4c47f3533`
+  and recorded it in GitOps commit `8133803`.
+- Argo CD reconciled the digest and API, worker and both signer replicas
+  completed their rollouts successfully.
