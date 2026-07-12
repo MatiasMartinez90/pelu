@@ -36,9 +36,7 @@ class Settings(BaseSettings):
     chatwoot_handoff_assignee_id: int = 0
     webhook_token: str = ""  # token secreto del webhook (?token=)
     webhook_signing_secret: str = ""
-    # Migration fallback. Production explicitly disables this once the
-    # internal signer is deployed.
-    webhook_allow_legacy_token: bool = True
+    webhook_allow_legacy_token: bool = False
     webhook_max_skew_seconds: int = 300
     webhook_max_body_bytes: int = 262_144
     webhook_signer_target_url: str = "http://nox-api.nox.svc.cluster.local/webhook/chatwoot"

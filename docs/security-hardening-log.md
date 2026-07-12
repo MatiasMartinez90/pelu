@@ -1,6 +1,6 @@
 # NOX Security Audit and Hardening Log
 
-Last updated: 2026-07-12  
+Last updated: 2026-07-13
 Status: in progress  
 Application repository: `/root/Pelu`  
 Infrastructure repository: `/root/agents-hetzner-k3s`  
@@ -12,13 +12,20 @@ or an operational decision is made.
 
 ## Delivery state
 
-- No commit has been created for this work.
-- No changes have been pushed to either repository.
-- No application or GitOps changes have been deployed.
-- The Kubernetes cluster was inspected read-only. Production secrets were not
-  printed or copied into this document.
-- Local changes already existed before the security work. They are preserved
-  and must not be reverted or attributed to this audit without review.
+- Application commit `47af10e` was pushed to `main`; GitHub Actions built and
+  published both images and updated their immutable GitOps digests.
+- Infrastructure commit `79dbf72` was pushed to `main` and reconciled by Argo
+  CD. The `nox`, `nox-backend` and `keycloak` applications reached
+  `Synced/Healthy` on that revision.
+- API, worker, web, webhook signer and Keycloak rollouts completed successfully.
+- The OIDC client secret was rotated in both Sealed Secrets and the effective
+  Keycloak client. No plaintext value was printed, logged or committed.
+- Chatwoot webhook ID 1 now targets the private signer Service. An end-to-end
+  signed request reached the API and returned HTTP 200.
+- A final application commit that removes the temporary legacy-token default is
+  pending at the time of this update.
+- Local functional/performance changes that predated the audit were preserved
+  and shipped together with the application hardening commit.
 
 ## Scope reviewed
 
@@ -126,7 +133,8 @@ or an operational decision is made.
 - [x] Added Redis-backed single-use replay detection.
 - [x] Added constant-time signature/token comparisons.
 - [x] Added a 256 KiB request-body limit.
-- [x] Added a legacy-token migration switch, disabled by default.
+- [x] Added a legacy-token migration switch, disabled by default after the
+  coordinated production migration.
 - [x] Added local protocol documentation to `backend/README.md`.
 - [x] Generated a 256-bit `WEBHOOK_SIGNING_SECRET` and added only its
   cluster-bound ciphertext to the NOX SealedSecret.
@@ -135,9 +143,11 @@ or an operational decision is made.
 - [x] Added two hardened signer replicas and an internal-only Service. Its
   NetworkPolicy accepts ingress only from the `chatwoot` namespace and it has
   no public HTTPRoute.
-- [ ] Change Chatwoot's configured URL to the internal signer Service during
-  rollout and verify end-to-end delivery.
-- [ ] Remove the legacy token path after migration.
+- [x] Changed Chatwoot's configured URL to the internal signer Service.
+- [x] Verified Chatwoot can reach signer health and that an inert `{}` payload
+  traverses signer authentication, HMAC verification and API replay controls.
+- [x] Disabled legacy token acceptance in production and restored the source
+  default to disabled after migration.
 
 ### Rate limiting and client identity
 
@@ -165,8 +175,10 @@ or an operational decision is made.
   policies.
 - [x] Added frontend CSP and disabled the Next.js powered-by header.
 - [x] Preserved preexisting frontend image/cache configuration changes.
-- [ ] Validate CSP in a running production container, including Auth.js login,
-  images, fonts, API requests and service worker behavior.
+- [x] Validated CSP and absence of `X-Powered-By` in a running read-only
+  production container; production home and login returned HTTP 200.
+- [ ] Perform an authenticated browser smoke test covering the complete Auth.js
+  callback, representative images/fonts and all protected admin views.
 
 ## Completed dependency and supply-chain changes
 
@@ -330,15 +342,17 @@ unrelated to this audit. Preserve and review them separately:
 
 ## Remaining execution order
 
-1. Rebuild backend with pinned pip and rerun tests/pip-audit.
-2. Validate CSP and read-only container behavior.
-3. Complete webhook signer design and sealed secret.
-4. Complete coordinated OIDC secret rotation and sealed manifests.
-5. Validate Kubernetes manifests using server dry-run.
-6. Test egress rules and perform final Trivy/secret scans.
-7. Review diffs and update this log with final evidence.
-8. Present commit/push/deploy boundaries for approval or execute them if the
-   user explicitly directs that step.
+1. Push and deploy the final source-default change that removes temporary
+   webhook legacy compatibility.
+2. Scan the published frontend image with Trivy and close any fixable High or
+   Critical finding.
+3. Run final Trivy filesystem secret/misconfiguration scans over both repos.
+4. Validate the exact production XFF chain and add Gateway-level request,
+   concurrency and body-size limits where supported.
+5. Run authenticated browser smoke tests for OIDC and protected application
+   workflows.
+6. Review final diffs/status, update this log with evidence, and close or assign
+   the longer-term verified-identity data-model item.
 
 ## Change log
 
@@ -419,3 +433,47 @@ unrelated to this audit. Preserve and review them separately:
 - Added a controlled webhook migration boundary: the first application rollout
   retains legacy-token compatibility, while the GitOps API deployment disables
   it explicitly once the private signer is running.
+
+### 2026-07-13 - Application build and first rollout completed
+
+- Committed and pushed application hardening as `47af10e` on `main`.
+- GitHub Actions security, npm, pip and action-dependency checks passed.
+- The build-deploy workflow built frontend and backend images successfully and
+  pushed immutable digest updates to GitOps.
+- Argo CD rolled out backend digest
+  `sha256:5794a2b06a98bdeffa96a928b7436c3ef93a0ee670ce1f30caa17fc664221e1b`
+  without downtime; two API replicas and the worker became ready.
+
+### 2026-07-13 - Infrastructure hardening deployed
+
+- Rebased local hardening over the two CI digest commits and resolved only the
+  expected image-line conflicts, preserving the new digests.
+- Committed and pushed GitOps hardening as `79dbf72` on `main`.
+- Argo CD reconciled namespace Pod Security labels, restricted service account,
+  read-only filesystems, seccomp, dropped capabilities, egress allowlist,
+  network policies, PodDisruptionBudgets and two private signer replicas.
+- Server-side dry-run accepted every changed resource before publication.
+- `nox`, `nox-backend` and `keycloak` reached `Synced/Healthy`.
+
+### 2026-07-13 - OIDC secret rotation completed
+
+- Deployed the independently sealed copies of the new 256-bit client secret to
+  the `keycloak` and `nox` namespaces.
+- Bootstrap admin credentials were no longer valid, so no administrator reset
+  was attempted. The operation updated only the unique `nox-admin` client row
+  in Keycloak's database, then restarted Keycloak to clear its cache.
+- Verified Keycloak accepts the new confidential-client credentials: the token
+  endpoint returned `unauthorized_client` because service accounts are disabled,
+  rather than `invalid_client`.
+- The Keycloak and NOX rollouts remained healthy after activation.
+
+### 2026-07-13 - Signed webhook production migration completed
+
+- Changed Chatwoot webhook ID 1 from the public API host to
+  `nox-webhook-signer.nox.svc.cluster.local:8080`; the existing migration token
+  was preserved without displaying it.
+- Verified Chatwoot-to-signer network access with HTTP 200 on `/health`.
+- Sent an inert empty JSON object through the configured webhook URL. The
+  signer authenticated it, signed the exact body, and the API returned HTTP 200
+  with `{"status":"ignored"}`.
+- Production explicitly rejects the old query-token path at the API.
