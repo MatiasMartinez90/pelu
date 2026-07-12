@@ -1,14 +1,13 @@
 """Endpoints públicos: catálogo, disponibilidad y reservas del wizard."""
 
 from datetime import date as date_type
-from uuid import UUID
-
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from ...db.pool import get_pool
 from ...db.repositories import catalog
 from ...integrations.redis_client import rate_limit_exceeded
 from ...services import availability_service, booking_service
+from ..client_ip import get_client_ip
 from ..schemas import AvailabilityOut, BarberOut, BookingIn, BookingOut, ServiceOut
 
 router = APIRouter(prefix="/api/v1", tags=["public"])
@@ -43,7 +42,7 @@ async def availability(
 
 @router.post("/bookings", response_model=BookingOut, status_code=201)
 async def create_booking(body: BookingIn, request: Request):
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = get_client_ip(request)
     if await rate_limit_exceeded(f"ip:{client_ip}") or await rate_limit_exceeded(
         f"phone:{body.customer.phone}"
     ):
@@ -59,7 +58,9 @@ async def create_booking(body: BookingIn, request: Request):
             hhmm=body.time,
             phone=body.customer.phone,
             customer_name=body.customer.name,
-            email=body.customer.email,
+            # El formulario público no es una prueba de identidad. Guardar el
+            # email permitiría apropiarse de un teléfono y ver sus turnos.
+            email=None,
             channel="web",
         )
     except booking_service.SlotTakenError as e:
@@ -78,38 +79,4 @@ async def create_booking(body: BookingIn, request: Request):
         status=result["status"],
         price=result["price_at_booking"],
         channel=result["channel"],
-    )
-
-
-@router.get("/bookings/{booking_id}", response_model=BookingOut)
-async def get_booking(booking_id: UUID, request: Request, phone: str = Query(...)):
-    client_ip = request.client.host if request.client else "unknown"
-    if await rate_limit_exceeded(f"ip:{client_ip}"):
-        raise HTTPException(429, "Demasiadas solicitudes, probá más tarde.")
-
-    pool = await get_pool()
-    row = await pool.fetchrow(
-        """
-        SELECT a.id, a.starts_at, a.ends_at, a.status, a.price_at_booking, a.channel,
-               b.name AS barber, s.name AS service
-        FROM appointments a
-        JOIN customers c ON c.id = a.customer_id
-        JOIN barbers b ON b.id = a.barber_id
-        JOIN services s ON s.id = a.service_id
-        WHERE a.id = $1 AND c.phone = $2
-        """,
-        booking_id,
-        phone.replace(" ", "").replace("-", ""),
-    )
-    if row is None:
-        raise HTTPException(404, "reserva no encontrada")
-    return BookingOut(
-        id=row["id"],
-        barber=row["barber"],
-        service=row["service"],
-        starts_at=row["starts_at"],
-        ends_at=row["ends_at"],
-        status=row["status"],
-        price=row["price_at_booking"],
-        channel=row["channel"],
     )

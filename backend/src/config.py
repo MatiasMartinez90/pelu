@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     chatwoot_account_id: int = 0
     chatwoot_handoff_assignee_id: int = 0
     webhook_token: str = ""  # token secreto del webhook (?token=)
+    webhook_signing_secret: str = ""
+    # Migration fallback. Production explicitly disables this once the
+    # internal signer is deployed.
+    webhook_allow_legacy_token: bool = True
+    webhook_max_skew_seconds: int = 300
+    webhook_max_body_bytes: int = 262_144
+    webhook_signer_target_url: str = "http://nox-api.nox.svc.cluster.local/webhook/chatwoot"
 
     # WhatsApp Cloud API (typing indicator + re-contacto por template)
     whatsapp_phone_number_id: str = ""
@@ -67,6 +74,8 @@ class Settings(BaseSettings):
     # API
     cors_origins: str = "https://nox.cloud-it.com.ar,http://localhost:3000"
     cors_origin_regex: str = r"^http://localhost:\d+$"  # dev; vaciar para desactivar
+    environment: str = "development"
+    trusted_proxy_cidrs: str = "127.0.0.1/32,::1/128"
     log_level: str = "INFO"
 
 

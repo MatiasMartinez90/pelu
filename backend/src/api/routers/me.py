@@ -23,13 +23,11 @@ async def my_bookings(customer: dict = CustomerUser):
     """Próximos turnos + historial completo del cliente (identidad = email del token)."""
     pool = await get_pool()
     email = customer["email"]
-    upcoming = await booking_service.get_bookings_by_email(pool, email, only_future=True)
-    history = await booking_service.get_bookings_by_email(pool, email, only_future=False)
+    summary = await booking_service.get_bookings_summary_by_email(pool, email)
     return {
         "email": email,
         "name": customer.get("name", ""),
-        "upcoming": upcoming,
-        "history": history,
+        **summary,
     }
 
 

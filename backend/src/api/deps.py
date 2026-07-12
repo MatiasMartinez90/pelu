@@ -77,6 +77,8 @@ async def require_admin(request: Request) -> dict:
     email = (claims.get("email") or "").lower()
     if not email:
         raise HTTPException(403, "token sin email")
+    if claims.get("email_verified") is not True:
+        raise HTTPException(403, "email no verificado")
 
     pool = await get_pool()
     is_admin = await pool.fetchval(
@@ -104,7 +106,7 @@ async def require_customer(request: Request) -> dict:
     email = (claims.get("email") or "").lower()
     if not email:
         raise HTTPException(403, "token sin email")
-    if claims.get("email_verified") is False:
+    if claims.get("email_verified") is not True:
         raise HTTPException(403, "email no verificado")
 
     return {"email": email, "name": claims.get("name", ""), "sub": claims.get("sub", "")}
@@ -126,6 +128,8 @@ async def require_barber(request: Request) -> dict:
     email = (claims.get("email") or "").lower()
     if not email:
         raise HTTPException(403, "token sin email")
+    if claims.get("email_verified") is not True:
+        raise HTTPException(403, "email no verificado")
 
     pool = await get_pool()
     row = await pool.fetchrow(

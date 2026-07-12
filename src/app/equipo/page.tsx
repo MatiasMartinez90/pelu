@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
@@ -48,7 +49,7 @@ export default function EquipoPage() {
           {team.map((m) => (
             <a key={m.name} href="/agendar" className="mbr">
               <div className="mbr__ph">
-                <img src={m.photo} alt={m.name} />
+                <Image src={m.photo} alt={m.name} fill sizes="(max-width: 900px) 50vw, 25vw" />
                 <span className="mbr__ig">@{m.instagram}</span>
               </div>
               <div style={{ marginTop: 18, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>

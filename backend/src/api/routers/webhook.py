@@ -5,12 +5,15 @@ en la query string de la URL configurada en el inbox (401 si no matchea).
 El endpoint nunca procesa el mensaje inline: LPUSH al buffer + trigger a Rabbit.
 """
 
+import hashlib
+import hmac
 import json
 import logging
 import time
 
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import ValidationError
+from pydantic import BaseModel, Field
 
 from ...agent import events
 from ...config import get_settings
@@ -33,7 +36,7 @@ class WebhookMessage(BaseModel):
 
 class WebhookConversation(BaseModel):
     id: int | None = None
-    meta: dict = {}
+    meta: dict = Field(default_factory=dict)
 
 
 class ChatwootWebhook(BaseModel):
@@ -47,11 +50,56 @@ class ChatwootWebhook(BaseModel):
     source_id: str | None = None
 
 
-@router.post("/webhook/chatwoot")
-async def chatwoot_webhook(body: ChatwootWebhook, token: str = Query(default="")):
+async def _authenticate_webhook(request: Request, body: bytes, legacy_token: str) -> None:
     settings = get_settings()
-    if not settings.webhook_token or token != settings.webhook_token:
-        raise HTTPException(401, "token inválido")
+    timestamp = request.headers.get("x-nox-timestamp", "")
+    supplied = request.headers.get("x-nox-signature", "")
+    if settings.webhook_signing_secret and timestamp and supplied:
+        try:
+            ts = int(timestamp)
+        except ValueError:
+            raise HTTPException(401, "firma inválida") from None
+        if abs(int(time.time()) - ts) > settings.webhook_max_skew_seconds:
+            raise HTTPException(401, "firma vencida")
+
+        expected = hmac.new(
+            settings.webhook_signing_secret.encode(),
+            timestamp.encode() + b"." + body,
+            hashlib.sha256,
+        ).hexdigest()
+        candidate = supplied.removeprefix("sha256=")
+        if not hmac.compare_digest(candidate, expected):
+            raise HTTPException(401, "firma inválida")
+
+        # Una firma válida puede aceptarse una sola vez durante la ventana.
+        replay_id = hashlib.sha256(timestamp.encode() + b":" + candidate.encode()).hexdigest()
+        accepted = await (await get_redis()).set(
+            key(f"webhook:seen:{replay_id}"), "1", ex=settings.webhook_max_skew_seconds, nx=True
+        )
+        if not accepted:
+            raise HTTPException(409, "webhook repetido")
+        return
+
+    if settings.webhook_allow_legacy_token and settings.webhook_token:
+        if hmac.compare_digest(legacy_token, settings.webhook_token):
+            logger.warning("webhook autenticado con token legado; migrar a HMAC")
+            return
+    if not settings.webhook_signing_secret:
+        raise HTTPException(503, "webhook firmado no configurado")
+    raise HTTPException(401, "firma requerida")
+
+
+@router.post("/webhook/chatwoot")
+async def chatwoot_webhook(request: Request, token: str = Query(default="")):
+    settings = get_settings()
+    raw = await request.body()
+    if len(raw) > settings.webhook_max_body_bytes:
+        raise HTTPException(413, "payload demasiado grande")
+    await _authenticate_webhook(request, raw, token)
+    try:
+        body = ChatwootWebhook.model_validate_json(raw)
+    except ValidationError:
+        raise HTTPException(422, "payload inválido") from None
 
     if body.event != "message_created":
         return {"status": "ignored"}

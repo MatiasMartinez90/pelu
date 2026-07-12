@@ -24,7 +24,7 @@ async def issue_token(email: str) -> str:
     """Genera un token de vinculación de un solo uso, atado al email del cliente."""
     import secrets
 
-    token = secrets.token_hex(4)
+    token = secrets.token_hex(16)
     r = await get_redis()
     await r.set(key(f"link:{token}"), email, ex=TOKEN_TTL)
     return token
@@ -41,7 +41,8 @@ async def try_claim_whatsapp(content: str, phone: str, conversation_id: int | No
 
     token = text[len(PREFIX):].strip().split()[0].lower() if len(text) > len(PREFIX) else ""
     r = await get_redis()
-    email = await r.get(key(f"link:{token}")) if token else None
+    # GETDEL evita que dos entregas concurrentes reclamen el mismo código.
+    email = await r.getdel(key(f"link:{token}")) if token else None
 
     if not email:
         reply = "Ese código de vinculación venció o no es válido. Generá uno nuevo desde Mi Cuenta."
@@ -62,7 +63,6 @@ async def try_claim_whatsapp(content: str, phone: str, conversation_id: int | No
                 email,
                 digits,
             )
-            await r.delete(key(f"link:{token}"))
             reply = (
                 "✅ ¡Listo! Vinculé este WhatsApp a tu cuenta NOX. Ya podés ver tus turnos en Mi Cuenta."
                 if updated
@@ -74,5 +74,5 @@ async def try_claim_whatsapp(content: str, phone: str, conversation_id: int | No
             await ChatwootClient().send_message(conversation_id, reply)
         except Exception as e:  # noqa: BLE001 — no romper el webhook por el reply
             logger.warning("link reply error: %s", e)
-    logger.info("whatsapp link claim procesado (phone=%s, ok=%s)", phone, bool(email))
+    logger.info("whatsapp link claim procesado (ok=%s)", bool(email))
     return True

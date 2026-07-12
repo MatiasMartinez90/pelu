@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
@@ -42,7 +43,15 @@ export default function GaleriaPage() {
         <div className="gal">
           {urls.map((src, i) => (
             <div key={src} className="gcell" style={{ aspectRatio: ars[i % ars.length] }}>
-              <img src={src} alt="Trabajo NOX" loading="lazy" />
+              <Image
+                src={src}
+                alt="Trabajo NOX"
+                width={800}
+                height={1000}
+                loading="lazy"
+                sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
             </div>
           ))}
         </div>

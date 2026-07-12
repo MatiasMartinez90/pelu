@@ -40,8 +40,7 @@ async def upsert_customer(
         INSERT INTO customers (phone, name, email, first_channel)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (phone) DO UPDATE SET
-            name = COALESCE(EXCLUDED.name, customers.name),
-            email = COALESCE(EXCLUDED.email, customers.email)
+            name = COALESCE(customers.name, EXCLUDED.name)
         RETURNING id, phone, name, email, first_channel
         """,
         phone,
@@ -86,6 +85,10 @@ async def create_booking(
             raise SlotUnavailableError()
 
     starts_at, ends_at = availability_service.slot_to_range(day, hhmm, service["duration_min"])
+    # Un email recibido por un canal anónimo no prueba que quien reserva sea
+    # dueño del teléfono. En conflictos, upsert_customer preserva siempre la
+    # identidad existente; el vínculo se cambia sólo mediante el flujo
+    # autenticado + prueba de posesión por WhatsApp.
     customer = await upsert_customer(pool, phone, customer_name, email, channel)
 
     try:
@@ -239,6 +242,32 @@ async def get_bookings_by_email(
         only_future,
     )
     return [dict(r) for r in rows]
+
+
+async def get_bookings_summary_by_email(pool: asyncpg.Pool, email: str) -> dict[str, Any]:
+    """upcoming + history de un cliente en una sola query (history ya incluye upcoming).
+
+    Reemplaza dos llamadas a get_bookings_by_email (una con only_future=True
+    y otra con False) que traían el mismo dataset dos veces.
+    """
+    rows = await pool.fetch(
+        """
+        SELECT a.id, a.starts_at, a.ends_at, a.status, a.price_at_booking, a.channel,
+               b.name AS barber, s.name AS service
+        FROM appointments a
+        JOIN customers c ON c.id = a.customer_id
+        JOIN barbers b ON b.id = a.barber_id
+        JOIN services s ON s.id = a.service_id
+        WHERE lower(c.email) = lower($1)
+        ORDER BY a.starts_at DESC
+        LIMIT 50
+        """,
+        email,
+    )
+    history = [dict(r) for r in rows]
+    now = utcnow()
+    upcoming = [b for b in history if b["status"] == "active" and b["starts_at"] > now]
+    return {"upcoming": upcoming, "history": history}
 
 
 async def cancel_booking_by_email(

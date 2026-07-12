@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 const SERIF = "'Bodoni Moda', Georgia, serif";
 
 const ars = new Intl.NumberFormat("es-AR");
@@ -76,7 +78,14 @@ export function Tienda() {
         {products.map((p) => (
           <a key={p.slug} href={`${SHOP_URL}/${p.slug}`} target="_blank" rel="noreferrer" className="nox-prod" style={p.cell}>
             <div className="nox-prod__media">
-              <img src={p.photo} alt={p.name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <Image
+                src={p.photo}
+                alt={p.name}
+                fill
+                sizes="(max-width: 900px) 100vw, 40vw"
+                loading="lazy"
+                style={{ objectFit: "cover" }}
+              />
               <div className="nox-prod__grad" />
               <div className="nox-prod__shade" />
               <div className="nox-prod__cta">Comprar →</div>

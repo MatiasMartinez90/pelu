@@ -1,10 +1,13 @@
 """FastAPI app de NOX. Solo API + webhook: el consumer corre en el deployment worker."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.gzip import GZipMiddleware
 
 from ..config import get_settings
 from ..db.pool import close_pool, get_pool, init_pool
@@ -41,17 +44,61 @@ async def lifespan(app: FastAPI):
     await close_pool()
 
 
-app = FastAPI(title="NOX Backend", version="0.1.0", lifespan=lifespan)
-
 settings = get_settings()
+is_production = settings.environment.lower() == "production"
+app = FastAPI(
+    title="NOX Backend",
+    version="0.1.0",
+    lifespan=lifespan,
+    docs_url=None if is_production else "/docs",
+    redoc_url=None if is_production else "/redoc",
+    openapi_url=None if is_production else "/openapi.json",
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
-    allow_origin_regex=settings.cors_origin_regex or None,
+    allow_origin_regex=None if is_production else (settings.cors_origin_regex or None),
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# asyncpg no tiene un timeout de acquire() global a nivel pool (solo por
+# llamada, y pool.fetch/fetchrow/execute se usan directo en ~15 archivos sin
+# pasarlo). En vez de tocar cada call site, un timeout de request acá cubre
+# lo mismo — y cualquier otro cuelgue, no solo el del pool — con un único
+# punto de cambio: si el pool está agotado bajo un pico, el cliente recibe
+# un 503 rápido en vez de esperar indefinidamente.
+REQUEST_TIMEOUT_S = 15
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["x-content-type-options"] = "nosniff"
+    response.headers["x-frame-options"] = "DENY"
+    response.headers["referrer-policy"] = "no-referrer"
+    response.headers["permissions-policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["content-security-policy"] = "default-src 'none'; frame-ancestors 'none'"
+    if is_production:
+        response.headers["strict-transport-security"] = (
+            "max-age=63072000; includeSubDomains; preload"
+        )
+    return response
+
+
+@app.middleware("http")
+async def timeout_middleware(request: Request, call_next):
+    try:
+        return await asyncio.wait_for(call_next(request), timeout=REQUEST_TIMEOUT_S)
+    except asyncio.TimeoutError:
+        return JSONResponse(
+            {"detail": "El servidor tardó demasiado en responder. Probá de nuevo."},
+            status_code=503,
+        )
+
 
 app.include_router(public.router)
 app.include_router(me.router)

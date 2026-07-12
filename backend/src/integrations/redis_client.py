@@ -51,11 +51,15 @@ async def close_redis() -> None:
 
 
 async def rate_limit_exceeded(identifier: str) -> bool:
-    """INCR con ventana deslizante simple por identificador (ip o phone)."""
+    """Contador atómico con TTL por identificador."""
     s = get_settings()
     r = await get_redis()
     k = key(f"rl:{identifier}")
-    count = await r.incr(k)
-    if count == 1:
-        await r.expire(k, s.rate_limit_window)
+    count = await r.eval(
+        "local n=redis.call('INCR',KEYS[1]); "
+        "if n==1 then redis.call('EXPIRE',KEYS[1],ARGV[1]) end; return n",
+        1,
+        k,
+        s.rate_limit_window,
+    )
     return count > s.rate_limit_max

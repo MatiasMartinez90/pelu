@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
@@ -27,7 +28,14 @@ export default function NosotrosPage() {
       <EditorialNav />
 
       <section style={{ position: "relative", minHeight: "64vh", display: "flex", alignItems: "flex-end", overflow: "hidden" }}>
-        <img src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1600&q=85&auto=format&fit=crop" alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%", filter: "grayscale(0.3) contrast(1.05)" }} />
+        <Image
+          src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1600&q=85&auto=format&fit=crop"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: "cover", objectPosition: "center 30%", filter: "grayscale(0.3) contrast(1.05)" }}
+        />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg,rgba(10,10,10,0.5) 0%,rgba(10,10,10,0) 40%,rgba(10,10,10,0.9) 100%)" }} />
         <div className="px-fluid" style={{ position: "relative", zIndex: 2, paddingBottom: 56, maxWidth: 1180, margin: "0 auto", width: "100%" }}>
           <div style={{ fontSize: 12, letterSpacing: "0.4em", textTransform: "uppercase", opacity: 0.7 }}>Desde 2014 · Buenos Aires</div>

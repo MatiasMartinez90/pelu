@@ -1,11 +1,13 @@
 """Admin: agenda del día y gestión de turnos."""
 
-from datetime import date as date_type
+from datetime import date as date_type, datetime, time, timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
+from ...config import get_settings
 from ...db.pool import get_pool
 from ...services import booking_service
 from ..deps import AdminUser
@@ -16,6 +18,12 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 @router.get("/agenda")
 async def agenda(date: date_type = Query(...), barber: str | None = None, admin: dict = AdminUser):
     pool = await get_pool()
+    # Rango [00:00, 24:00) del día en la TZ del local, en vez de castear
+    # starts_at::date: el cast fuerza un seq scan (verificado con EXPLAIN);
+    # el rango usa idx_appointments_day.
+    tz = ZoneInfo(get_settings().timezone)
+    day_start = datetime.combine(date, time.min, tzinfo=tz)
+    day_end = day_start + timedelta(days=1)
     rows = await pool.fetch(
         """
         SELECT a.id, a.starts_at, a.ends_at, a.status, a.price_at_booking, a.channel,
@@ -25,10 +33,12 @@ async def agenda(date: date_type = Query(...), barber: str | None = None, admin:
         JOIN customers c ON c.id = a.customer_id
         JOIN barbers b ON b.id = a.barber_id
         JOIN services s ON s.id = a.service_id
-        WHERE a.starts_at::date = $1 AND ($2::text IS NULL OR b.slug = $2)
+        WHERE a.starts_at >= $1 AND a.starts_at < $2
+          AND ($3::text IS NULL OR b.slug = $3)
         ORDER BY a.starts_at
         """,
-        date,
+        day_start,
+        day_end,
         barber,
     )
     return [dict(r) for r in rows]

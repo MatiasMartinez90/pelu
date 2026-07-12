@@ -1,5 +1,6 @@
 """Admin: KPIs del resumen, clientes y métricas del agente."""
 
+import asyncio
 from datetime import date
 
 from fastapi import APIRouter, Query
@@ -33,51 +34,55 @@ async def dashboard_summary(month: str | None = Query(default=None), admin: dict
     pool = await get_pool()
     month_start, month_end, month_str = _month_bounds(month)
 
-    kpis = await pool.fetchrow(
-        """
-        SELECT
-          COALESCE(SUM(price_at_booking) FILTER (WHERE status IN ('active','completed')), 0) AS month_revenue,
-          COUNT(*) FILTER (WHERE status IN ('active','completed')) AS month_appointments,
-          COUNT(DISTINCT customer_id) FILTER (WHERE status IN ('active','completed')) AS month_customers,
-          COUNT(*) FILTER (WHERE status = 'cancelled') AS month_cancelled,
-          COUNT(*) FILTER (WHERE channel = 'whatsapp' AND status IN ('active','completed')) AS month_whatsapp,
-          COUNT(*) FILTER (WHERE channel = 'web' AND status IN ('active','completed')) AS month_web
-        FROM appointments WHERE starts_at >= $1 AND starts_at < $2
-        """,
-        month_start,
-        month_end,
-    )
-    daily = await pool.fetch(
-        """
-        SELECT date_trunc('day', starts_at)::date AS day,
-               COALESCE(SUM(price_at_booking), 0) AS revenue
-        FROM appointments
-        WHERE starts_at >= $1 AND starts_at < $2
-          AND status IN ('active','completed')
-        GROUP BY 1 ORDER BY 1
-        """,
-        month_start,
-        month_end,
-    )
-    top_services = await pool.fetch(
-        """
-        SELECT s.name, COUNT(*) AS count
-        FROM appointments a JOIN services s ON s.id = a.service_id
-        WHERE a.starts_at >= $1 AND a.starts_at < $2 AND a.status IN ('active','completed')
-        GROUP BY s.name ORDER BY count DESC LIMIT 5
-        """,
-        month_start,
-        month_end,
-    )
-    barber_perf = await pool.fetch(
-        """
-        SELECT b.name, COALESCE(SUM(a.price_at_booking), 0) AS revenue, COUNT(*) AS count
-        FROM appointments a JOIN barbers b ON b.id = a.barber_id
-        WHERE a.starts_at >= $1 AND a.starts_at < $2 AND a.status IN ('active','completed')
-        GROUP BY b.name ORDER BY revenue DESC
-        """,
-        month_start,
-        month_end,
+    # Las 4 queries son independientes entre sí: corren en paralelo en vez de
+    # una tras otra (cada pool.fetch* toma su propia conexión del pool).
+    kpis, daily, top_services, barber_perf = await asyncio.gather(
+        pool.fetchrow(
+            """
+            SELECT
+              COALESCE(SUM(price_at_booking) FILTER (WHERE status IN ('active','completed')), 0) AS month_revenue,
+              COUNT(*) FILTER (WHERE status IN ('active','completed')) AS month_appointments,
+              COUNT(DISTINCT customer_id) FILTER (WHERE status IN ('active','completed')) AS month_customers,
+              COUNT(*) FILTER (WHERE status = 'cancelled') AS month_cancelled,
+              COUNT(*) FILTER (WHERE channel = 'whatsapp' AND status IN ('active','completed')) AS month_whatsapp,
+              COUNT(*) FILTER (WHERE channel = 'web' AND status IN ('active','completed')) AS month_web
+            FROM appointments WHERE starts_at >= $1 AND starts_at < $2
+            """,
+            month_start,
+            month_end,
+        ),
+        pool.fetch(
+            """
+            SELECT date_trunc('day', starts_at)::date AS day,
+                   COALESCE(SUM(price_at_booking), 0) AS revenue
+            FROM appointments
+            WHERE starts_at >= $1 AND starts_at < $2
+              AND status IN ('active','completed')
+            GROUP BY 1 ORDER BY 1
+            """,
+            month_start,
+            month_end,
+        ),
+        pool.fetch(
+            """
+            SELECT s.name, COUNT(*) AS count
+            FROM appointments a JOIN services s ON s.id = a.service_id
+            WHERE a.starts_at >= $1 AND a.starts_at < $2 AND a.status IN ('active','completed')
+            GROUP BY s.name ORDER BY count DESC LIMIT 5
+            """,
+            month_start,
+            month_end,
+        ),
+        pool.fetch(
+            """
+            SELECT b.name, COALESCE(SUM(a.price_at_booking), 0) AS revenue, COUNT(*) AS count
+            FROM appointments a JOIN barbers b ON b.id = a.barber_id
+            WHERE a.starts_at >= $1 AND a.starts_at < $2 AND a.status IN ('active','completed')
+            GROUP BY b.name ORDER BY revenue DESC
+            """,
+            month_start,
+            month_end,
+        ),
     )
     return {
         "month": month_str,
