@@ -570,3 +570,86 @@ both now fixed.
   redirect flow or client-side rendering).
 - [ ] Gateway-level request/concurrency/body-size limits.
 - [ ] Git history cleanup for the historical plaintext OIDC secret.
+
+### 2026-07-13 - Production incident: egress isolation broke all Keycloak connectivity
+
+The namespace-wide `nox-egress` NetworkPolicy added during infrastructure
+hardening (`79dbf72`) never included a rule for the `keycloak` namespace.
+Reported by the operator as `/admin` showing Auth.js's generic *"Server
+error — There is a problem with the server configuration"* page. This broke
+every OIDC-dependent flow at once: login, session refresh, and JWT/JWKS
+validation on the backend (the backend was only still "working" because
+`PyJWKClient` caches JWKS for 1 hour; a fresh pod would have failed
+immediately, which is exactly what happened once the same-day `nox-api`
+rollout for an unrelated fix picked up the broken policy).
+
+**Diagnosis**, from inside a live `nox-web` pod:
+
+```
+fetch('https://auth.cloud-it.com.ar/...') -> TypeError: fetch failed
+```
+
+and from `nox-api`:
+
+```
+urlopen('https://auth.cloud-it.com.ar/.../certs') -> [Errno 111] Connection refused
+```
+
+Both the internal Keycloak Service (`10.43.x.x`, inside the `nox-egress`
+policy's excluded `10.0.0.0/8` range) and the public hostname
+(`auth.cloud-it.com.ar`, which resolves to the node's own public IP —
+pods cannot hairpin back to their own node's external address) were
+unreachable.
+
+**Fix, in three steps** (each validated against the live pod before moving
+to the next):
+
+1. Added an explicit `nox-egress` rule allowing the `keycloak` namespace on
+   port 8080 — closes the internal-Service path, but the app is configured
+   with the public issuer URL (`AUTH_KEYCLOAK_ISSUER=https://auth.cloud-it.
+   com.ar/realms/nox`), and Keycloak's own discovery document reports that
+   same public issuer regardless of which URL was used to reach it, so this
+   alone did not fix the actual login flow.
+2. Added `hostAliases` in `nox-api` and `nox-web` mapping
+   `auth.cloud-it.com.ar` to the Envoy Gateway's `ClusterIP`
+   (`10.43.252.13`) instead of its public IP — same TLS/SNI path a real
+   browser uses, but resolved entirely inside the cluster. Required a
+   second `nox-egress` rule for the `envoy-gateway-system` namespace, since
+   that ClusterIP is also inside `10.0.0.0/8`.
+3. That still failed. Root cause, found by watching `iptables` packet
+   counters on the specific policy rule while generating traffic: the
+   `envoy-envoy-gateway-eg-*` Service maps port `443` to `targetPort:
+   10443` on the actual Envoy container. `kube-proxy`'s Service DNAT runs
+   before `kube-router`'s NetworkPolicy enforcement in netfilter's
+   processing order (`nat/PREROUTING` before `filter/FORWARD`), so by the
+   time the egress rule evaluates a Service-routed packet, its destination
+   port is already rewritten to `10443` — a rule matching port `443` only
+   ever matches a *direct* pod-IP connection, which then fails anyway
+   because nothing listens on `443` on the pod itself (confirmed with a raw
+   TCP connect from the node host, not just from a pod, to rule out
+   NetworkPolicy as the culprit for that specific symptom). Changed the
+   `envoy-gateway-system` rule to match port `10443`.
+
+**Verified after each commit**, from inside the actual running pods, not
+just HTTP status codes:
+
+- `nox-web`: `fetch()` to the OIDC discovery document succeeds and returns
+  a `token_endpoint`.
+- `nox-api`: JWKS fetch (`/protocol/openid-connect/certs`) returns `200`.
+- `nox.cloud-it.com.ar/`, `/login`, `/admin` and `api-nox.cloud-it.com.ar/
+  health`, `/ready` all return `200` throughout every rollout; zero pod
+  restarts.
+
+No downtime during remediation (old pods kept serving while each fix
+rolled out), but the underlying OIDC flow was broken in production from
+whenever `79dbf72` was applied until this incident closed — an unknown
+window, since the gap was only surfaced by an operator hitting `/admin`,
+not by any of the automated checks in this log.
+
+**Follow-up worth doing:** none of the passive checks in this log (`curl`
+for HTTP status, building images, running the unit/security test suite)
+would have caught this — it required a live network call from inside a
+running pod. Consider adding an automated post-deploy smoke test that
+actually exercises cross-namespace connectivity (Keycloak reachability,
+at minimum) rather than relying on `/health`/`/ready` alone, since those
+only check the app's *own* dependencies (DB/Redis), not OIDC.
