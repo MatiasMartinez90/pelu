@@ -12,7 +12,8 @@ export const metadata: Metadata = {
 const ADDR = "Av. Cabildo 2200, C1428 CABA";
 const WA = "https://wa.me/5491155550123";
 const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ADDR)}`;
-const mapEmbed = `https://www.google.com/maps?q=${encodeURIComponent(ADDR)}&output=embed`;
+// maps.google.com (embed clásico) sí permite framing; www.google.com/maps lo bloquea (X-Frame-Options).
+const mapEmbed = `https://maps.google.com/maps?q=${encodeURIComponent(ADDR)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
 const info = [
   { label: "Dirección", value: "Av. Cabildo 2200", sub: "Belgrano, CABA" },
