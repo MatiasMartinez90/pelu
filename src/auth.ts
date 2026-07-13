@@ -57,6 +57,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.expiresAt = account.expires_at;
         token.email = (profile?.email as string | undefined) ?? (token.email as string | undefined);
         token.roles = effectiveRoles(token.email as string | undefined, rolesFromAccessToken(account.access_token));
+        // DEBUG TEMPORAL — sacar apenas se diagnostique el incidente de login.
+        console.log(
+          "[auth-debug] profile.email=%s token.email=%s roles=%o realmRoles=%o",
+          profile?.email,
+          token.email,
+          token.roles,
+          rolesFromAccessToken(account.access_token),
+        );
         return token;
       }
       const expiresAt = (token.expiresAt as number | undefined) ?? 0;
