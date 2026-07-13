@@ -1,15 +1,16 @@
 // BFF del portal barbero: proxya /api/barber/* → {BACKEND_URL}/api/v1/barber/*
 // inyectando el access_token de Keycloak. El backend valida que el email del
 // token sea un barbero registrado y filtra todo por ese barber.
-import { auth } from "@/auth";
+import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://nox-api.nox.svc.cluster.local";
 
 async function proxy(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  const session = await auth();
-  const accessToken = (session as { accessToken?: string } | null)?.accessToken;
-  if (!session?.user || !accessToken) {
+  // getToken() lee el JWT crudo sin pasar por session() (ver backoffice/route.ts).
+  const token = await getToken({ req, secret: process.env.AUTH_SECRET, secureCookie: true });
+  const accessToken = token?.accessToken as string | undefined;
+  if (!token?.email || !accessToken) {
     return NextResponse.json({ error: "no autenticado" }, { status: 401 });
   }
 
