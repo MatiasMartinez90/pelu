@@ -57,14 +57,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.expiresAt = account.expires_at;
         token.email = (profile?.email as string | undefined) ?? (token.email as string | undefined);
         token.roles = effectiveRoles(token.email as string | undefined, rolesFromAccessToken(account.access_token));
-        // DEBUG TEMPORAL — sacar apenas se diagnostique el incidente de login.
-        console.log(
-          "[auth-debug] profile.email=%s token.email=%s roles=%o realmRoles=%o",
-          profile?.email,
-          token.email,
-          token.roles,
-          rolesFromAccessToken(account.access_token),
-        );
         return token;
       }
       const expiresAt = (token.expiresAt as number | undefined) ?? 0;
@@ -97,11 +89,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return token;
     },
-    // Expone roles en la sesión. accessToken NO se forwardea acá a propósito:
-    // este callback moldea lo que ve /api/auth/session y useSession() en el
-    // browser. auth() server-side (BFF en src/app/api/{backoffice,barber,me})
-    // y el middleware (authorized(), abajo) leen el token completo del jwt()
-    // callback sin pasar por session(), así que siguen viendo accessToken.
+    // Expone roles en la sesión. accessToken NO se forwardea acá a propósito
+    // (se filtró client-side por /api/auth/session antes de este fix). El
+    // middleware de abajo (authorized()) también pasa por ESTE callback —
+    // no lo bypasea como decía un comentario anterior acá, verificado en
+    // incidente real: exigir accessToken en authorized() rompía el gate de
+    // /admin por completo, porque ya nunca llega. El BFF (auth() en las
+    // route handlers de /api/{backoffice,barber,me}, que sí leen el JWT
+    // completo sin pasar por acá) sigue siendo quien valida el accessToken
+    // de verdad contra el backend; si está vencido, esas rutas devuelven
+    // 401 y admin/page.tsx dispara un re-login.
     session({ session, token }) {
       const s = session as { roles?: Role[] };
       s.roles = (token.roles as Role[] | undefined) ?? [];
@@ -110,15 +107,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Gatea rutas protegidas por rol.
     authorized({ auth, request }) {
       const path = request.nextUrl.pathname;
-      const a = auth as { user?: unknown; accessToken?: string; roles?: Role[] } | null;
+      const a = auth as { user?: unknown; roles?: Role[] } | null;
       const roles = a?.roles ?? [];
 
       if (path.startsWith("/admin")) {
-        // admin: sesión + accessToken vivo (evita "Error 401" del BFF) + rol admin.
-        return !!a?.user && !!a.accessToken && roles.includes("admin");
+        return !!a?.user && roles.includes("admin");
       }
       if (path.startsWith("/barbero")) {
-        return !!a?.user && !!a.accessToken && (roles.includes("barbero") || roles.includes("admin"));
+        return !!a?.user && (roles.includes("barbero") || roles.includes("admin"));
       }
       return true;
     },
