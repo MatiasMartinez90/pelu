@@ -653,3 +653,59 @@ running pod. Consider adding an automated post-deploy smoke test that
 actually exercises cross-namespace connectivity (Keycloak reachability,
 at minimum) rather than relying on `/health`/`/ready` alone, since those
 only check the app's *own* dependencies (DB/Redis), not OIDC.
+
+### 2026-07-13 - Same incident, part 2: the accessToken CSP fix broke both the /admin gate and the BFF itself
+
+With network connectivity restored, the operator could complete the
+Google login, but hit two more failures in sequence — both caused by this
+morning's earlier, otherwise-correct security fix that stopped forwarding
+`accessToken` through the Auth.js `session()` callback (to stop it leaking
+to the browser via `/api/auth/session`).
+
+**Symptom 1 — login succeeds, `/admin` redirects straight back to
+`/login?callbackUrl=...` with no `?error=`.** A temporary debug log in the
+`jwt()` callback confirmed `roles` was computed correctly (`["cliente",
+"admin"]`), and `/api/auth/session` (fetched directly by the operator)
+confirmed the session existed with the right role. The middleware's
+`authorized()` callback was still rejecting `/admin` because it required
+`!!a.accessToken` — a field that had been intentionally removed from
+`session()` that same morning. A code comment written earlier claimed
+`authorized()`'s `auth` parameter bypasses `session()` the same way
+`auth()` does in Route Handlers; that claim was wrong for this app/
+version, confirmed empirically (roles, which *are* forwarded through
+`session()`, were visible; accessToken, which isn't, was not). Fix:
+dropped the `accessToken` requirement from `authorized()` for both
+`/admin` and `/barbero` — session + role is enough there; the BFF is what
+actually needs to enforce the token (see below).
+
+**Symptom 2 — after fixing (1), login worked and `/admin` loaded, but
+every dashboard call returned `401` and `nox-api`'s logs showed zero
+requests reaching it at all** (only `/health`/`/ready` probes) — meaning
+the `401` came from the BFF route handlers themselves
+(`src/app/api/{backoffice,barber,me}/[...path]/route.ts`), which also
+call `auth()` directly and also, empirically, go through `session()` in
+this runtime. Same underlying cause as symptom 1, different call site.
+
+Fix: replaced `auth()` with `getToken()` from `next-auth/jwt` in all three
+BFF routes — it decrypts the session cookie directly and is documented to
+never pass through `session()`. Caught one more mistake before shipping
+it: `getToken()`'s `secureCookie` option defaults to `false`, which makes
+it look for the unprefixed `authjs.session-token` cookie instead of the
+`__Secure-authjs.session-token` one Auth.js actually sets in production
+over HTTPS — silently returning `null` and producing the exact same `401`
+again. Verified the whole thing (cookie name, salt derivation, secret)
+with an isolated `encode()`/`getToken()` round-trip script against the
+installed `@auth/core/jwt` module before deploying, not just a build/
+type-check, given this exact class of bug (looks right, type-checks
+clean, fails silently at runtime) is what caused both symptoms in the
+first place.
+
+**Lesson for this codebase specifically:** do not assume `auth()` called
+imperatively in a Route Handler bypasses `session()` the way some Auth.js
+v5 documentation/community answers describe for other setups — in this
+app, on this version, it does not. Anywhere server-side code needs a
+field that is deliberately *not* forwarded through `session()` (right now
+just `accessToken`), use `getToken()` from `next-auth/jwt` with
+`secureCookie: true` explicitly set, and prefer verifying it against a
+real or simulated encrypted cookie before deploying rather than trusting
+that a clean `tsc`/`next build` means the runtime behavior is correct.
