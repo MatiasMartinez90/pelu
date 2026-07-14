@@ -13,6 +13,8 @@ const securityHeaders = [
       "base-uri 'self'",
       "object-src 'none'",
       "frame-ancestors 'none'",
+      // /contacto embebe el mapa de OpenStreetMap (Google bloquea su embed sin key).
+      "frame-src https://www.openstreetmap.org",
       "form-action 'self' https://auth.cloud-it.com.ar",
       "script-src 'self' 'unsafe-inline'",
       // layout.tsx carga Bodoni Moda/Archivo directo de Google Fonts (Geist/
