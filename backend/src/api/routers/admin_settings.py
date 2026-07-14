@@ -1,6 +1,6 @@
 """Admin: staff, precios, settings, horarios, bloqueos y usuarios admin."""
 
-from datetime import datetime
+from datetime import datetime, time
 from typing import Any
 from uuid import UUID
 
@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ...db.pool import get_pool
-from ...db.repositories import settings_repo
+from ...db.repositories import settings_repo, site_context
 from ..deps import AdminUser
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -20,7 +20,8 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 async def list_barbers_admin(admin: dict = AdminUser):
     pool = await get_pool()
     rows = await pool.fetch(
-        "SELECT id, slug, name, role, photo_url, active, sort_order FROM barbers ORDER BY sort_order"
+        """SELECT id, slug, name, role, photo_url, bio, instagram, active, sort_order
+           FROM barbers ORDER BY sort_order"""
     )
     return [dict(r) for r in rows]
 
@@ -30,6 +31,8 @@ class BarberIn(BaseModel):
     name: str
     role: str = "BARBERO"
     photo_url: str | None = None
+    bio: str = ""
+    instagram: str = ""
 
 
 @router.post("/barbers", status_code=201)
@@ -37,15 +40,19 @@ async def create_barber(body: BarberIn, admin: dict = AdminUser):
     pool = await get_pool()
     row = await pool.fetchrow(
         """
-        INSERT INTO barbers (slug, name, role, photo_url, sort_order)
-        VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM barbers))
-        RETURNING id, slug, name, role, active
+        INSERT INTO barbers (slug, name, role, photo_url, bio, instagram, sort_order)
+        VALUES ($1, $2, $3, $4, $5, $6,
+                (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM barbers))
+        RETURNING id, slug, name, role, bio, instagram, active
         """,
         body.slug,
         body.name,
         body.role,
         body.photo_url,
+        body.bio,
+        body.instagram,
     )
+    site_context.clear_cache()
     return dict(row)
 
 
@@ -54,6 +61,8 @@ class BarberPatch(BaseModel):
     name: str | None = None
     photo_url: str | None = None
     email: str | None = None  # vincula al barbero con su login Keycloak (portal /barbero)
+    bio: str | None = None
+    instagram: str | None = None
 
 
 @router.patch("/barbers/{barber_id}")
@@ -73,14 +82,19 @@ async def patch_barber(barber_id: UUID, body: BarberPatch, admin: dict = AdminUs
                     active = COALESCE($2, active),
                     name = COALESCE($3, name),
                     photo_url = COALESCE($4, photo_url),
-                    email = COALESCE($5, email)
-                WHERE id = $1 RETURNING id, slug, name, role, active, email
+                    email = COALESCE($5, email),
+                    bio = COALESCE($6, bio),
+                    instagram = COALESCE($7, instagram)
+                WHERE id = $1
+                RETURNING id, slug, name, role, bio, instagram, active, email
                 """,
                 barber_id,
                 body.active,
                 body.name,
                 body.photo_url,
                 new_email,
+                body.bio,
+                body.instagram,
             )
             # Rebind de login (barbers.email) es sensible: auditar quién y cuándo,
             # igual que service_price_history para cambios de precio.
@@ -95,6 +109,7 @@ async def patch_barber(barber_id: UUID, body: BarberPatch, admin: dict = AdminUs
                     new_email,
                     admin["email"],
                 )
+    site_context.clear_cache()
     return dict(row)
 
 
@@ -134,6 +149,25 @@ async def patch_price(service_id: UUID, body: PricePatch, admin: dict = AdminUse
 # ── Settings ───────────────────────────────────────────────────────────
 
 
+@router.get("/site-profile")
+async def get_site_profile(admin: dict = AdminUser):
+    pool = await get_pool()
+    return await site_context.get_site_data(pool)
+
+
+class SiteProfilePatch(BaseModel):
+    values: dict[str, Any]
+
+
+@router.patch("/site-profile")
+async def patch_site_profile(body: SiteProfilePatch, admin: dict = AdminUser):
+    pool = await get_pool()
+    try:
+        return await site_context.update_profile(pool, body.values)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+
+
 @router.get("/settings")
 async def get_settings_admin(admin: dict = AdminUser):
     pool = await get_pool()
@@ -159,6 +193,71 @@ async def patch_settings(body: SettingsPatch, admin: dict = AdminUser):
 
 
 # ── Horarios y bloqueos ────────────────────────────────────────────────
+
+
+@router.get("/schedule-rules")
+async def list_schedule_rules(admin: dict = AdminUser):
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT sr.id, sr.dow, sr.opens_at, sr.closes_at,
+               b.slug AS barber_slug, b.name AS barber_name
+        FROM schedule_rules sr
+        LEFT JOIN barbers b ON b.id = sr.barber_id
+        ORDER BY b.sort_order NULLS FIRST, sr.dow
+        """
+    )
+    return [dict(row) for row in rows]
+
+
+class ScheduleRuleIn(BaseModel):
+    dow: int
+    opens_at: time
+    closes_at: time
+    barber: str | None = None
+
+
+class ScheduleRulesPut(BaseModel):
+    rules: list[ScheduleRuleIn]
+
+
+@router.put("/schedule-rules")
+async def replace_schedule_rules(body: ScheduleRulesPut, admin: dict = AdminUser):
+    seen: set[tuple[str | None, int]] = set()
+    for rule in body.rules:
+        key = (rule.barber, rule.dow)
+        if rule.dow < 0 or rule.dow > 6:
+            raise HTTPException(422, "dow debe estar entre 0 y 6")
+        if rule.closes_at <= rule.opens_at:
+            raise HTTPException(422, "closes_at debe ser posterior a opens_at")
+        if key in seen:
+            raise HTTPException(422, f"horario duplicado para {key}")
+        seen.add(key)
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            barber_ids: dict[str, UUID] = {}
+            slugs = {rule.barber for rule in body.rules if rule.barber}
+            if slugs:
+                rows = await conn.fetch(
+                    "SELECT id, slug FROM barbers WHERE slug = ANY($1::text[])", list(slugs)
+                )
+                barber_ids = {row["slug"]: row["id"] for row in rows}
+                missing = slugs - set(barber_ids)
+                if missing:
+                    raise HTTPException(422, f"peluqueros inexistentes: {sorted(missing)}")
+            await conn.execute("DELETE FROM schedule_rules")
+            await conn.executemany(
+                """INSERT INTO schedule_rules (barber_id, dow, opens_at, closes_at)
+                   VALUES ($1, $2, $3, $4)""",
+                [
+                    (barber_ids.get(rule.barber), rule.dow, rule.opens_at, rule.closes_at)
+                    for rule in body.rules
+                ],
+            )
+    site_context.clear_cache()
+    return await list_schedule_rules(admin)
 
 
 @router.get("/blocks")

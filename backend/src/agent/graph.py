@@ -7,6 +7,8 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
 from ..config import get_settings
+from ..db.pool import get_pool
+from ..db.repositories import site_context
 from ..integrations.redis_client import get_redis, key
 from . import events
 from .state import AgentState
@@ -51,7 +53,7 @@ def create_agent(checkpointer):
         tools=ALL_TOOLS,
         state_schema=AgentState,
         prompt=lambda state: [
-            {"role": "system", "content": build_system_prompt()},
+            {"role": "system", "content": build_system_prompt(state["business_context"])},
             *state["messages"],
         ],
         checkpointer=checkpointer,
@@ -108,12 +110,24 @@ async def run_agent(agent, conversation_id: int, phone: str, message: str) -> st
     started = time.monotonic()
 
     try:
+        pool = await get_pool()
+        site_data = await site_context.get_site_data(pool)
+        business_context = site_context.format_agent_context(site_data)
+    except Exception:  # noqa: BLE001 — el turno conserva una respuesta útil ante datos dañados
+        logger.exception("run_agent: no se pudo cargar el contexto del local")
+        business_context = (
+            "La información institucional no está disponible temporalmente. "
+            "No inventes datos; ofrecé consultar con una persona."
+        )
+
+    try:
         result = await agent.ainvoke(
             {
                 "messages": [{"role": "user", "content": message}],
                 "phone": phone,
                 "conversation_id": conversation_id,
                 "customer_name": None,
+                "business_context": business_context,
             },
             config=_build_run_config(thread_id, phone),
         )

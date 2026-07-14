@@ -15,6 +15,17 @@ python -m src.queue.consumer               # worker (otra terminal)
 
 Dos procesos, una imagen: `nox-api` (uvicorn) y `nox-worker` (consumer RabbitMQ).
 
+## Contexto del agente
+
+El agente carga al comienzo de cada turno el perfil del local, horarios y
+profesionales desde PostgreSQL. La fuente institucional es `site_profile`; los
+horarios salen de `schedule_rules` y el catálogo de `barbers`, `services` y
+`barber_services`. La API pública expone la misma vista en `GET /api/v1/site`.
+
+El perfil se administra mediante `GET/PATCH /api/v1/admin/site-profile` y las
+reglas semanales mediante `GET/PUT /api/v1/admin/schedule-rules`. Los bloqueos
+puntuales continúan en `/api/v1/admin/blocks`.
+
 ## Webhook firmado
 
 En producción el webhook exige `X-Nox-Timestamp` y `X-Nox-Signature`. La firma

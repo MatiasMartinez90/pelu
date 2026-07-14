@@ -35,6 +35,12 @@ async def check_availability(barber: str, service: str, date: str) -> str:
         return f"No existe el profesional '{barber}'. Usá get_barbers para ver los slugs."
     if s is None:
         return f"No existe el servicio '{service}'. Usá get_services para ver los slugs."
+    if not b["active"]:
+        return f"{b['name']} no está disponible en este momento."
+    if not s["active"]:
+        return f"El servicio {s['name']} no está disponible en este momento."
+    if not await catalog.barber_offers_service(pool, b["id"], s["id"]):
+        return f"{b['name']} no ofrece {s['name']}. Usá get_services con su slug."
     try:
         day = date_type.fromisoformat(date)
     except ValueError:

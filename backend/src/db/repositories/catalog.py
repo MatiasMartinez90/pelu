@@ -4,7 +4,7 @@ from typing import Any
 
 import asyncpg
 
-BARBER_COLS = "id, slug, name, role, photo_url, active, sort_order"
+BARBER_COLS = "id, slug, name, role, photo_url, bio, instagram, active, sort_order"
 SERVICE_COLS = (
     "id, slug, name, description, price, duration_min, badge, variable_price, active, sort_order"
 )
