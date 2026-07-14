@@ -27,7 +27,8 @@ def _fmt_dt(dt) -> str:
 @tool
 async def check_availability(barber: str, service: str, date: str) -> str:
     """Horarios disponibles de un profesional para un servicio en una fecha.
-    barber y service son slugs (ej: 'bruno', 'corte-barba-bruno'); date es YYYY-MM-DD."""
+    barber y service son slugs obtenidos dinámicamente con get_barbers/get_services;
+    date es YYYY-MM-DD."""
     pool = await get_pool()
     b = await catalog.get_barber_by_slug(pool, barber)
     s = await catalog.get_service_by_slug(pool, service)

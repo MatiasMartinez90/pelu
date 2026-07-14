@@ -1,5 +1,6 @@
 """Registro de eventos del agente en agent_events (alimenta la sección Agente IA)."""
 
+import hashlib
 import logging
 
 from ..db.pool import get_pool
@@ -18,6 +19,10 @@ async def log_event(
     latency_ms: int = 0,
 ) -> None:
     try:
+        from ..config import get_settings
+
+        if phone and not get_settings().store_event_phone_plaintext:
+            phone = "sha256:" + hashlib.sha256(phone.encode()).hexdigest()[:24]
         pool = await get_pool()
         await pool.execute(
             """

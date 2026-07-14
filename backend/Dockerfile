@@ -11,12 +11,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && chmod +x /usr/local/bin/dbmate
 
 COPY pyproject.toml README.md requirements.lock ./
-COPY src/ src/
-COPY db/ db/
 
 RUN python -m pip install --no-cache-dir --upgrade pip==26.1.2 \
     && pip install --no-cache-dir --require-hashes -r requirements.lock \
     && python -m pip uninstall -y pip setuptools wheel
+
+# El código cambia mucho más seguido que las dependencias; copiarlo después
+# mantiene cacheable la capa costosa de instalación.
+COPY src/ src/
+COPY db/ db/
 
 RUN useradd --create-home --shell /bin/bash appuser
 USER appuser

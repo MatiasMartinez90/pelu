@@ -63,7 +63,12 @@ async def create_booking(
     email: str | None = None,
     channel: str = "web",
     skip_slot_validation: bool = False,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
+    if idempotency_key:
+        existing = await _get_booking_by_idempotency_key(pool, idempotency_key)
+        if existing:
+            return existing
     barber = await catalog.get_barber_by_slug(pool, barber_slug)
     service = await catalog.get_service_by_slug(pool, service_slug)
     if barber is None or not barber["active"]:
@@ -96,8 +101,8 @@ async def create_booking(
             """
             INSERT INTO appointments
                 (customer_id, barber_id, service_id, starts_at, ends_at,
-                 price_at_booking, channel)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+                price_at_booking, channel, idempotency_key)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING id, starts_at, ends_at, status, price_at_booking, channel
             """,
             customer["id"],
@@ -107,9 +112,16 @@ async def create_booking(
             ends_at,
             service["price"],
             channel,
+            idempotency_key,
         )
     except asyncpg.ExclusionViolationError:
         raise SlotTakenError() from None
+    except asyncpg.UniqueViolationError:
+        if idempotency_key:
+            existing = await _get_booking_by_idempotency_key(pool, idempotency_key)
+            if existing:
+                return existing
+        raise
 
     return {
         **dict(row),
@@ -128,12 +140,13 @@ async def cancel_booking(
     *,
     reason: str = "",
     phone: str | None = None,
+    command_key: str | None = None,
 ) -> dict[str, Any]:
     """Cancela un turno activo futuro. Si se pasa phone, valida pertenencia."""
     row = await pool.fetchrow(
         """
         UPDATE appointments a SET status = 'cancelled', cancelled_at = now(),
-               cancel_reason = $2, updated_at = now()
+               cancel_reason = $2, updated_at = now(), last_command_key = $4
         FROM customers c
         WHERE a.id = $1 AND a.customer_id = c.id AND a.status = 'active'
           AND a.starts_at > now()
@@ -143,8 +156,23 @@ async def cancel_booking(
         appointment_id,
         reason,
         phone,
+        command_key,
     )
     if row is None:
+        if command_key:
+            previous = await pool.fetchrow(
+                """
+                SELECT a.id, a.starts_at FROM appointments a
+                JOIN customers c ON c.id = a.customer_id
+                WHERE a.id = $1 AND a.last_command_key = $2
+                  AND ($3::text IS NULL OR c.phone = $3)
+                """,
+                appointment_id,
+                command_key,
+                phone,
+            )
+            if previous:
+                return dict(previous)
         raise BookingError("No encontré un turno activo futuro con esos datos.")
     return dict(row)
 
@@ -157,46 +185,120 @@ async def reschedule_booking(
     hhmm: str,
     phone: str | None = None,
     channel: str = "web",
+    command_key: str | None = None,
 ) -> dict[str, Any]:
-    """Reprograma: cancela el turno actual y crea uno nuevo en una transacción."""
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            old = await conn.fetchrow(
-                """
-                SELECT a.id, c.phone, c.name AS customer_name,
-                       b.slug AS barber_slug, s.slug AS service_slug
-                FROM appointments a
-                JOIN customers c ON c.id = a.customer_id
-                JOIN barbers b ON b.id = a.barber_id
-                JOIN services s ON s.id = a.service_id
-                WHERE a.id = $1 AND a.status = 'active' AND a.starts_at > now()
-                  AND ($2::text IS NULL OR c.phone = $2)
-                FOR UPDATE OF a
-                """,
-                appointment_id,
-                phone,
-            )
-            if old is None:
-                raise BookingError("No encontré un turno activo futuro con esos datos.")
-            await conn.execute(
-                """
-                UPDATE appointments SET status = 'cancelled', cancelled_at = now(),
-                       cancel_reason = 'reprogramado', updated_at = now()
-                WHERE id = $1
-                """,
-                appointment_id,
-            )
-    # Fuera de la transacción: el turno viejo ya no bloquea el slot nuevo.
-    return await create_booking(
-        pool,
-        barber_slug=old["barber_slug"],
-        service_slug=old["service_slug"],
-        day=day,
-        hhmm=hhmm,
-        phone=old["phone"],
-        customer_name=old["customer_name"],
-        channel=channel,
+    """Atomically cancel the old appointment and insert the replacement."""
+    if command_key:
+        existing = await _get_booking_by_idempotency_key(pool, command_key)
+        if existing:
+            return existing
+
+    old = await pool.fetchrow(
+        """
+        SELECT a.id, a.customer_id, a.starts_at, a.price_at_booking,
+               c.phone, c.name AS customer_name,
+               b.id AS barber_id, b.slug AS barber_slug, b.name AS barber,
+               s.id AS service_id, s.slug AS service_slug, s.name AS service,
+               s.duration_min
+        FROM appointments a
+        JOIN customers c ON c.id = a.customer_id
+        JOIN barbers b ON b.id = a.barber_id
+        JOIN services s ON s.id = a.service_id
+        WHERE a.id = $1 AND a.status = 'active' AND a.starts_at > now()
+          AND ($2::text IS NULL OR c.phone = $2)
+        """,
+        appointment_id,
+        phone,
     )
+    if old is None:
+        raise BookingError("No encontré un turno activo futuro con esos datos.")
+
+    starts_at, ends_at = availability_service.slot_to_range(day, hhmm, old["duration_min"])
+    if starts_at != old["starts_at"]:
+        barber = await catalog.get_barber_by_slug(pool, old["barber_slug"])
+        service = await catalog.get_service_by_slug(pool, old["service_slug"])
+        slots = await availability_service.get_slots(pool, barber, service, day)
+        if hhmm not in slots:
+            raise SlotUnavailableError()
+
+    async with pool.acquire() as conn:
+        try:
+            async with conn.transaction():
+                locked = await conn.fetchrow(
+                    """
+                    SELECT id FROM appointments
+                    WHERE id = $1 AND status = 'active' AND starts_at > now()
+                    FOR UPDATE
+                    """,
+                    appointment_id,
+                )
+                if locked is None:
+                    raise BookingError("El turno ya no está activo.")
+                await conn.execute(
+                    """
+                    UPDATE appointments SET status = 'cancelled', cancelled_at = now(),
+                           cancel_reason = 'reprogramado', updated_at = now(),
+                           last_command_key = $2
+                    WHERE id = $1
+                    """,
+                    appointment_id,
+                    command_key,
+                )
+                row = await conn.fetchrow(
+                    """
+                    INSERT INTO appointments
+                        (customer_id, barber_id, service_id, starts_at, ends_at,
+                         price_at_booking, channel, idempotency_key)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    RETURNING id, starts_at, ends_at, status, price_at_booking, channel
+                    """,
+                    old["customer_id"],
+                    old["barber_id"],
+                    old["service_id"],
+                    starts_at,
+                    ends_at,
+                    old["price_at_booking"],
+                    channel,
+                    command_key,
+                )
+        except asyncpg.ExclusionViolationError:
+            raise SlotTakenError() from None
+        except asyncpg.UniqueViolationError:
+            if command_key:
+                existing = await _get_booking_by_idempotency_key(pool, command_key)
+                if existing:
+                    return existing
+            raise
+
+    return {
+        **dict(row),
+        "barber": old["barber"],
+        "barber_slug": old["barber_slug"],
+        "service": old["service"],
+        "service_slug": old["service_slug"],
+        "customer_name": old["customer_name"],
+        "phone": old["phone"],
+    }
+
+
+async def _get_booking_by_idempotency_key(
+    pool: asyncpg.Pool, idempotency_key: str
+) -> dict[str, Any] | None:
+    row = await pool.fetchrow(
+        """
+        SELECT a.id, a.starts_at, a.ends_at, a.status, a.price_at_booking, a.channel,
+               b.name AS barber, b.slug AS barber_slug,
+               s.name AS service, s.slug AS service_slug,
+               c.name AS customer_name, c.phone
+        FROM appointments a
+        JOIN customers c ON c.id = a.customer_id
+        JOIN barbers b ON b.id = a.barber_id
+        JOIN services s ON s.id = a.service_id
+        WHERE a.idempotency_key = $1
+        """,
+        idempotency_key,
+    )
+    return dict(row) if row else None
 
 
 async def get_bookings_by_phone(

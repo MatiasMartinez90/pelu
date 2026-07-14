@@ -7,12 +7,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.responses import Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from starlette.middleware.gzip import GZipMiddleware
 
 from ..config import get_settings
 from ..db.pool import close_pool, get_pool, init_pool
 from ..integrations.redis_client import close_redis, get_redis, wait_for_redis
-from ..queue.producer import get_producer
+from ..queue.producer import dispatch_outbox, get_producer
 from .routers import (
     admin_agenda,
     admin_conversations,
@@ -37,8 +39,12 @@ async def lifespan(app: FastAPI):
         await get_producer().connect()
     except Exception:  # noqa: BLE001 — la API puede servir el sitio sin Rabbit
         logger.exception("RabbitMQ no disponible al arrancar; el webhook reintentará")
+    stop_dispatcher = asyncio.Event()
+    dispatcher = asyncio.create_task(dispatch_outbox(stop_dispatcher))
     logger.info("nox-api up")
     yield
+    stop_dispatcher.set()
+    await dispatcher
     await get_producer().close()
     await close_redis()
     await close_pool()
@@ -123,3 +129,8 @@ async def ready():
     r = await get_redis()
     await r.ping()
     return {"status": "ready"}
+
+
+@app.get("/metrics", include_in_schema=False)
+async def metrics() -> Response:
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

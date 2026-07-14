@@ -10,7 +10,6 @@ Correcciones sobre el diseño del agente inmobiliaria:
 """
 
 import asyncio
-import json
 import logging
 import time
 
@@ -18,39 +17,34 @@ import aio_pika
 
 from ..agent import events
 from ..agent.graph import create_agent, run_agent
+from ..agent.tools.handoff import deliver_pending_handoff
 from ..config import get_settings
-from ..db.pool import close_pool, init_pool
+from ..db.pool import close_pool, get_pool, init_pool
+from ..db.repositories import agent_delivery
 from ..integrations.chatwoot import ChatwootClient, send_whatsapp_typing
-from ..integrations.redis_client import close_redis, get_redis, key, wait_for_redis
+from ..integrations.redis_client import (
+    ConversationLease,
+    close_redis,
+    get_redis,
+    key,
+    wait_for_redis,
+)
+from ..observability import LOCK_CONTENTION, QUEUE_MESSAGES
 from ..utils.retry import retry_with_backoff
 from . import health
+from .producer import get_producer
 from .topology import declare_topology
 
 logger = logging.getLogger(__name__)
 
-LOCK_TTL = 120
-MAX_NACK_BACKOFF = 30
-
-
-async def _drain_buffer(conversation_id: int) -> list[dict]:
-    """Vacía atómicamente el buffer de mensajes de la conversación."""
-    r = await get_redis()
-    buf_key = key(f"buf:{conversation_id}")
-    async with r.pipeline(transaction=True) as pipe:
-        pipe.lrange(buf_key, 0, -1)
-        pipe.delete(buf_key)
-        raw, _ = await pipe.execute()
-    return [json.loads(item) for item in raw]
-
-
 async def _wait_debounce(conversation_id: int) -> None:
     """Espera hasta que el cliente deje de escribir (debounce_seconds sin actividad)."""
     settings = get_settings()
-    r = await get_redis()
-    last_key = key(f"last:{conversation_id}")
     while True:
-        last = await r.get(last_key)
-        elapsed = time.time() - float(last) if last else settings.debounce_seconds
+        latest = await agent_delivery.latest_pending_received_at(await get_pool(), conversation_id)
+        if latest is None:
+            return
+        elapsed = time.time() - latest.timestamp()
         if elapsed >= settings.debounce_seconds:
             return
         await asyncio.sleep(settings.debounce_seconds - elapsed + 0.1)
@@ -59,6 +53,7 @@ async def _wait_debounce(conversation_id: int) -> None:
 async def _bot_is_off(conversation_id: int, chatwoot: ChatwootClient) -> bool:
     r = await get_redis()
     if await r.exists(key(f"bot_off:{conversation_id}")):
+        await deliver_pending_handoff(conversation_id)
         return True
     # Fallback: conversación asignada a humano o resuelta en Chatwoot.
     try:
@@ -68,8 +63,12 @@ async def _bot_is_off(conversation_id: int, chatwoot: ChatwootClient) -> bool:
             return True
         if conv.get("status") == "resolved":
             return True
-    except Exception:  # noqa: BLE001 — si Chatwoot no responde, seguimos con la flag local
-        logger.warning("no se pudo consultar la conversación %s", conversation_id)
+    except Exception as exc:
+        # Fail closed without discarding the durable inbox: when human/bot
+        # ownership cannot be established, Rabbit retries later.
+        raise RuntimeError(
+            f"no se pudo verificar el ownership de la conversación {conversation_id}"
+        ) from exc
     return False
 
 
@@ -103,6 +102,7 @@ class Worker:
             lambda: aio_pika.connect_robust(self.settings.rabbitmq_url), name="rabbitmq (worker)"
         )
         async with connection:
+            health.state["rabbit_connection"] = connection
             channel = await connection.channel()
             await channel.set_qos(prefetch_count=4)
             queue = await declare_topology(channel)
@@ -113,6 +113,8 @@ class Worker:
 
     async def on_message(self, message: aio_pika.abc.AbstractIncomingMessage) -> None:
         try:
+            import json
+
             payload = json.loads(message.body)
             conversation_id = int(payload["conversation_id"])
             phone = payload.get("phone", "")
@@ -122,89 +124,140 @@ class Worker:
             return
 
         try:
-            await self.process(conversation_id, phone)
+            retry_count = int((message.headers or {}).get("x-nox-retry-count") or 0)
+            await self.process(
+                conversation_id,
+                phone,
+                allow_agent_fallback=retry_count >= self.settings.queue_delivery_limit,
+            )
             await message.ack()
+            QUEUE_MESSAGES.labels("processed").inc()
         except Exception:  # noqa: BLE001
             logger.exception("error procesando conv %s", conversation_id)
             await events.log_event("error", conversation_id=conversation_id, phone=phone)
-            # Backoff exponencial antes de reencolar: sin esto, una queue
-            # quorum reentrega casi instantáneo y una falla transitoria (ej.
-            # un hipo de OpenAI de unos segundos) agota x-delivery-limit en
-            # menos de un segundo y manda mensajes reales a la DLQ que se
-            # hubieran resuelto solos con un poco de espera. Con
-            # prefetch_count=4 este sleep solo ocupa el slot de este mensaje,
-            # no bloquea el resto del consumer (aio-pika corre on_message
-            # como task independiente por mensaje).
-            delivery_count = int((message.headers or {}).get("x-delivery-count") or 0)
-            backoff = min(2**delivery_count, MAX_NACK_BACKOFF)
-            logger.warning(
-                "conv %s: reintento en %ds (delivery_count=%d)",
-                conversation_id,
-                backoff,
-                delivery_count,
-            )
-            await asyncio.sleep(backoff)
-            await message.nack(requeue=True)
+            retry_count = int((message.headers or {}).get("x-nox-retry-count") or 0)
+            if retry_count < self.settings.queue_delivery_limit:
+                delay = min(
+                    self.settings.queue_retry_base_seconds * (2**retry_count), 300
+                )
+                await get_producer().publish_retry(payload, retry_count + 1, delay)
+                await message.ack()
+                QUEUE_MESSAGES.labels("retry_scheduled").inc()
+            else:
+                logger.error("conv %s agotó reintentos; va a DLQ", conversation_id)
+                await message.reject(requeue=False)
+                QUEUE_MESSAGES.labels("dlq").inc()
 
-    async def process(self, conversation_id: int, phone: str) -> None:
+    async def process(
+        self, conversation_id: int, phone: str, *, allow_agent_fallback: bool = False
+    ) -> None:
         if await _bot_is_off(conversation_id, self.chatwoot):
             logger.info("bot apagado para conv %s, skip", conversation_id)
-            await _drain_buffer(conversation_id)
+            await agent_delivery.discard_pending(await get_pool(), conversation_id)
             return
 
-        r = await get_redis()
-        lock_key = key(f"lock:{conversation_id}")
-        got_lock = await r.set(lock_key, "1", nx=True, ex=LOCK_TTL)
-        if not got_lock:
-            # Otro worker está con esta conversación; sus mensajes están en el
-            # buffer y el holder los drena. Nada que hacer.
+        lease = ConversationLease(
+            conversation_id, self.settings.conversation_lock_ttl_seconds
+        )
+        if not await lease.acquire():
+            LOCK_CONTENTION.inc()
             return
 
         try:
-            # Si un intento anterior ya generó una respuesta pero no llegó a
-            # mandarse (crash o falla de Chatwoot entre el turno del agente y
-            # el ack), no volvemos a correr el agente — eso duplicaría efectos
-            # secundarios como crear una reserva. Solo reintentamos el envío.
-            pending_key = key(f"pending_reply:{conversation_id}")
-            pending_reply = await r.get(pending_key)
-            if pending_reply:
-                await self.chatwoot.send_message(conversation_id, pending_reply)
-                await r.delete(pending_key)
-                return
+            while True:
+                pending_reply = await agent_delivery.get_pending_reply(
+                    await get_pool(), conversation_id
+                )
+                if pending_reply:
+                    await self._send_reply(pending_reply)
+                    continue
 
-            await _wait_debounce(conversation_id)
-            pending = await _drain_buffer(conversation_id)
-            if not pending:
-                return  # otro trigger ya procesó este lote
+                await _wait_debounce(conversation_id)
+                claimed = await agent_delivery.claim_batch(
+                    await get_pool(),
+                    conversation_id,
+                    lease_seconds=self.settings.inbox_lease_seconds,
+                )
+                if claimed is None:
+                    break
+                batch_id, pending = claimed
+                text = "\n".join(m["content"] for m in pending if m.get("content"))
+                source_id = next(
+                    (m["source_id"] for m in pending if m.get("source_id")), ""
+                )
+                effective_phone = phone or next(
+                    (m["phone"] for m in pending if m.get("phone")), ""
+                )
+                typing_task = asyncio.create_task(
+                    send_whatsapp_typing(effective_phone, source_id)
+                )
+                started = time.monotonic()
+                try:
+                    reply = await run_agent(
+                        self.agent,
+                        conversation_id,
+                        effective_phone,
+                        text,
+                        turn_id=batch_id,
+                        allow_fallback=allow_agent_fallback,
+                    )
+                    if lease.lost:
+                        raise RuntimeError("conversation lease was lost")
+                    stored = await agent_delivery.complete_batch_with_reply(
+                        await get_pool(),
+                        batch_id=batch_id,
+                        conversation_id=conversation_id,
+                        content=reply,
+                    )
+                except Exception:
+                    await agent_delivery.release_batch(await get_pool(), batch_id)
+                    typing_task.cancel()
+                    raise
 
-            text = "\n".join(m["content"] for m in pending if m.get("content"))
-            source_id = next((m["source_id"] for m in pending if m.get("source_id")), "")
-
-            typing_task = asyncio.create_task(send_whatsapp_typing(phone, source_id))
-            started = time.monotonic()
-
-            reply = await run_agent(self.agent, conversation_id, phone, text)
-
-            # Persistimos la respuesta ANTES de mandarla: si el envío falla o
-            # el proceso muere acá, el próximo intento (arriba) reintenta solo
-            # el envío en vez de perder la respuesta para siempre.
-            await r.set(pending_key, reply, ex=3600)
-
-            # Mínimo de "escribiendo…" para que no responda instantáneo
-            elapsed = time.monotonic() - started
-            if elapsed < self.settings.min_typing_seconds:
-                await asyncio.sleep(self.settings.min_typing_seconds - elapsed)
-            await typing_task
-
-            await self.chatwoot.send_message(conversation_id, reply)
-            await r.delete(pending_key)
-
-            # Si entraron mensajes durante la corrida, quedará un trigger en la
-            # cola que los procesa; el buffer los conserva.
+                elapsed = time.monotonic() - started
+                if elapsed < self.settings.min_typing_seconds:
+                    await asyncio.sleep(self.settings.min_typing_seconds - elapsed)
+                await typing_task
+                await self._send_reply(stored)
         finally:
-            await r.delete(lock_key)
+            wake_requested = await lease.release()
+
+        # Atomic release consumed a wake request. Re-enter after releasing so
+        # a message arriving at the lock boundary can never remain stranded.
+        if wake_requested:
+            await self.process(
+                conversation_id, phone, allow_agent_fallback=allow_agent_fallback
+            )
+
+    async def _send_reply(self, reply: dict) -> None:
+        try:
+            if int(reply.get("attempts") or 0) > 0:
+                existing = await self.chatwoot.find_recent_outgoing(
+                    int(reply["conversation_id"]),
+                    str(reply["content"]),
+                    reply["created_at"],
+                )
+                if existing:
+                    await agent_delivery.mark_reply_sent(
+                        await get_pool(), reply["id"], str(existing["id"])
+                    )
+                    return
+            response = await self.chatwoot.send_message(
+                int(reply["conversation_id"]),
+                str(reply["content"]),
+            )
+            message_id = response.get("id")
+            await agent_delivery.mark_reply_sent(
+                await get_pool(), reply["id"], str(message_id) if message_id else None
+            )
+        except Exception as exc:
+            await agent_delivery.mark_reply_failed(await get_pool(), reply["id"], str(exc))
+            raise
 
     async def stop(self) -> None:
+        health.state["ready"] = False
+        health.state["rabbit_connection"] = None
+        await self.chatwoot.close()
         if self._checkpointer_cm is not None:
             await self._checkpointer_cm.__aexit__(None, None, None)
         await close_redis()

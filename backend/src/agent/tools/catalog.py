@@ -14,7 +14,7 @@ def _fmt_price(service: dict) -> str:
 @tool
 async def get_services(barber: str | None = None) -> str:
     """Lista los servicios con precio y duración. Pasá el slug del barbero
-    (ej: 'bruno') para ver solo los servicios que ofrece ese profesional."""
+    devuelto por get_barbers para ver solo los servicios que ofrece ese profesional."""
     pool = await get_pool()
     services = await catalog.list_services(pool, barber_slug=barber)
     if not services:

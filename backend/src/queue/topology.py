@@ -18,6 +18,15 @@ async def declare_topology(channel: aio_pika.abc.AbstractChannel) -> aio_pika.ab
     dlq = await channel.declare_queue(s.queue_dlq_name, durable=True)
     await dlq.bind(dlx, routing_key=s.queue_name)
 
+    await channel.declare_queue(
+        s.queue_retry_name,
+        durable=True,
+        arguments={
+            "x-dead-letter-exchange": "",
+            "x-dead-letter-routing-key": s.queue_name,
+        },
+    )
+
     queue = await channel.declare_queue(
         s.queue_name,
         durable=True,

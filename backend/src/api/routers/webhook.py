@@ -1,4 +1,4 @@
-"""Webhook de Chatwoot. Valida token, bufferea en Redis y dispara el worker.
+"""Webhook de Chatwoot: validates, durably enqueues and triggers the worker.
 
 Chatwoot no firma los webhooks con HMAC: la autenticación es un token secreto
 en la query string de la URL configurada en el inbox (401 si no matchea).
@@ -7,7 +7,6 @@ El endpoint nunca procesa el mensaje inline: LPUSH al buffer + trigger a Rabbit.
 
 import hashlib
 import hmac
-import json
 import logging
 import time
 
@@ -17,8 +16,10 @@ from pydantic import BaseModel, Field
 
 from ...agent import events
 from ...config import get_settings
+from ...db.pool import get_pool
+from ...db.repositories import agent_delivery
 from ...integrations.redis_client import get_redis, key, rate_limit_exceeded
-from ...queue.producer import get_producer
+from ...observability import WEBHOOK_MESSAGES
 from ...services import link_service
 
 logger = logging.getLogger(__name__)
@@ -134,23 +135,26 @@ async def chatwoot_webhook(request: Request, token: str = Query(default="")):
 
     # El cliente respondió: sale de abandonado/descartado y resetea el contador de follow-ups.
     try:
-        from ...db.pool import get_pool
         from ...services import conversation_state as cstate
 
         await cstate.touch_client(await get_pool(), conversation_id, phone)
     except Exception as e:  # noqa: BLE001 — no romper el webhook
         logger.warning("touch_client error: %s", e)
 
-    r = await get_redis()
-    async with r.pipeline(transaction=False) as pipe:
-        pipe.rpush(
-            key(f"buf:{conversation_id}"),
-            json.dumps({"content": content, "source_id": source_id}),
-        )
-        pipe.expire(key(f"buf:{conversation_id}"), 3600)
-        pipe.set(key(f"last:{conversation_id}"), time.time(), ex=3600)
-        await pipe.execute()
+    raw_message_id = body.message.id if body.message else body.id
+    message_id = str(raw_message_id) if raw_message_id is not None else hashlib.sha256(raw).hexdigest()
+    outbox = await agent_delivery.enqueue_message(
+        await get_pool(),
+        message_id=message_id,
+        conversation_id=conversation_id,
+        phone=phone,
+        content=content,
+        source_id=source_id,
+    )
+    if outbox is None:
+        WEBHOOK_MESSAGES.labels("duplicate").inc()
+        return {"status": "duplicate"}
 
     await events.log_event("message_in", conversation_id=conversation_id, phone=phone)
-    await get_producer().publish_trigger(conversation_id, phone)
+    WEBHOOK_MESSAGES.labels("queued").inc()
     return {"status": "queued"}
