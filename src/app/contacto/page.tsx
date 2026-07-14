@@ -12,8 +12,11 @@ export const metadata: Metadata = {
 const ADDR = "Av. Cabildo 2200, C1428 CABA";
 const WA = "https://wa.me/5491155550123";
 const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ADDR)}`;
-// maps.google.com (embed clásico) sí permite framing; www.google.com/maps lo bloquea (X-Frame-Options).
-const mapEmbed = `https://maps.google.com/maps?q=${encodeURIComponent(ADDR)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+// Google Maps rechaza el embed sin API key (X-Frame-Options). OpenStreetMap sí es
+// frameable sin key. Coords aprox de Av. Cabildo 2200, Belgrano CABA.
+const LAT = -34.5625;
+const LON = -58.456;
+const mapEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${LON - 0.004}%2C${LAT - 0.003}%2C${LON + 0.004}%2C${LAT + 0.003}&layer=mapnik&marker=${LAT}%2C${LON}`;
 
 const info = [
   { label: "Dirección", value: "Av. Cabildo 2200", sub: "Belgrano, CABA" },
