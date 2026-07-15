@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
@@ -19,12 +20,12 @@ type Member = {
 };
 
 const team: Member[] = [
-  { name: "Thiago", role: "Barbero", bio: "Especialista en fades y cortes clásicos. Precisión en cada pasada.", instagram: "thiago.barber", photo: "https://images.unsplash.com/photo-1503443207922-dff7d543fd0e?w=600&q=80&auto=format&fit=crop" },
-  { name: "Lautaro", role: "Barbero", bio: "El rey de los diseños a navaja y los cortes modernos.", instagram: "lautaro.barber", photo: "https://images.unsplash.com/photo-1493256338651-d82f7acb2b38?w=600&q=80&auto=format&fit=crop" },
-  { name: "Bruno", role: "Master Barber", bio: "Fundador. Experiencia premium de punta a punta.", instagram: "bruno.barber", photo: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=600&q=80&auto=format&fit=crop" },
-  { name: "Nahuel", role: "Barbero", bio: "Cortes prolijos y mucha buena onda. Tu corte de confianza.", instagram: "nahuel.barber", photo: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&q=80&auto=format&fit=crop" },
-  { name: "Ramiro", role: "Barbero", bio: "Detallista al máximo. Terminaciones impecables a tijera.", instagram: "ramiro.barber", photo: "https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=600&q=80&auto=format&fit=crop" },
-  { name: "Camila", role: "Estilista", bio: "Especialista en corte femenino, color y alisado profesional.", instagram: "camila.estilista", photo: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=600&q=80&auto=format&fit=crop" },
+  { name: "Thiago", role: "Barbero", bio: "Especialista en fades y cortes clásicos. Precisión en cada pasada.", instagram: "thiago.barber", photo: "/media/team/thiago.v1.webp" },
+  { name: "Lautaro", role: "Barbero", bio: "El rey de los diseños a navaja y los cortes modernos.", instagram: "lautaro.barber", photo: "/media/team/lautaro.v1.webp" },
+  { name: "Bruno", role: "Master Barber", bio: "Fundador. Experiencia premium de punta a punta.", instagram: "bruno.barber", photo: "/media/team/bruno.v1.webp" },
+  { name: "Nahuel", role: "Barbero", bio: "Cortes prolijos y mucha buena onda. Tu corte de confianza.", instagram: "nahuel.barber", photo: "/media/team/nahuel.v1.webp" },
+  { name: "Ramiro", role: "Barbero", bio: "Detallista al máximo. Terminaciones impecables a tijera.", instagram: "ramiro.barber", photo: "/media/team/ramiro.v1.webp" },
+  { name: "Camila", role: "Estilista", bio: "Especialista en corte femenino, color y alisado profesional.", instagram: "camila.estilista", photo: "/media/team/camila.v1.webp" },
 ];
 
 export default function EquipoPage() {
@@ -47,9 +48,9 @@ export default function EquipoPage() {
       <section className="px-fluid" style={{ maxWidth: 1180, margin: "0 auto", paddingBottom: "clamp(72px,10vw,120px)" }}>
         <div className="grid-team">
           {team.map((m) => (
-            <a key={m.name} href="/agendar" className="mbr">
+            <Link key={m.name} href="/agendar" className="mbr">
               <div className="mbr__ph">
-                <Image src={m.photo} alt={m.name} fill sizes="(max-width: 900px) 50vw, 25vw" />
+                <Image src={m.photo} alt={m.name} fill unoptimized sizes="(max-width: 900px) 50vw, 25vw" />
                 <span className="mbr__ig">@{m.instagram}</span>
               </div>
               <div style={{ marginTop: 18, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
@@ -57,7 +58,7 @@ export default function EquipoPage() {
                 <span style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.55 }}>{m.role}</span>
               </div>
               <p style={{ marginTop: 10, color: "rgba(255,255,255,0.55)", fontSize: 14, lineHeight: 1.55, maxWidth: 320 }}>{m.bio}</p>
-            </a>
+            </Link>
           ))}
         </div>
       </section>

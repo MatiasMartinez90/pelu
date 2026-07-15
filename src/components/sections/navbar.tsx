@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Menu, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +41,7 @@ export function Navbar() {
       )}
     >
       <nav className="container-px mx-auto flex h-16 max-w-6xl items-center justify-between">
-        <a href="#inicio" className="flex items-center gap-2">
+        <Link href="/#inicio" className="flex items-center gap-2">
           <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Scissors className="size-5" />
           </span>
@@ -48,24 +49,24 @@ export function Navbar() {
             {site.shortName}
             <span className="text-primary">.</span>
           </span>
-        </a>
+        </Link>
 
         <ul className="hidden items-center gap-8 md:flex">
           {links.map((l) => (
             <li key={l.href}>
-              <a
+              <Link
                 href={l.href}
                 className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 {l.label}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
 
         <div className="flex items-center gap-2">
           <Button asChild className="hidden sm:inline-flex">
-            <a href="/agendar">Agendar turno</a>
+            <Link href="/agendar">Agendar turno</Link>
           </Button>
 
           <Sheet>
@@ -83,12 +84,12 @@ export function Navbar() {
                 {links.map((l) => (
                   <li key={l.href}>
                     <SheetClose asChild>
-                      <a
+                      <Link
                         href={l.href}
                         className="block rounded-md px-4 py-3 text-base font-medium hover:bg-secondary"
                       >
                         {l.label}
-                      </a>
+                      </Link>
                     </SheetClose>
                   </li>
                 ))}
@@ -96,7 +97,7 @@ export function Navbar() {
               <div className="mt-4 px-4">
                 <SheetClose asChild>
                   <Button asChild className="w-full">
-                    <a href="/agendar">Agendar turno</a>
+                    <Link href="/agendar">Agendar turno</Link>
                   </Button>
                 </SheetClose>
               </div>

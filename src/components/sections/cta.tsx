@@ -1,4 +1,5 @@
 import { CalendarClock, Timer, MapPin } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { site } from "@/lib/site";
 
@@ -50,7 +51,7 @@ export function Cta() {
         </div>
 
         <Button asChild size="lg" className="mt-10 text-base">
-          <a href="/agendar">Reservar mi turno</a>
+          <Link href="/agendar">Reservar mi turno</Link>
         </Button>
       </div>
     </section>

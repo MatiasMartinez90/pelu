@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-const SERIF = "'Bodoni Moda', Georgia, serif";
+const SERIF = "var(--font-serif)";
 
 const ars = new Intl.NumberFormat("es-AR");
 const money = (n: number) => `$${ars.format(n)}`;
@@ -64,7 +64,7 @@ export function Tienda() {
     <section
       id="tienda"
       className="nox-shop"
-      style={{ background: "#0a0a0a", color: "#fff", fontFamily: "'Archivo', system-ui, sans-serif" }}
+      style={{ background: "#0a0a0a", color: "#fff", fontFamily: "var(--font-sans)" }}
     >
       <div className="nox-shop-head">
         <div>

@@ -1,4 +1,6 @@
 import { Instagram as InstagramIcon } from "@/components/icons";
+import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { gallery } from "@/lib/data";
 import { site } from "@/lib/site";
@@ -25,10 +27,11 @@ export function InstagramStrip() {
             rel="noopener noreferrer"
             className="group relative aspect-square overflow-hidden rounded-xl"
           >
-            <img
+            <Image
               src={src}
               alt={`Trabajo ${i + 1}`}
-              loading="lazy"
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
               className="size-full object-cover transition-transform duration-500 group-hover:scale-110"
             />
             <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
@@ -45,7 +48,7 @@ export function InstagramStrip() {
           </a>
         </Button>
         <Button asChild size="lg">
-          <a href="/galeria">Ver galería</a>
+          <Link href="/galeria">Ver galería</Link>
         </Button>
       </div>
     </section>

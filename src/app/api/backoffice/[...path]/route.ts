@@ -3,6 +3,7 @@
 // El token y la API key de Chatwoot nunca llegan al browser.
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://nox-api.nox.svc.cluster.local";
 
@@ -35,9 +36,29 @@ async function proxy(req: NextRequest, { params }: { params: Promise<{ path: str
 
   const resp = await fetch(url, init);
   const body = await resp.text();
+  const joinedPath = path.join("/");
+  if (
+    resp.ok &&
+    req.method !== "GET" &&
+    /^(barbers|services|site-profile|schedule-rules|settings)(\/|$)/.test(joinedPath)
+  ) {
+    revalidateTag("booking-catalog", "max");
+  }
+  const privateMaxAge =
+    req.method === "GET" && joinedPath === "dashboard/summary"
+      ? 10
+      : req.method === "GET" && /^(barbers|services|settings|stock)$/.test(joinedPath)
+        ? 30
+        : 0;
   return new NextResponse(body, {
     status: resp.status,
-    headers: { "content-type": resp.headers.get("content-type") ?? "application/json" },
+    headers: {
+      "content-type": resp.headers.get("content-type") ?? "application/json",
+      "Cache-Control": privateMaxAge
+        ? `private, max-age=${privateMaxAge}, stale-while-revalidate=30`
+        : "private, no-store",
+      Vary: "Cookie",
+    },
   });
 }
 

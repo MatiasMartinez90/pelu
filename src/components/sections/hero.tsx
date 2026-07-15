@@ -1,9 +1,8 @@
-"use client";
+import Image from "next/image";
+import Link from "next/link";
+import { HeroVideo } from "@/components/sections/hero-video";
 
-import { useEffect, useRef, useState } from "react";
-
-const SERIF = "'Bodoni Moda', Georgia, serif";
-const SANS = "'Archivo', system-ui, sans-serif";
+const SANS = "var(--font-sans)";
 
 // Hero video + poster self-hosteados en /public (no dependen de servicios externos).
 // El poster es el frame 0 exacto del video → sin salto en la transición.
@@ -19,55 +18,26 @@ type HeroProps = {
 };
 
 export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFAULT_VIDEO_WEBM, poster = DEFAULT_POSTER }: HeroProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    const v = videoRef.current;
-    if (v) {
-      v.muted = true;
-      v.play().catch(() => {});
-      // Si el video ya estaba listo antes de montar el listener (cache), marcar ready.
-      if (v.readyState >= 3) setReady(true);
-    }
-  }, [videoSrc]);
-
   const marquee = ("✶  " + brand + "  ·  BARBERÍA PREMIUM  ·  BUENOS AIRES  ").repeat(3);
 
   return (
     <section
       className="nox-hero"
-      style={{
-        background: `#0a0a0a url(${poster}) 55% 26% / cover no-repeat`,
-        fontFamily: SANS,
-        color: "#fff",
-      }}
+      style={{ background: "#0a0a0a", fontFamily: SANS, color: "#fff" }}
     >
-      <video
-        ref={videoRef}
-        autoPlay
-        loop
-        muted
-        playsInline
-        poster={poster}
-        preload="metadata"
-        onPlaying={() => setReady(true)}
-        onCanPlay={() => setReady(true)}
+      <Image
+        src={poster}
+        alt=""
+        fill
+        preload
+        sizes="100vw"
+        aria-hidden="true"
         style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
           objectFit: "cover",
           objectPosition: "55% 26%",
-          filter: "saturate(1.02) contrast(1.02)",
-          opacity: ready ? 1 : 0,
-          transition: "opacity 600ms ease-in",
         }}
-      >
-        <source src={videoWebm} type="video/webm" />
-        <source src={videoSrc} type="video/mp4" />
-      </video>
+      />
+      <HeroVideo mp4={videoSrc} webm={videoWebm} poster={poster} />
 
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(95deg, rgba(8,8,8,0.82) 0%, rgba(8,8,8,0.5) 34%, rgba(8,8,8,0.12) 56%, rgba(8,8,8,0) 72%)" }} />
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0) 22%, rgba(8,8,8,0) 62%, rgba(8,8,8,0.7) 100%)" }} />
@@ -87,24 +57,24 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFA
 
       {/* Main editorial overlay */}
       <div className="nox-hero-main">
-        <div className="nox-hero-brand">{brand}</div>
+        <h1 className="nox-hero-brand">{brand}</h1>
         <div style={{ marginTop: 16, marginBottom: 32, fontSize: 12, letterSpacing: "0.42em", textTransform: "uppercase", opacity: 0.82, paddingLeft: 4 }}>Barbería Premium</div>
 
         <nav style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 11, fontSize: 15, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 500 }}>
-          <a href="/servicios" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Servicios</a>
+          <Link href="/servicios" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Servicios</Link>
           <div style={{ height: 14 }} />
-          <a href="/equipo" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Equipo</a>
-          <a href="/galeria" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Galería</a>
+          <Link href="/equipo" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Equipo</Link>
+          <Link href="/galeria" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Galería</Link>
           <div style={{ height: 14 }} />
-          <a href="/agendar" className="nox-cta">Agendar Turno</a>
+          <Link href="/agendar" prefetch className="nox-cta">Agendar Turno</Link>
           <a href="#tienda" className="nox-cta">Tienda</a>
           <div style={{ height: 14 }} />
           <div style={{ height: 14 }} />
-          <a href="/login" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Ingresar</a>
+          <Link href="/login" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Ingresar</Link>
           <div style={{ height: 14 }} />
-          <a href="/nosotros" className="nox-link" style={{ color: "#fff", opacity: 0.78, fontSize: 14 }}>Nosotros</a>
-          <a href="/faq" className="nox-link" style={{ color: "#fff", opacity: 0.78, fontSize: 14 }}>Preguntas Frecuentes</a>
-          <a href="/contacto" className="nox-link" style={{ color: "#fff", opacity: 0.78, fontSize: 14 }}>Cómo Llegar</a>
+          <Link href="/nosotros" className="nox-link" style={{ color: "#fff", opacity: 0.78, fontSize: 14 }}>Nosotros</Link>
+          <Link href="/faq" className="nox-link" style={{ color: "#fff", opacity: 0.78, fontSize: 14 }}>Preguntas Frecuentes</Link>
+          <Link href="/contacto" className="nox-link" style={{ color: "#fff", opacity: 0.78, fontSize: 14 }}>Cómo Llegar</Link>
         </nav>
       </div>
 

@@ -17,12 +17,10 @@ const securityHeaders = [
       "frame-src https://www.openstreetmap.org",
       "form-action 'self' https://auth.cloud-it.com.ar",
       "script-src 'self' 'unsafe-inline'",
-      // layout.tsx carga Bodoni Moda/Archivo directo de Google Fonts (Geist/
-      // Oswald ya van por next/font, self-hosted, y no necesitan esto).
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https://images.unsplash.com",
       "media-src 'self'",
-      "font-src 'self' data: https://fonts.gstatic.com",
+      "font-src 'self' data:",
       "connect-src 'self' https://api-nox.cloud-it.com.ar https://auth.cloud-it.com.ar",
       "upgrade-insecure-requests",
     ].join("; "),
@@ -34,6 +32,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: {
     remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 86400,
   },
   async headers() {
     return [
@@ -49,6 +49,12 @@ const nextConfig: NextConfig = {
             key: "Cache-Control",
             value: "public, max-age=604800, stale-while-revalidate=86400",
           },
+        ],
+      },
+      {
+        source: "/media/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
     ];

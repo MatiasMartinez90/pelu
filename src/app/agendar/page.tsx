@@ -3,6 +3,7 @@ import { EditorialNav } from "@/components/editorial/nav";
 import { EditorialWizard } from "@/components/booking/editorial-wizard";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { site } from "@/lib/site";
+import { getBookingCatalog } from "@/lib/booking-catalog";
 
 export const metadata: Metadata = {
   title: `Agendá tu turno | ${site.name}`,
@@ -15,10 +16,18 @@ export default async function AgendarPage({
   searchParams: Promise<{ servicio?: string }>;
 }) {
   const { servicio } = await searchParams;
+  const catalog = await getBookingCatalog().catch(() => ({
+    barbers: [],
+    services_by_barber: {},
+  }));
   return (
     <div style={{ background: "#0a0a0a", minHeight: "100vh" }}>
       <EditorialNav />
-      <EditorialWizard preselectServiceId={servicio} />
+      <EditorialWizard
+        preselectServiceId={servicio}
+        initialCatalog={catalog}
+        initialLoadError={catalog.barbers.length === 0}
+      />
       <WhatsappFab />
     </div>
   );

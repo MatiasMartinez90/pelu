@@ -1,4 +1,5 @@
 import { Instagram } from "@/components/icons";
+import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { SectionHeading } from "@/components/section-heading";
 import { barbers } from "@/lib/data";
@@ -20,9 +21,11 @@ export function Team() {
             className="group gap-0 overflow-hidden p-0 transition-colors hover:border-primary/50"
           >
             <div className="relative aspect-[4/3] overflow-hidden">
-              <img
+              <Image
                 src={b.photo}
                 alt={b.name}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-card via-card/10 to-transparent" />

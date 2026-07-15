@@ -1,5 +1,7 @@
-const SERIF = "'Bodoni Moda', Georgia, serif";
-const SANS = "'Archivo', system-ui, sans-serif";
+import Link from "next/link";
+
+const SERIF = "var(--font-serif)";
+const SANS = "var(--font-sans)";
 
 const WA = "https://wa.me/5491155550123";
 const IG = "https://instagram.com/noxbarber";
@@ -13,7 +15,8 @@ export function Footer({ brand = "NOX" }: { brand?: string }) {
           <div style={{ fontSize: 11, letterSpacing: "0.28em", textTransform: "uppercase", opacity: 0.6 }}>Newsletter</div>
           <p style={{ marginTop: 14, fontFamily: SERIF, fontSize: 24, lineHeight: 1.15, maxWidth: 300 }}>Sumate y enterate de novedades y promos.</p>
           <div style={{ marginTop: 24, display: "flex", alignItems: "stretch", maxWidth: 340 }}>
-            <input className="nox-foot-input" type="email" placeholder="Tu email" style={{ flex: 1, minWidth: 0, background: "none", border: "none", borderBottom: "1px solid rgba(255,255,255,0.3)", color: "#fff", fontFamily: SANS, fontSize: 14, padding: "12px 4px", outline: "none" }} />
+            <label className="sr-only" htmlFor="newsletter-email">Correo electrónico</label>
+            <input id="newsletter-email" className="nox-foot-input" type="email" autoComplete="email" placeholder="Tu email" style={{ flex: 1, minWidth: 0, background: "none", border: "none", borderBottom: "1px solid rgba(255,255,255,0.3)", color: "#fff", fontFamily: SANS, fontSize: 14, padding: "12px 4px" }} />
             <button type="button" className="nox-news">Suscribirme</button>
           </div>
         </div>
@@ -22,11 +25,11 @@ export function Footer({ brand = "NOX" }: { brand?: string }) {
         <div className="nfoot-cell">
           <div style={{ fontSize: 11, letterSpacing: "0.28em", textTransform: "uppercase", opacity: 0.6 }}>Explorar</div>
           <nav style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 13, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-            <a href="/servicios" className="nox-link" style={{ opacity: 0.85 }}>Servicios</a>
-            <a href="/equipo" className="nox-link" style={{ opacity: 0.85 }}>Equipo</a>
-            <a href="/galeria" className="nox-link" style={{ opacity: 0.85 }}>Galería</a>
+            <Link href="/servicios" className="nox-link" style={{ opacity: 0.85 }}>Servicios</Link>
+            <Link href="/equipo" className="nox-link" style={{ opacity: 0.85 }}>Equipo</Link>
+            <Link href="/galeria" className="nox-link" style={{ opacity: 0.85 }}>Galería</Link>
             <a href="#tienda" className="nox-link" style={{ opacity: 0.85 }}>Tienda</a>
-            <a href="/agendar" className="nox-link" style={{ opacity: 0.85 }}>Agendar Turno</a>
+            <Link href="/agendar" className="nox-link" style={{ opacity: 0.85 }}>Agendar Turno</Link>
           </nav>
         </div>
 
@@ -35,9 +38,9 @@ export function Footer({ brand = "NOX" }: { brand?: string }) {
           <div style={{ fontSize: 11, letterSpacing: "0.28em", textTransform: "uppercase", opacity: 0.6 }}>Información</div>
           <nav style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 13, fontSize: 13, letterSpacing: "0.12em", textTransform: "uppercase" }}>
             <a href={WA} target="_blank" rel="noreferrer" className="nox-link" style={{ opacity: 0.85 }}>Atención al Cliente</a>
-            <a href="/faq" className="nox-link" style={{ opacity: 0.85 }}>Preguntas Frecuentes</a>
-            <a href="/nosotros" className="nox-link" style={{ opacity: 0.85 }}>Nosotros</a>
-            <a href="/empleos" className="nox-link" style={{ opacity: 0.85 }}>Trabajá con Nosotros</a>
+            <Link href="/faq" className="nox-link" style={{ opacity: 0.85 }}>Preguntas Frecuentes</Link>
+            <Link href="/nosotros" className="nox-link" style={{ opacity: 0.85 }}>Nosotros</Link>
+            <Link href="/empleos" className="nox-link" style={{ opacity: 0.85 }}>Trabajá con Nosotros</Link>
           </nav>
         </div>
 
@@ -68,7 +71,7 @@ export function Footer({ brand = "NOX" }: { brand?: string }) {
         <div className="nfoot-bcell" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <div style={{ display: "flex", gap: 18, fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase" }}>
             <span style={{ opacity: 0.9 }}>ES</span>
-            <span style={{ opacity: 0.4 }}>EN</span>
+            <span style={{ opacity: 0.65 }}>EN</span>
           </div>
           <div style={{ opacity: 0.5, marginTop: 24 }}>© 2026 NOX Barber</div>
         </div>

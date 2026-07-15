@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
-const SERIF = "'Bodoni Moda', Georgia, serif";
-const SANS = "'Archivo', system-ui, sans-serif";
+const SERIF = "var(--font-serif)";
+const SANS = "var(--font-sans)";
 const ars = new Intl.NumberFormat("es-AR");
 const money = (n: number) => `$${ars.format(Math.round(n))}`;
 const CARD = { border: "1px solid rgba(255,255,255,0.14)" } as const;
@@ -54,8 +55,16 @@ export default function BarberoPage() {
     setName(r.barber);
   }, [selMonth]);
 
-  useEffect(() => { loadAgenda().catch((e) => setError((e as Error).message)); }, [loadAgenda]);
-  useEffect(() => { loadStats().catch((e) => setError((e as Error).message)); }, [loadStats]);
+  useEffect(() => {
+    // Sincroniza la agenda con el backend al cambiar de fecha.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadAgenda().catch((e) => setError((e as Error).message));
+  }, [loadAgenda]);
+  useEffect(() => {
+    // Sincroniza las métricas con el backend al cambiar de mes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadStats().catch((e) => setError((e as Error).message));
+  }, [loadStats]);
 
   const sel = parseKey(selDate);
   const shiftDay = (d: number) => { const dt = parseKey(selDate); dt.setDate(dt.getDate() + d); setSelDate(dateKey(dt)); };
@@ -76,7 +85,7 @@ export default function BarberoPage() {
       <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 24, textAlign: "center" }}>
         <span style={{ fontFamily: SERIF, fontSize: 48 }}>NOX</span>
         <p style={{ opacity: 0.7, maxWidth: 420 }}>Esta sección es para barberos del equipo. Si sos parte del equipo y ves esto, pedile al admin que vincule tu email.</p>
-        <a href="/" className="nox-btn">Volver al sitio</a>
+        <Link href="/" className="nox-btn">Volver al sitio</Link>
       </div>
     );
   }
@@ -85,7 +94,7 @@ export default function BarberoPage() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <header className="acct-top">
         <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
-          <a href="/" style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 24, color: "#fff" }}>NOX</a>
+          <Link href="/" style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 24, color: "#fff" }}>NOX</Link>
           <span style={{ fontSize: 11, letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.5 }}>Barbero</span>
         </div>
         {name && <div style={{ fontSize: 14, opacity: 0.8 }}>{name}</div>}

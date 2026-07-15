@@ -1,7 +1,8 @@
 import { LoginButton } from "./login-button";
+import Link from "next/link";
 
-const SERIF = "'Bodoni Moda', Georgia, serif";
-const SANS = "'Archivo', system-ui, sans-serif";
+const SERIF = "var(--font-serif)";
+const SANS = "var(--font-sans)";
 
 export default async function LoginPage({
   searchParams,
@@ -38,9 +39,9 @@ export default async function LoginPage({
 
       <LoginButton callbackUrl={callbackUrl ?? "/post-login"} />
 
-      <a href="/" className="nox-link" style={{ color: "#fff", opacity: 0.5, fontSize: 13, letterSpacing: "0.08em" }}>
+      <Link href="/" className="nox-link" style={{ color: "#fff", opacity: 0.72, fontSize: 13, letterSpacing: "0.08em" }}>
         ← Volver al sitio
-      </a>
+      </Link>
     </main>
   );
 }

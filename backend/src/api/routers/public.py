@@ -1,34 +1,72 @@
 """Endpoints públicos: catálogo, disponibilidad y reservas del wizard."""
 
+import hashlib
+import json
 from datetime import date as date_type
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 
 from ...db.pool import get_pool
 from ...db.repositories import catalog, site_context
 from ...integrations.redis_client import rate_limit_exceeded
 from ...services import availability_service, booking_service
 from ..client_ip import get_client_ip
-from ..schemas import AvailabilityOut, BarberOut, BookingIn, BookingOut, ServiceOut
+from ..schemas import (
+    AvailabilityOut,
+    BarberOut,
+    BookingBootstrapOut,
+    BookingIn,
+    BookingOut,
+    ServiceOut,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["public"])
 
 
+def _cache_public(response: Response, request: Request, value, max_age: int = 300) -> bool:
+    """Agrega caché compartida y devuelve True si corresponde responder 304."""
+    encoded = json.dumps(value, sort_keys=True, default=str, separators=(",", ":")).encode()
+    etag = f'"{hashlib.sha256(encoded).hexdigest()[:24]}"'
+    response.headers["Cache-Control"] = (
+        f"public, max-age=60, s-maxage={max_age}, stale-while-revalidate=86400"
+    )
+    response.headers["ETag"] = etag
+    return request.headers.get("if-none-match") == etag
+
+
 @router.get("/site")
-async def site_data():
+async def site_data(request: Request, response: Response):
     pool = await get_pool()
-    return await site_context.get_site_data(pool)
+    value = await site_context.get_site_data(pool)
+    if _cache_public(response, request, value, 300):
+        return Response(status_code=304, headers=dict(response.headers))
+    return value
 
 
 @router.get("/barbers", response_model=list[BarberOut])
-async def list_barbers(service: str | None = None):
+async def list_barbers(request: Request, response: Response, service: str | None = None):
     pool = await get_pool()
-    return await catalog.list_barbers(pool, service_slug=service)
+    value = await catalog.list_barbers(pool, service_slug=service)
+    if _cache_public(response, request, value):
+        return Response(status_code=304, headers=dict(response.headers))
+    return value
 
 
 @router.get("/services", response_model=list[ServiceOut])
-async def list_services(barber: str | None = None):
+async def list_services(request: Request, response: Response, barber: str | None = None):
     pool = await get_pool()
-    return await catalog.list_services(pool, barber_slug=barber)
+    value = await catalog.list_services(pool, barber_slug=barber)
+    if _cache_public(response, request, value):
+        return Response(status_code=304, headers=dict(response.headers))
+    return value
+
+
+@router.get("/booking-bootstrap", response_model=BookingBootstrapOut)
+async def booking_bootstrap(request: Request, response: Response):
+    pool = await get_pool()
+    value = await catalog.booking_bootstrap(pool)
+    if _cache_public(response, request, value):
+        return Response(status_code=304, headers=dict(response.headers))
+    return value
 
 
 @router.get("/availability", response_model=AvailabilityOut)
@@ -38,14 +76,10 @@ async def availability(
     date: date_type = Query(...),
 ):
     pool = await get_pool()
-    b = await catalog.get_barber_by_slug(pool, barber)
-    s = await catalog.get_service_by_slug(pool, service)
-    if b is None or s is None:
-        raise HTTPException(404, "barbero o servicio inexistente")
-    if not b["active"] or not s["active"]:
-        raise HTTPException(404, "barbero o servicio no disponible")
-    if not await catalog.barber_offers_service(pool, b["id"], s["id"]):
-        raise HTTPException(422, "el profesional no ofrece ese servicio")
+    selection = await catalog.get_booking_selection(pool, barber, service)
+    if selection is None:
+        raise HTTPException(422, "profesional o servicio no disponible")
+    b, s = selection
     slots = await availability_service.get_slots(pool, b, s, date)
     return AvailabilityOut(date=date, barber=barber, service=service, slots=slots)
 

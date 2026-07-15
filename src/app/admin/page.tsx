@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { signIn, signOut } from "next-auth/react";
+import Link from "next/link";
 
-const SERIF = "'Bodoni Moda', Georgia, serif";
-const SANS = "'Archivo', system-ui, sans-serif";
+const SERIF = "var(--font-serif)";
+const SANS = "var(--font-sans)";
 const ars = new Intl.NumberFormat("es-AR");
 const money = (n: number) => `$${ars.format(Math.round(n))}`;
 const CARD = { border: "1px solid rgba(255,255,255,0.14)" } as const;
@@ -47,6 +48,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
   const val = res.status === 204 ? (undefined as T) : await res.json();
   if (method === "GET") GET_CACHE.set(path, val);
+  else GET_CACHE.clear();
   return val;
 }
 
@@ -66,7 +68,7 @@ const chColor = (ch: string) => (ch === "whatsapp" || ch === "WhatsApp" ? "#25D3
 
 function ErrorBox({ msg }: { msg: string }) {
   return (
-    <div style={{ marginTop: 22, border: "1px solid rgba(255,120,120,0.5)", background: "rgba(255,90,90,0.08)", color: "#ffb3b3", padding: "14px 18px", fontSize: 14 }}>
+    <div role="alert" style={{ marginTop: 22, border: "1px solid rgba(255,120,120,0.5)", background: "rgba(255,90,90,0.08)", color: "#ffb3b3", padding: "14px 18px", fontSize: 14 }}>
       {msg}
     </div>
   );
@@ -121,6 +123,22 @@ const NAV = [
 ];
 const TITLES: Record<string, string> = { resumen: "Resumen", agenda: "Agenda", clientes: "Clientes", stock: "Gestión de stock", ia: "Agente IA · WhatsApp", conversaciones: "Conversaciones · WhatsApp", ajustes: "Administración del sitio", disponibilidad: "Disponibilidad de la agenda" };
 
+function prefetchSection(section: string) {
+  const today = dateKey(new Date());
+  const month = today.slice(0, 7);
+  const paths: Record<string, string[]> = {
+    resumen: [`/dashboard/summary?month=${month}`],
+    agenda: [`/agenda?date=${today}`],
+    clientes: ["/customers?search=&limit=50"],
+    stock: ["/stock"],
+    ia: ["/agent/metrics?days=30", "/agent/events?limit=20"],
+    ajustes: ["/barbers", "/services", "/settings", "/admins"],
+  };
+  for (const path of paths[section] ?? []) {
+    if (!GET_CACHE.has(path)) void api(path).catch(() => {});
+  }
+}
+
 export default function AdminPage() {
   const [section, setSection] = useState("resumen");
   const today = new Date();
@@ -137,14 +155,14 @@ export default function AdminPage() {
           {NAV.map((n) => {
             const on = section === n.key;
             return (
-              <div key={n.key} className="navit" onClick={() => setSection(n.key)} style={{ background: on ? "rgba(255,255,255,0.06)" : "transparent", color: on ? "#fff" : "rgba(255,255,255,0.6)", borderColor: on ? "#fff" : "transparent" }}>
+              <button type="button" key={n.key} className="navit" aria-current={on ? "page" : undefined} onPointerEnter={() => prefetchSection(n.key)} onFocus={() => prefetchSection(n.key)} onClick={() => setSection(n.key)} style={{ width: "100%", background: on ? "rgba(255,255,255,0.06)" : "transparent", color: on ? "#fff" : "rgba(255,255,255,0.72)", borderColor: on ? "#fff" : "transparent", fontFamily: SANS, textAlign: "left" }}>
                 <Dot color={on ? "#fff" : "rgba(255,255,255,0.25)"} />{n.label}
-              </div>
+              </button>
             );
           })}
         </nav>
         <div className="adm-user" style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start" }}>
-          <a href="/" style={{ color: "#fff", opacity: 0.7 }}>Volver al sitio →</a>
+          <Link href="/" style={{ color: "#fff", opacity: 0.8 }}>Volver al sitio →</Link>
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
             style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "rgba(255,255,255,0.5)", fontFamily: SANS, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase" }}
@@ -162,7 +180,7 @@ export default function AdminPage() {
               {dias[today.getDay()]} {today.getDate()} de {MONTHS[today.getMonth()]}, {today.getFullYear()}
             </div>
           </div>
-          <a href="/agendar" style={{ background: "#fff", color: "#0a0a0a", padding: "11px 20px", fontWeight: 700, fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase" }}>+ Nuevo turno</a>
+          <Link href="/agendar" style={{ background: "#fff", color: "#0a0a0a", padding: "11px 20px", fontWeight: 700, fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase" }}>+ Nuevo turno</Link>
         </div>
 
         {section === "resumen" && <Resumen />}
@@ -196,11 +214,8 @@ function Resumen() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setError("");
     const path = `/dashboard/summary?month=${selMonth}`;
-    const cached = getCached<Summary>(path);
-    setData(cached); // instantáneo si está cacheado; si no, skeleton
-    api<Summary>(path).then(setData).catch((e) => setError(e.message));
+    api<Summary>(path).then((value) => { setData(value); setError(""); }).catch((e) => setError(e.message));
   }, [selMonth]);
 
   const shiftMonth = (delta: number) => {
@@ -213,9 +228,9 @@ function Resumen() {
 
   const header = (
     <div style={{ marginTop: 26, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", ...CARD, padding: "14px 18px" }}>
-      <button className="qbtn" onClick={() => shiftMonth(-1)} style={{ width: 32, height: 32, fontSize: 17 }}>‹</button>
+      <button className="qbtn" aria-label="Mes anterior" onClick={() => shiftMonth(-1)} style={{ width: 32, height: 32, fontSize: 17 }}>‹</button>
       <div style={{ fontFamily: SERIF, fontSize: 24, lineHeight: 1, textTransform: "capitalize", minWidth: 180 }}>{monthLabel(selMonth)}</div>
-      <button className="qbtn" onClick={() => shiftMonth(1)} disabled={atCurrent} style={{ width: 32, height: 32, fontSize: 17, opacity: atCurrent ? 0.3 : 1, cursor: atCurrent ? "default" : "pointer" }}>›</button>
+      <button className="qbtn" aria-label="Mes siguiente" onClick={() => shiftMonth(1)} disabled={atCurrent} style={{ width: 32, height: 32, fontSize: 17, opacity: atCurrent ? 0.45 : 1, cursor: atCurrent ? "default" : "pointer" }}>›</button>
       {!atCurrent && <button className="miniact" onClick={() => setSelMonth(curMonth())} style={{ marginLeft: 6 }}>Mes actual</button>}
     </div>
   );
@@ -328,8 +343,7 @@ function Agenda() {
   const [error, setError] = useState("");
 
   const load = useCallback(() => {
-    setError("");
-    api<Appt[]>(`/agenda?date=${selDate}`).then(setAppts).catch((e) => setError(e.message));
+    api<Appt[]>(`/agenda?date=${selDate}`).then((value) => { setAppts(value); setError(""); }).catch((e) => setError(e.message));
   }, [selDate]);
   useEffect(load, [load]);
 
@@ -371,14 +385,14 @@ function Agenda() {
     <>
       <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, ...CARD, padding: "14px 18px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          <button className="qbtn" onClick={() => shiftDay(-1)} style={{ width: 32, height: 32, fontSize: 17 }}>‹</button>
+          <button className="qbtn" aria-label="Día anterior" onClick={() => shiftDay(-1)} style={{ width: 32, height: 32, fontSize: 17 }}>‹</button>
           <div style={{ minWidth: 220 }}>
             <div style={{ fontFamily: SERIF, fontSize: 24, lineHeight: 1, textTransform: "capitalize" }}>{`${DOW[sel.getDay()]} ${sel.getDate()} ${MONTHS[sel.getMonth()]}`}</div>
           </div>
-          <button className="qbtn" onClick={() => shiftDay(1)} style={{ width: 32, height: 32, fontSize: 17 }}>›</button>
+          <button className="qbtn" aria-label="Día siguiente" onClick={() => shiftDay(1)} style={{ width: 32, height: 32, fontSize: 17 }}>›</button>
           <button className="miniact" onClick={() => setSelDate(dateKey(new Date()))} style={{ marginLeft: 6 }}>Hoy</button>
         </div>
-        <input type="date" value={selDate} onChange={(e) => e.target.value && setSelDate(e.target.value)} style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "8px 10px", fontFamily: SANS, colorScheme: "dark" }} />
+        <input type="date" aria-label="Fecha de la agenda" value={selDate} onChange={(e) => e.target.value && setSelDate(e.target.value)} style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "8px 10px", fontFamily: SANS, colorScheme: "dark" }} />
       </div>
 
       {error && <ErrorBox msg={error} />}
@@ -430,27 +444,38 @@ function Agenda() {
 // ── Clientes ───────────────────────────────────────────────────────────
 
 type Customer = { id: string; phone: string; name: string | null; first_channel: string; visits: number; spent: number; last_visit: string | null };
+type CustomerPage = { items: Customer[]; next_cursor: string | null };
 
 function Clientes() {
-  const [rows, setRows] = useState<Customer[] | null>(null);
+  const initial = getCached<CustomerPage>("/customers?search=&limit=50");
+  const [rows, setRows] = useState<Customer[] | null>(initial?.items ?? null);
+  const [nextCursor, setNextCursor] = useState<string | null>(initial?.next_cursor ?? null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const controller = new AbortController();
     const t = setTimeout(() => {
-      api<Customer[]>(`/customers?search=${encodeURIComponent(search)}`)
-        .then(setRows)
-        .catch((e) => setError(e.message));
+      api<CustomerPage>(`/customers?search=${encodeURIComponent(search)}&limit=50`, { signal: controller.signal })
+        .then((value) => { setRows(value.items); setNextCursor(value.next_cursor); setError(""); })
+        .catch((e) => { if (e.name !== "AbortError") setError(e.message); });
     }, 300);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); controller.abort(); };
   }, [search]);
+
+  async function loadMore() {
+    if (!nextCursor) return;
+    const page = await api<CustomerPage>(`/customers?search=${encodeURIComponent(search)}&limit=50&cursor=${encodeURIComponent(nextCursor)}`);
+    setRows((current) => [...(current ?? []), ...page.items]);
+    setNextCursor(page.next_cursor);
+  }
 
   if (error) return <ErrorBox msg={error} />;
 
   return (
     <>
       <div style={{ marginTop: 26 }}>
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre o teléfono…" style={{ width: "100%", maxWidth: 420, background: "#161616", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "12px 14px", fontFamily: SANS, fontSize: 14, outline: "none" }} />
+        <input type="search" aria-label="Buscar clientes por nombre o teléfono" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre o teléfono…" style={{ width: "100%", maxWidth: 420, background: "#161616", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "12px 14px", fontFamily: SANS, fontSize: 14, outline: "none" }} />
       </div>
       {rows === null ? (
         <SkTable rows={7} cols={5} />
@@ -474,6 +499,7 @@ function Clientes() {
           {rows.length === 0 && <div style={{ padding: 32, opacity: 0.5, fontSize: 14 }}>Sin clientes todavía.</div>}
         </div>
       )}
+      {nextCursor && <button type="button" className="miniact" onClick={loadMore} style={{ marginTop: 16 }}>Cargar más clientes</button>}
     </>
   );
 }
@@ -542,7 +568,7 @@ function Stock() {
           return (
             <div key={p.sku} className="arow tbl-row" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.9fr 1.3fr 1fr 1.1fr", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
               <span><span style={{ fontFamily: SERIF, fontSize: 17 }}>{p.name}</span><br /><span style={{ fontSize: 11, opacity: 0.4, letterSpacing: "0.08em" }}>{p.sku}</span></span>
-              <span onClick={() => editPrice(p)} title="Editar precio" style={{ fontFamily: SERIF, fontSize: 16, cursor: "pointer", borderBottom: "1px dotted rgba(255,255,255,0.3)" }}>{money(p.price)}</span>
+              <button type="button" onClick={() => editPrice(p)} aria-label={`Editar precio de ${p.name}`} title="Editar precio" style={{ width: "fit-content", padding: 0, background: "none", color: "inherit", border: 0, borderBottom: "1px dotted rgba(255,255,255,0.3)", fontFamily: SERIF, fontSize: 16, cursor: "pointer" }}>{money(p.price)}</button>
               <span style={{ fontSize: 16, color: col }}>{p.qty}</span>
               <span style={{ display: "flex", gap: 8, alignItems: "center" }}><button className="qbtn" onClick={() => adjust(p, -1)}>−</button><button className="qbtn" onClick={() => adjust(p, 1)}>+</button></span>
               <span style={{ opacity: 0.85 }}>{money(p.price * p.qty)}</span>
@@ -711,7 +737,7 @@ function Conversaciones() {
         <div style={{ borderRight: "1px solid rgba(255,255,255,0.12)", display: "flex", flexDirection: "column", minHeight: 0 }}>
           <div style={{ display: "flex", gap: 6, padding: 14, borderBottom: "1px solid rgba(255,255,255,0.1)", flexWrap: "wrap" }}>
             {Object.keys(FILTERS).map((f) => (
-              <span key={f} onClick={() => setFilter(f)} style={{ fontSize: 11, letterSpacing: "0.06em", padding: "5px 11px", cursor: "pointer", background: filter === f ? "#fff" : "transparent", color: filter === f ? "#0a0a0a" : "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.18)" }}>{f}</span>
+              <button type="button" key={f} aria-pressed={filter === f} onClick={() => setFilter(f)} style={{ fontSize: 11, letterSpacing: "0.06em", padding: "5px 11px", cursor: "pointer", background: filter === f ? "#fff" : "transparent", color: filter === f ? "#0a0a0a" : "rgba(255,255,255,0.78)", border: "1px solid rgba(255,255,255,0.28)", fontFamily: SANS }}>{f}</button>
             ))}
           </div>
           <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
@@ -719,7 +745,7 @@ function Conversaciones() {
               const m = STATUS_META[c.status] ?? STATUS_META.bot;
               const sel = c.id === selId;
               return (
-                <div key={c.id} onClick={() => select(c.id)} style={{ display: "flex", gap: 12, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", background: sel ? "rgba(255,255,255,0.06)" : "transparent", borderLeft: `2px solid ${sel ? "#fff" : "transparent"}` }}>
+                <button type="button" key={c.id} aria-pressed={sel} onClick={() => select(c.id)} style={{ width: "100%", display: "flex", gap: 12, padding: "14px 16px", border: 0, borderBottom: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", background: sel ? "rgba(255,255,255,0.08)" : "transparent", color: "#fff", borderLeft: `2px solid ${sel ? "#fff" : "transparent"}`, fontFamily: SANS, textAlign: "left" }}>
                   <span style={{ width: 42, height: 42, borderRadius: "50%", background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SERIF, fontSize: 15, flexShrink: 0 }}>{initials(c.name)}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -730,7 +756,7 @@ function Conversaciones() {
                       <Dot color={m.color} size={6} />{m.label}{c.assignee ? ` · ${c.assignee}` : ""}
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
             {list.length === 0 && <div style={{ padding: 24, opacity: 0.5, fontSize: 13 }}>Sin conversaciones.</div>}
@@ -774,7 +800,7 @@ function Conversaciones() {
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.12)", padding: "14px 16px" }}>
                 {active.status === "humano" ? (
                   <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                    <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="Escribí un mensaje…" style={{ flex: 1, minWidth: 180, background: "#161616", border: "1px solid rgba(255,255,255,0.18)", color: "#fff", fontFamily: SANS, fontSize: 14, padding: "12px 14px", outline: "none" }} />
+                    <input aria-label={`Mensaje para ${active.name}`} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} placeholder="Escribí un mensaje…" style={{ flex: 1, minWidth: 180, background: "#161616", border: "1px solid rgba(255,255,255,0.18)", color: "#fff", fontFamily: SANS, fontSize: 14, padding: "12px 14px", outline: "none" }} />
                     <button className="miniact" onClick={send} style={{ background: "#25D366", color: "#0a0a0a", borderColor: "#25D366" }}>Enviar</button>
                     <button className="miniact" onClick={() => action("resolve")}>Resolver</button>
                     <button className="miniact" onClick={() => action("return-to-bot")}>Volver al bot</button>
@@ -814,7 +840,7 @@ function Conversaciones() {
                   ))}
                 </div>
                 <div style={{ marginTop: 6, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-                  <a href="/agendar" className="miniact" style={{ display: "inline-block", textDecoration: "none" }}>Crear turno</a>
+                  <Link href="/agendar" className="miniact" style={{ display: "inline-block", textDecoration: "none" }}>Crear turno</Link>
                 </div>
               </div>
             </>
@@ -928,9 +954,9 @@ function Ajustes() {
             return (
               <div key={ch} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
                 <div><div style={{ fontSize: 14 }}>Reservas por {ch === "web" ? "Web" : "WhatsApp"}</div><div style={{ fontSize: 11, opacity: 0.5, marginTop: 2 }}>{on ? "Activado" : "Pausado"}</div></div>
-                <div onClick={() => mut(() => api("/settings", { method: "PATCH", body: JSON.stringify({ values: { booking_channels: { ...settings.booking_channels, [ch]: !on } } }) }))} style={{ width: 44, height: 24, borderRadius: 12, background: on ? "#25D366" : "rgba(255,255,255,0.2)", position: "relative", cursor: "pointer", transition: "background .2s" }}>
+                <button type="button" role="switch" aria-checked={on} aria-label={`Reservas por ${ch}`} onClick={() => mut(() => api("/settings", { method: "PATCH", body: JSON.stringify({ values: { booking_channels: { ...settings.booking_channels, [ch]: !on } } }) }))} style={{ width: 44, height: 24, border: 0, padding: 0, borderRadius: 12, background: on ? "#25D366" : "rgba(255,255,255,0.28)", position: "relative", cursor: "pointer", transition: "background .2s" }}>
                   <span style={{ position: "absolute", top: 2, left: on ? 22 : 2, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
-                </div>
+                </button>
               </div>
             );
           })}
@@ -999,9 +1025,9 @@ function Disponibilidad() {
           <div style={{ fontFamily: SERIF, fontSize: 24, lineHeight: 1 }}>Estado general de la agenda</div>
           <div style={{ marginTop: 8, fontSize: 13, color: agendaOpen ? "#7ee0a8" : "#ff7a7a" }}>{agendaOpen ? "Agenda abierta" : "Agenda cerrada — no se aceptan reservas"}</div>
         </div>
-        <div onClick={() => mut(() => api("/settings", { method: "PATCH", body: JSON.stringify({ values: { agenda_open: !agendaOpen } }) }))} style={{ width: 58, height: 30, borderRadius: 15, background: agendaOpen ? "#25D366" : "rgba(255,255,255,0.2)", position: "relative", cursor: "pointer", transition: "background .2s", flexShrink: 0 }}>
+        <button type="button" role="switch" aria-checked={agendaOpen} aria-label="Agenda abierta" onClick={() => mut(() => api("/settings", { method: "PATCH", body: JSON.stringify({ values: { agenda_open: !agendaOpen } }) }))} style={{ width: 58, height: 30, border: 0, padding: 0, borderRadius: 15, background: agendaOpen ? "#25D366" : "rgba(255,255,255,0.28)", position: "relative", cursor: "pointer", transition: "background .2s", flexShrink: 0 }}>
           <span style={{ position: "absolute", top: 3, left: agendaOpen ? 31 : 3, width: 24, height: 24, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
-        </div>
+        </button>
       </div>
       <div style={{ marginTop: 16, ...CARD, padding: 24 }}>
         <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6, marginBottom: 4 }}>Parámetros de reserva</div>
@@ -1034,9 +1060,9 @@ function Disponibilidad() {
           <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6 }}>Días cerrados</div>
           <div style={{ marginTop: 12, fontSize: 12, opacity: 0.55, lineHeight: 1.5 }}>Tocá un día para cerrarlo (o reabrirlo). Los domingos ya están cerrados por horario.</div>
           <div style={{ marginTop: 18, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <button className="qbtn" onClick={() => setView((v) => ({ y: v.m === 0 ? v.y - 1 : v.y, m: v.m === 0 ? 11 : v.m - 1 }))}>‹</button>
+            <button className="qbtn" aria-label="Mes anterior" onClick={() => setView((v) => ({ y: v.m === 0 ? v.y - 1 : v.y, m: v.m === 0 ? 11 : v.m - 1 }))}>‹</button>
             <span style={{ fontFamily: SERIF, fontSize: 20, textTransform: "capitalize" }}>{`${MONTHS[m]} ${y}`}</span>
-            <button className="qbtn" onClick={() => setView((v) => ({ y: v.m === 11 ? v.y + 1 : v.y, m: v.m === 11 ? 0 : v.m + 1 }))}>›</button>
+            <button className="qbtn" aria-label="Mes siguiente" onClick={() => setView((v) => ({ y: v.m === 11 ? v.y + 1 : v.y, m: v.m === 11 ? 0 : v.m + 1 }))}>›</button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 5, textAlign: "center", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
             {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => <span key={d}>{d}</span>)}
@@ -1048,7 +1074,7 @@ function Disponibilidad() {
               const key = dateKey(new Date(y, m, d));
               const blocked = fullDayBlocks.has(key);
               return (
-                <div key={d} onClick={() => toggleDay(key)} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, background: blocked ? "rgba(255,90,90,0.22)" : "transparent", color: blocked ? "rgba(255,120,120,0.9)" : "#fff", cursor: "pointer", border: `1px solid ${blocked ? "rgba(255,90,90,0.6)" : "rgba(255,255,255,0.08)"}` }}>{d}</div>
+                <button type="button" key={d} aria-pressed={blocked} aria-label={`${blocked ? "Reabrir" : "Cerrar"} ${d} de ${MONTHS[m]}`} onClick={() => toggleDay(key)} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, background: blocked ? "rgba(255,90,90,0.22)" : "transparent", color: blocked ? "#ff9a9a" : "#fff", cursor: "pointer", border: `1px solid ${blocked ? "rgba(255,90,90,0.75)" : "rgba(255,255,255,0.18)"}`, fontFamily: SANS }}>{d}</button>
               );
             })}
           </div>

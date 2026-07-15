@@ -28,6 +28,11 @@ class ServiceOut(BaseModel):
     variable_price: bool
 
 
+class BookingBootstrapOut(BaseModel):
+    barbers: list[BarberOut]
+    services_by_barber: dict[str, list[ServiceOut]]
+
+
 class AvailabilityOut(BaseModel):
     date: date
     barber: str

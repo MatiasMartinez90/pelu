@@ -33,7 +33,7 @@ export function LoginButton({ callbackUrl }: { callbackUrl: string }) {
         border: "none",
         borderRadius: 4,
         padding: "14px 26px",
-        fontFamily: "'Archivo', system-ui, sans-serif",
+        fontFamily: "var(--font-sans)",
         fontSize: 15,
         fontWeight: 600,
         letterSpacing: "0.02em",
