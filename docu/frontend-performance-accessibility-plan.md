@@ -333,6 +333,7 @@ Branch: `feat/frontend-performance-accessibility`.
 - Catálogo de reservas precargado en Server Component mediante un único endpoint bootstrap, con caché etiquetada e invalidación desde el BFF.
 - Fotos del equipo versionadas bajo `/media/team`, con migración SQL reversible y cabeceras inmutables preparadas para un CDN propio.
 - Fuentes resueltas con pilas nativas sans/serif, sin requests runtime ni archivos críticos de Google Fonts; esto elimina 78 KB de fuentes del camino de render móvil.
+- CSS crítico inline en el HTML para eliminar el request render-blocking medido en 307 ms por Lighthouse CI.
 - Navegación interna migrada a `Link`; hero y FAQ renderizados en servidor y video aislado como mejora progresiva.
 - Disponibilidad validada con una consulta consolidada; requests obsoletos cancelados con `AbortController`.
 - Video omitido en móvil, `Save-Data`, 2G y movimiento reducido; poster LCP precargado.

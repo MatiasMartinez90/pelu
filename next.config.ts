@@ -30,6 +30,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  // El CSS global pesa ~14 KB gzip. Inlinearlo elimina un round-trip
+  // render-blocking que Lighthouse móvil midió en ~307 ms.
+  experimental: { inlineCss: true },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
     formats: ["image/avif", "image/webp"],
