@@ -56,7 +56,7 @@ export default function ContactoPage() {
         </div>
 
         <div style={{ border: "1px solid rgba(255,255,255,0.14)", overflow: "hidden", minHeight: 440, position: "relative" }}>
-          <iframe src={mapEmbed} title="Ubicación" style={{ width: "100%", height: "100%", minHeight: 440, border: 0, filter: "grayscale(1) invert(0.9) contrast(0.85)" }} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+          <iframe src={mapEmbed} title="Ubicación" style={{ width: "100%", height: "100%", minHeight: 440, border: 0, filter: "grayscale(1) contrast(1.05)" }} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
         </div>
       </section>
 
