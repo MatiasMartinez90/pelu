@@ -8,3 +8,4 @@ class AgentState(BaseAgentState):
     conversation_id: int
     customer_name: str | None
     business_context: str
+    turn_id: str

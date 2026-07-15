@@ -22,12 +22,16 @@ class Settings(BaseSettings):
     redis_port: int = 6379
     redis_password: str = ""
     redis_prefix: str = "nox:"
+    redis_connect_timeout_seconds: float = 3.0
+    redis_socket_timeout_seconds: float = 5.0
 
     # RabbitMQ
     rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
     queue_name: str = "nox_messages"
     queue_dlq_name: str = "nox_messages_dlq"
+    queue_retry_name: str = "nox_messages_retry"
     queue_delivery_limit: int = 3
+    queue_retry_base_seconds: int = 2
 
     # Chatwoot
     chatwoot_url: str = ""
@@ -68,6 +72,19 @@ class Settings(BaseSettings):
     rate_limit_max: int = 30
     rate_limit_window: int = 3600
     daily_budget_usd: float = 5.0
+    budget_reserve_per_turn_usd: float = 0.03
+    model_input_price_per_million: float = 0.15
+    model_output_price_per_million: float = 0.60
+    conversation_lock_ttl_seconds: int = 120
+    inbox_lease_seconds: int = 900
+    delivery_retention_days: int = 30
+    event_retention_days: int = 90
+    context_max_messages: int = 24
+    conversation_reset_after_days: int = 30
+    output_max_chars: int = 1200
+    moderation_enabled: bool = True
+    moderation_fail_closed: bool = False
+    store_event_phone_plaintext: bool = False
 
     # API
     cors_origins: str = "https://nox.cloud-it.com.ar,http://localhost:3000"

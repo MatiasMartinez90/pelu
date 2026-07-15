@@ -78,25 +78,76 @@ class ChatwootClient:
         self.base_url = s.chatwoot_url.rstrip("/")
         self.account_id = s.chatwoot_account_id
         self.headers = {"api_access_token": s.chatwoot_api_key}
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(15.0, connect=5.0),
+            limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+        )
 
     def _url(self, path: str) -> str:
         return f"{self.base_url}/api/v1/accounts/{self.account_id}/{path}"
 
     async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.request(method, self._url(path), headers=self.headers, **kwargs)
-            resp.raise_for_status()
-            return resp
+        attempts = 3 if method.upper() in {"GET", "HEAD"} else 1
+        for attempt in range(attempts):
+            try:
+                resp = await self._client.request(
+                    method, self._url(path), headers=self.headers, **kwargs
+                )
+                resp.raise_for_status()
+                return resp
+            except (httpx.TimeoutException, httpx.NetworkError):
+                if attempt + 1 == attempts:
+                    raise
+                import asyncio
+
+                await asyncio.sleep(0.25 * (2**attempt))
+        raise RuntimeError("unreachable")
+
+    async def close(self) -> None:
+        await self._client.aclose()
 
     async def send_message(
-        self, conversation_id: int, content: str, private: bool = False
+        self,
+        conversation_id: int,
+        content: str,
+        private: bool = False,
     ) -> dict:
+        payload = {"content": content, "message_type": "outgoing", "private": private}
         resp = await self._request(
             "POST",
             f"conversations/{conversation_id}/messages",
-            json={"content": content, "message_type": "outgoing", "private": private},
+            json=payload,
         )
         return resp.json()
+
+    async def find_recent_outgoing(
+        self, conversation_id: int, content: str, created_after
+    ) -> dict | None:
+        """Reconcile an ambiguous POST using Chatwoot's message history."""
+        messages = await self.get_messages(conversation_id)
+        cutoff = created_after.timestamp() - 5
+        for message in reversed(messages):
+            if (
+                message.get("message_type") in (1, "outgoing")
+                and message.get("content") == content
+                and float(message.get("created_at") or 0) >= cutoff
+            ):
+                return message
+        return None
+
+    async def find_recent_private_note(
+        self, conversation_id: int, content: str, created_after
+    ) -> dict | None:
+        messages = await self.get_messages(conversation_id)
+        cutoff = created_after.timestamp() - 5
+        for message in reversed(messages):
+            if (
+                message.get("private") is True
+                and message.get("content") == content
+                and float(message.get("created_at") or 0) >= cutoff
+            ):
+                return message
+        return None
 
     async def set_typing_status(self, conversation_id: int, typing: bool) -> None:
         try:

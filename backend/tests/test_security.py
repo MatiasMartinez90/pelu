@@ -13,6 +13,12 @@ from src.api.client_ip import get_client_ip
 from src.api import deps
 from src.api.routers import webhook
 from src.agent.tools.booking import cancel_booking, create_booking, reschedule_booking
+from src.agent.tools.actions import (
+    confirm_pending_action,
+    prepare_booking,
+    prepare_cancel,
+    prepare_reschedule,
+)
 from src.config import get_settings
 from src.services.booking_service import cancel_booking_by_email, upsert_customer
 from src.webhook_signer import signing_headers
@@ -195,7 +201,15 @@ async def test_customer_cancellation_enforces_object_ownership_in_sql():
 
 
 def test_model_cannot_override_injected_identity_state():
-    for tool in (create_booking, cancel_booking, reschedule_booking):
+    for tool in (
+        create_booking,
+        cancel_booking,
+        reschedule_booking,
+        prepare_booking,
+        prepare_cancel,
+        prepare_reschedule,
+        confirm_pending_action,
+    ):
         assert "state" not in tool.args
         assert "phone" not in tool.args
         assert "conversation_id" not in tool.args
