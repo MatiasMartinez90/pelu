@@ -39,9 +39,23 @@ Verificar: payload `{barber, service (slug -barbero), date (YYYY-MM-DD local), t
 ## Gates de auth (sin sesión)
 - `/mi-cuenta`, `/admin`, `/barbero` → deben redirigir 307 a `/login?callbackUrl=<ruta>`.
 
+## Verificación post-merge PR #11 (contexto negocio desde PostgreSQL)
+- `GET https://nox.cloud-it.com.ar/api/v1/site` → 200 con perfil institucional (nombre, dirección, horarios, redes). Verificar que coincide con lo mostrado en el sitio.
+- `/equipo`: bio e Instagram de cada barbero vienen de la DB (no hardcodeados). Si un barbero se desactiva en admin, no debe aparecer.
+- `/agendar`: disponibilidad solo ofrece combinaciones válidas — barbero activo + servicio activo + relación barbero-servicio existente. Probar que un servicio desactivado no aparece en paso 2.
+
+## Verificación post-merge PR #13 (perf + accesibilidad)
+- Fotos de equipo: ahora en `/media/team/<nombre>.v1.webp` (media propia versionada, ya no externas). Verificar que cargan y no hay 404.
+- Hero: sin request runtime a Google Fonts (chequear en Network); video/poster optimizados; FAQ y hero son Server Components (HTML ya renderizado en view-source).
+- RUM: `POST /api/vitals` se dispara al navegar (verificar en Network). No debe fallar (2xx).
+- Bootstrap: barberos/servicios precargados en servidor — paso 1 de /agendar no debería mostrar spinner largo en frío.
+- Accesibilidad: navegación por teclado en wizard de reserva y FAQ (Tab/Enter), foco visible, `prefers-reduced-motion` respeta (sin autoplay de animaciones).
+- **Service worker**: tras deploy, verificar en mobile que assets nuevos se sirven (no cache-first viejo). Hard-reload + revisar SW en DevTools.
+- Lighthouse rápido: correr contra prod home mobile — LCP debería quedar cerca de presupuesto 2500ms (falló en CI con 2748ms, vigilar).
+
 ## Findings conocidos (verificar si siguen)
-- `/contacto`: el mapa es un `<iframe>` a `www.google.com/maps?...&output=embed` que Google **rechaza embeber** → ícono roto. Fix: Maps Embed API (`/maps/embed?pb=…` o API key).
-- `/faq`: `<title>` genérico en vez de propio (nit SEO).
+- `/contacto`: mapa → **FIXEADO** (2026-07-11): cambiado a OpenStreetMap embed + CSP `frame-src https://www.openstreetmap.org`. Verificar que el iframe carga correctamente.
+- `/faq`: título genérico → **FIXEADO** (2026-07-11): `layout.tsx` server component con metadata propia "Preguntas Frecuentes | NOX Barber". Verificar `<title>` en DevTools.
 
 ## Reporte
 Listar por página: OK / warning / bug, con screenshot y, para bugs, la causa (status HTTP, request fallida, elemento roto).
