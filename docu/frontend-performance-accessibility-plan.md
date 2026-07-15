@@ -332,7 +332,7 @@ Branch: `feat/frontend-performance-accessibility`.
 
 - Catálogo de reservas precargado en Server Component mediante un único endpoint bootstrap, con caché etiquetada e invalidación desde el BFF.
 - Fotos del equipo versionadas bajo `/media/team`, con migración SQL reversible y cabeceras inmutables preparadas para un CDN propio.
-- Fuentes autohospedadas por `next/font`, sin requests runtime a Google, dos familias variables y carga `optional`.
+- Fuentes resueltas con pilas nativas sans/serif, sin requests runtime ni archivos críticos de Google Fonts; esto elimina 78 KB de fuentes del camino de render móvil.
 - Navegación interna migrada a `Link`; hero y FAQ renderizados en servidor y video aislado como mejora progresiva.
 - Disponibilidad validada con una consulta consolidada; requests obsoletos cancelados con `AbortController`.
 - Video omitido en móvil, `Save-Data`, 2G y movimiento reducido; poster LCP precargado.
@@ -346,9 +346,9 @@ Baseline de recursos del build de producción:
 | Ruta/recurso | Resultado |
 |---|---:|
 | Home JavaScript inicial | 197,5 KB gzip |
-| Home CSS inicial | 15,4 KB gzip |
+| Home CSS inicial | 13,7 KB gzip |
 | Admin JavaScript inicial | 205,3 KB gzip |
-| Admin CSS inicial | 15,4 KB gzip |
+| Admin CSS inicial | 13,7 KB gzip |
 | Poster del hero | 25,5 KB |
 | Video WebM | 558,8 KB |
 

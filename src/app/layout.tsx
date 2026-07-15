@@ -1,21 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Bodoni_Moda } from "next/font/google";
 import "./globals.css";
 import { site } from "@/lib/site";
 import { RegisterSW } from "@/components/register-sw";
 import { WebVitals } from "@/components/web-vitals";
-
-const sans = Archivo({
-  variable: "--font-archivo",
-  subsets: ["latin"],
-  display: "optional",
-});
-
-const serif = Bodoni_Moda({
-  variable: "--font-bodoni",
-  subsets: ["latin"],
-  display: "optional",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://noxbarber.com.ar"),
@@ -62,7 +49,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${sans.variable} ${serif.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
       <body className="min-h-full flex flex-col bg-grain">
         <a className="skip-link" href="#contenido-principal">Saltar al contenido</a>
