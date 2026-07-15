@@ -498,6 +498,17 @@ function Stock() {
     } catch (e) { setError((e as Error).message); }
   }
 
+  async function editPrice(p: Product) {
+    const raw = prompt(`Nuevo precio para ${p.name} (actual ${money(p.price)}):`, String(p.price));
+    if (raw === null) return;
+    const price = Math.round(Number(raw.replace(/[^\d]/g, "")));
+    if (!price || price <= 0) { alert("Precio inválido"); return; }
+    try {
+      await api(`/products/${p.id}`, { method: "PATCH", body: JSON.stringify({ price }) });
+      load();
+    } catch (e) { setError((e as Error).message); }
+  }
+
   if (error) return <ErrorBox msg={error} />;
   if (!products) return <SkTable rows={6} cols={5} />;
 
@@ -531,7 +542,7 @@ function Stock() {
           return (
             <div key={p.sku} className="arow tbl-row" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.9fr 1.3fr 1fr 1.1fr", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
               <span><span style={{ fontFamily: SERIF, fontSize: 17 }}>{p.name}</span><br /><span style={{ fontSize: 11, opacity: 0.4, letterSpacing: "0.08em" }}>{p.sku}</span></span>
-              <span style={{ fontFamily: SERIF, fontSize: 16 }}>{money(p.price)}</span>
+              <span onClick={() => editPrice(p)} title="Editar precio" style={{ fontFamily: SERIF, fontSize: 16, cursor: "pointer", borderBottom: "1px dotted rgba(255,255,255,0.3)" }}>{money(p.price)}</span>
               <span style={{ fontSize: 16, color: col }}>{p.qty}</span>
               <span style={{ display: "flex", gap: 8, alignItems: "center" }}><button className="qbtn" onClick={() => adjust(p, -1)}>−</button><button className="qbtn" onClick={() => adjust(p, 1)}>+</button></span>
               <span style={{ opacity: 0.85 }}>{money(p.price * p.qty)}</span>
@@ -819,7 +830,7 @@ function Conversaciones() {
 type Barber = { id: string; slug: string; name: string; role: string; active: boolean };
 type Service = { id: string; slug: string; name: string; price: number; variable_price: boolean };
 type Admin = { id: string; email: string; name: string; role: string; active: boolean };
-type Settings = { agenda_open: boolean; booking_channels: { web: boolean; whatsapp: boolean } };
+type Settings = { agenda_open: boolean; booking_channels: { web: boolean; whatsapp: boolean }; slot_granularity_min: number; min_lead_minutes: number; max_days_ahead: number };
 
 function Ajustes() {
   const [staff, setStaff] = useState<Barber[] | null>(null);
@@ -877,12 +888,17 @@ function Ajustes() {
             <span style={{ fontSize: 14 }}>{s.name}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontFamily: SERIF, fontSize: 18, minWidth: 96, textAlign: "right" }}>{s.variable_price ? `desde ${money(s.price)}` : money(s.price)}</span>
-              <button className="qbtn" onClick={() => { const np = Math.round((s.price * 0.9) / 500) * 500; api(`/services/${s.id}/price`, { method: "PATCH", body: JSON.stringify({ new_price: np }) }).then(load).catch((e) => alert(e.message)); }}>−</button>
-              <button className="qbtn" onClick={() => { const np = Math.round((s.price * 1.1) / 500) * 500; api(`/services/${s.id}/price`, { method: "PATCH", body: JSON.stringify({ new_price: np }) }).then(load).catch((e) => alert(e.message)); }}>+</button>
+              <button className="miniact" onClick={() => {
+                const raw = prompt(`Nuevo precio para ${s.name} (actual ${money(s.price)}):`, String(s.price));
+                if (raw === null) return;
+                const np = Math.round(Number(raw.replace(/[^\d]/g, "")));
+                if (!np || np <= 0) { alert("Precio inválido"); return; }
+                api(`/services/${s.id}/price`, { method: "PATCH", body: JSON.stringify({ new_price: np }) }).then(load).catch((e) => alert(e.message));
+              }}>Editar</button>
             </div>
           </div>
         ))}
-        <div style={{ marginTop: 12, fontSize: 11, opacity: 0.4 }}>Los botones ajustan ±10%, redondeando a $500. Queda auditado.</div>
+        <div style={{ marginTop: 12, fontSize: 11, opacity: 0.4 }}>Podés fijar cualquier precio. Cada cambio queda auditado.</div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -986,6 +1002,32 @@ function Disponibilidad() {
         <div onClick={() => mut(() => api("/settings", { method: "PATCH", body: JSON.stringify({ values: { agenda_open: !agendaOpen } }) }))} style={{ width: 58, height: 30, borderRadius: 15, background: agendaOpen ? "#25D366" : "rgba(255,255,255,0.2)", position: "relative", cursor: "pointer", transition: "background .2s", flexShrink: 0 }}>
           <span style={{ position: "absolute", top: 3, left: agendaOpen ? 31 : 3, width: 24, height: 24, borderRadius: "50%", background: "#fff", transition: "left .2s" }} />
         </div>
+      </div>
+      <div style={{ marginTop: 16, ...CARD, padding: 24 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6, marginBottom: 4 }}>Parámetros de reserva</div>
+        <div style={{ fontSize: 12, opacity: 0.55, marginBottom: 18 }}>Controlan cómo se generan los horarios disponibles en el sitio.</div>
+        {([
+          { key: "slot_granularity_min", label: "Granularidad de turnos", sub: "cada cuántos minutos hay un horario", unit: "min", min: 5, max: 120 },
+          { key: "min_lead_minutes", label: "Anticipación mínima", sub: "tiempo mínimo antes del turno para reservar", unit: "min", min: 0, max: 1440 },
+          { key: "max_days_ahead", label: "Ventana de reserva", sub: "hasta cuántos días hacia adelante se puede reservar", unit: "días", min: 1, max: 365 },
+        ] as const).map((f) => (
+          <div key={f.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "13px 0", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 14 }}>{f.label}</div>
+              <div style={{ fontSize: 11, opacity: 0.5, marginTop: 2 }}>{f.sub}</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontFamily: SERIF, fontSize: 18 }}>{settings[f.key]} {f.unit}</span>
+              <button className="miniact" onClick={() => {
+                const raw = prompt(`${f.label} (${f.unit}) — actual ${settings[f.key]}:`, String(settings[f.key]));
+                if (raw === null) return;
+                const val = Math.round(Number(raw));
+                if (!Number.isFinite(val) || val < f.min || val > f.max) { alert(`Valor fuera de rango (${f.min}–${f.max})`); return; }
+                mut(() => api("/settings", { method: "PATCH", body: JSON.stringify({ values: { [f.key]: val } }) }));
+              }}>Editar</button>
+            </div>
+          </div>
+        ))}
       </div>
       <div className="adm-grid" style={{ marginTop: 16, "--cols": "1.1fr 1fr" } as React.CSSProperties}>
         <div style={{ ...CARD, padding: 24 }}>
