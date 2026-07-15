@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { site } from "@/lib/site";
 
-const SERIF = "'Bodoni Moda', Georgia, serif";
-const SANS = "'Archivo', system-ui, sans-serif";
+const SERIF = "var(--font-serif)";
+const SANS = "var(--font-sans)";
 const ars = new Intl.NumberFormat("es-AR");
 const money = (n: number) => `$${ars.format(Math.round(n))}`;
 
@@ -55,7 +56,11 @@ export default function MiCuentaPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    // Sincroniza los turnos privados con el backend autenticado.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
 
   // Próximo turno = el activo futuro más cercano.
   const next = useMemo(() => {
@@ -66,12 +71,12 @@ export default function MiCuentaPage() {
   const history = data?.history ?? [];
   const completed = history.filter((h) => h.status === "completed");
   const invertido = completed.reduce((s, h) => s + Number(h.price_at_booking), 0);
-  const cabecera = useMemo(() => {
+  const cabecera = (() => {
     const c: Record<string, number> = {};
     completed.forEach((h) => { c[h.barber] = (c[h.barber] ?? 0) + 1; });
     const top = Object.entries(c).sort((a, b) => b[1] - a[1])[0];
     return top ? { name: top[0], visits: top[1] } : null;
-  }, [completed]);
+  })();
 
   const filtered = history.filter((h) => filter === "Todos" || chLabel(h.channel) === filter);
 
@@ -117,11 +122,11 @@ export default function MiCuentaPage() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <header className="acct-top">
         <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
-          <a href="/" style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 24, color: "#fff" }}>NOX</a>
+          <Link href="/" style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 24, color: "#fff" }}>NOX</Link>
           <span style={{ fontSize: 11, letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.5 }}>Mi Cuenta</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <a href="/agendar" className="nox-btn">Agendar Turno</a>
+          <Link href="/agendar" className="nox-btn">Agendar Turno</Link>
         </div>
       </header>
 
@@ -167,7 +172,7 @@ export default function MiCuentaPage() {
               ) : (
                 <div style={{ border: "1px dashed rgba(255,255,255,0.2)", padding: 40, textAlign: "center" }}>
                   <p style={{ opacity: 0.7, fontSize: 15 }}>No tenés turnos próximos.</p>
-                  <a href="/agendar" className="nox-btn" style={{ display: "inline-block", marginTop: 18 }}>Agendar ahora</a>
+                  <Link href="/agendar" className="nox-btn" style={{ display: "inline-block", marginTop: 18 }}>Agendar ahora</Link>
                 </div>
               )}
             </div>
@@ -189,7 +194,7 @@ export default function MiCuentaPage() {
                 <h2 style={{ fontFamily: SERIF, fontSize: 32, fontWeight: 600 }}>Historial</h2>
                 <div style={{ display: "flex", gap: 24 }}>
                   {["Todos", "Web", "WhatsApp"].map((label) => (
-                    <span key={label} className="tab" onClick={() => setFilter(label)} style={{ color: filter === label ? "#fff" : "rgba(255,255,255,0.5)", borderColor: filter === label ? "#fff" : "transparent" }}>{label}</span>
+                    <button type="button" key={label} className="tab" aria-pressed={filter === label} onClick={() => setFilter(label)} style={{ color: filter === label ? "#fff" : "rgba(255,255,255,0.72)", borderColor: filter === label ? "#fff" : "transparent", background: "transparent", fontFamily: SANS }}>{label}</button>
                   ))}
                 </div>
               </div>

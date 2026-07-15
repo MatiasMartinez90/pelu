@@ -1,0 +1,35 @@
+name: performance-accessibility
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "scripts/check-performance-budgets.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.ts"
+      - "lighthouserc*.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  budgets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          BACKEND_URL: https://api-nox.cloud-it.com.ar
+      - run: npm run perf:budgets
+      - name: Lighthouse CI — mobile
+        run: npm run perf:lighthouse:mobile
+      - name: Lighthouse CI — desktop
+        run: npm run perf:lighthouse:desktop

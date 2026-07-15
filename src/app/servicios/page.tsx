@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
@@ -52,7 +53,7 @@ export default function ServiciosPage() {
       <section className="px-fluid" style={{ maxWidth: 1180, margin: "0 auto", paddingBottom: "clamp(72px,10vw,120px)" }}>
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.14)" }}>
           {services.map((s) => (
-            <a
+            <Link
               key={s.name}
               href="/agendar"
               className="svc-row"
@@ -72,7 +73,7 @@ export default function ServiciosPage() {
                 <div style={{ fontFamily: SERIF, fontSize: "clamp(28px,3.4vw,40px)", fontWeight: 600 }}>{money(s.price)}</div>
                 <span className="svc-go" style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "#fff" }}>Reservar →</span>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -81,7 +82,7 @@ export default function ServiciosPage() {
             <h2 style={{ fontFamily: SERIF, fontSize: "clamp(32px,4.5vw,52px)", fontWeight: 600, lineHeight: 1 }}>¿Listo para tu próximo corte?</h2>
             <p style={{ marginTop: 12, opacity: 0.65, fontSize: 15 }}>Elegí tu profesional, servicio y horario en segundos.</p>
           </div>
-          <a href="/agendar" className="nox-btn" style={{ fontSize: 13, padding: "16px 32px" }}>Agendar Turno</a>
+          <Link href="/agendar" className="nox-btn" style={{ fontSize: 13, padding: "16px 32px" }}>Agendar Turno</Link>
         </div>
       </section>
 

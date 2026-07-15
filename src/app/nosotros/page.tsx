@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
@@ -81,7 +82,7 @@ export default function NosotrosPage() {
             <h2 style={{ fontFamily: SERIF, fontSize: "clamp(32px,4.5vw,52px)", fontWeight: 600, lineHeight: 1 }}>Vení a conocernos</h2>
             <p style={{ marginTop: 12, opacity: 0.65, fontSize: 15 }}>Reservá tu turno y viví la experiencia NOX.</p>
           </div>
-          <a href="/agendar" className="nox-btn" style={{ fontSize: 13, padding: "16px 32px" }}>Agendar Turno</a>
+          <Link href="/agendar" className="nox-btn" style={{ fontSize: 13, padding: "16px 32px" }}>Agendar Turno</Link>
         </div>
       </section>
 

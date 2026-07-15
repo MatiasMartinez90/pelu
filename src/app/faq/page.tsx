@@ -1,6 +1,3 @@
-"use client";
-
-import { useState } from "react";
 import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
@@ -18,8 +15,6 @@ const faqs = [
 ];
 
 export default function FaqPage() {
-  const [open, setOpen] = useState(0);
-
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <EditorialNav />
@@ -31,20 +26,15 @@ export default function FaqPage() {
 
       <section className="px-fluid" style={{ maxWidth: 900, margin: "0 auto", paddingBottom: 60 }}>
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.14)" }}>
-          {faqs.map((f, i) => {
-            const isOpen = open === i;
-            return (
-              <div key={f.q} className="faq-item" onClick={() => setOpen(isOpen ? -1 : i)} style={{ borderBottom: "1px solid rgba(255,255,255,0.12)", padding: "28px 12px" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24 }}>
-                  <h3 style={{ fontFamily: SERIF, fontSize: "clamp(20px,2.4vw,28px)", fontWeight: 600, lineHeight: 1.2 }}>{f.q}</h3>
-                  <span style={{ fontSize: 28, lineHeight: 1, opacity: 0.6, flexShrink: 0, transform: isOpen ? "rotate(45deg)" : "rotate(0deg)", transition: "transform .25s" }}>+</span>
-                </div>
-                <div style={{ maxHeight: isOpen ? 240 : 0, overflow: "hidden", transition: "max-height .3s ease, opacity .3s", opacity: isOpen ? 1 : 0 }}>
-                  <p style={{ marginTop: 16, fontSize: 16, lineHeight: 1.7, opacity: 0.7, maxWidth: 640 }}>{f.a}</p>
-                </div>
-              </div>
-            );
-          })}
+          {faqs.map((f, i) => (
+            <details key={f.q} className="faq-item faq-details" open={i === 0} style={{ borderBottom: "1px solid rgba(255,255,255,0.12)", padding: "28px 12px" }}>
+              <summary style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, cursor: "pointer" }}>
+                <h2 style={{ fontFamily: SERIF, fontSize: "clamp(20px,2.4vw,28px)", fontWeight: 600, lineHeight: 1.2 }}>{f.q}</h2>
+                <span className="faq-plus" aria-hidden="true" style={{ fontSize: 28, lineHeight: 1, opacity: 0.75, flexShrink: 0 }}>+</span>
+              </summary>
+              <p style={{ marginTop: 16, fontSize: 16, lineHeight: 1.7, opacity: 0.78, maxWidth: 640 }}>{f.a}</p>
+            </details>
+          ))}
         </div>
 
         <div className="cta-box" style={{ marginTop: 56 }}>

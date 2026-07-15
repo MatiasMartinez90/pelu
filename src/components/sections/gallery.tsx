@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import Image from "next/image";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { gallery } from "@/lib/data";
@@ -47,10 +48,11 @@ export function Gallery() {
             onClick={() => setOpen(i)}
             className="group relative aspect-square overflow-hidden rounded-xl"
           >
-            <img
+            <Image
               src={src}
               alt={`Trabajo ${i + 1}`}
-              loading="lazy"
+              fill
+              sizes="(max-width: 640px) 50vw, 33vw"
               className="size-full object-cover transition-transform duration-500 group-hover:scale-110"
             />
             <div className="absolute inset-0 bg-primary/0 transition-colors group-hover:bg-primary/15" />
@@ -80,9 +82,12 @@ export function Gallery() {
           >
             <ChevronLeft className="size-9" />
           </button>
-          <img
+          <Image
             src={gallery[open]}
             alt={`Trabajo ${open + 1}`}
+            width={1200}
+            height={900}
+            sizes="100vw"
             className="max-h-[85vh] max-w-full rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}
           />

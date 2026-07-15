@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { ArrowLeft, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -126,9 +127,12 @@ export function Wizard({ preselectServiceId }: { preselectServiceId?: string }) 
                   barber?.id === b.id ? "border-primary" : "border-border"
                 )}
               >
-                <img
+                <Image
                   src={b.photo}
                   alt={b.name}
+                  width={64}
+                  height={64}
+                  sizes="64px"
                   className="size-16 rounded-lg object-cover"
                 />
                 <div>
@@ -355,7 +359,7 @@ function SummaryRow({
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-background p-3">
       {img ? (
-        <img src={img} alt={value} className="size-10 rounded-md object-cover" />
+        <Image src={img} alt={value} width={40} height={40} sizes="40px" className="size-10 rounded-md object-cover" />
       ) : null}
       <div className="flex-1">
         <p className="text-xs text-muted-foreground">{label}</p>

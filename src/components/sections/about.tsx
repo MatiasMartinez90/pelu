@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import Image from "next/image";
 import { stats } from "@/lib/data";
 import { site } from "@/lib/site";
 
@@ -13,11 +14,13 @@ export function About() {
   return (
     <section id="nosotros" className="bg-card/40 py-24">
       <div className="container-px mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
-        <div className="relative">
-          <img
+        <div className="relative aspect-[4/5]">
+          <Image
             src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=900&q=80&auto=format&fit=crop"
             alt="Barbero trabajando"
-            className="aspect-[4/5] w-full rounded-2xl object-cover"
+            fill
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="rounded-2xl object-cover"
           />
           <div className="absolute -bottom-6 -right-4 hidden rounded-xl border border-primary/40 bg-background p-5 shadow-xl sm:block">
             <p className="font-heading text-3xl font-bold text-primary">+10</p>

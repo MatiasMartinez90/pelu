@@ -1,25 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Barber, BookingCatalog, Service } from "@/lib/booking-types";
 
-const SERIF = "'Bodoni Moda', Georgia, serif";
-const SANS = "'Archivo', system-ui, sans-serif";
+const SERIF = "var(--font-serif)";
+const SANS = "var(--font-sans)";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "https://api-nox.cloud-it.com.ar";
+const API = process.env.NEXT_PUBLIC_API_URL ?? "/api/booking";
 
 const ars = new Intl.NumberFormat("es-AR");
 const money = (n: number) => `$${ars.format(n)}`;
 
-type Barber = { slug: string; name: string; role: string; photo_url: string | null };
-type Service = {
-  slug: string;
-  name: string;
-  description: string;
-  price: number;
-  duration_min: number;
-  badge: string | null;
-  variable_price: boolean;
-};
 type Booking = {
   id: string;
   barber: string;
@@ -42,15 +35,23 @@ const stepDefs = [
   { n: "04", label: "Confirmación" },
 ];
 
-async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API}${path}`);
+async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(`${API}${path}`, { signal, cache: "no-store" });
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json();
 }
 
-export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: string }) {
+export function EditorialWizard({
+  preselectServiceId,
+  initialCatalog,
+  initialLoadError = false,
+}: {
+  preselectServiceId?: string;
+  initialCatalog: BookingCatalog;
+  initialLoadError?: boolean;
+}) {
   const [step, setStep] = useState(0);
-  const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [barbers] = useState<Barber[]>(initialCatalog.barbers);
   const [services, setServices] = useState<Service[]>([]);
   const [barberSlug, setBarberSlug] = useState<string | null>(null);
   const [serviceSlug, setServiceSlug] = useState<string | null>(null);
@@ -64,7 +65,8 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<Booking | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  const loadError = initialLoadError;
+  const availabilityController = useRef<AbortController | null>(null);
 
   const today = useMemo(() => startOfDay(new Date()), []);
   const [view, setView] = useState({ y: today.getFullYear(), m: today.getMonth() });
@@ -73,55 +75,49 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
   const service = services.find((s) => s.slug === serviceSlug) || null;
   const selDate = dateTs ? new Date(dateTs) : null;
 
-  useEffect(() => {
-    apiGet<Barber[]>("/api/v1/barbers")
-      .then(setBarbers)
-      .catch(() => setLoadError(true));
-  }, []);
-
-  // Servicios del barbero elegido
-  useEffect(() => {
-    if (!barberSlug) return;
-    setServices([]);
-    apiGet<Service[]>(`/api/v1/services?barber=${barberSlug}`)
-      .then(setServices)
-      .catch(() => setLoadError(true));
-  }, [barberSlug]);
-
   const refreshSlots = useCallback(async () => {
     if (!barberSlug || !serviceSlug || !selDate) return;
+    await Promise.resolve();
+    availabilityController.current?.abort();
+    const controller = new AbortController();
+    availabilityController.current = controller;
     setSlotsLoading(true);
     setSlots([]);
     try {
       const data = await apiGet<{ slots: string[] }>(
-        `/api/v1/availability?barber=${barberSlug}&service=${serviceSlug}&date=${isoDate(selDate)}`
+        `/api/v1/availability?barber=${barberSlug}&service=${serviceSlug}&date=${isoDate(selDate)}`,
+        controller.signal,
       );
-      setSlots(data.slots);
-    } catch {
-      setSlots([]);
+      if (availabilityController.current === controller) setSlots(data.slots);
+    } catch (error) {
+      if ((error as Error).name !== "AbortError" && availabilityController.current === controller) {
+        setSlots([]);
+      }
     } finally {
-      setSlotsLoading(false);
+      if (availabilityController.current === controller) setSlotsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [barberSlug, serviceSlug, dateTs]);
 
   useEffect(() => {
+    // Sincroniza la selección con el endpoint dinámico de disponibilidad.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshSlots();
+    return () => availabilityController.current?.abort();
   }, [refreshSlots]);
 
   function pickBarber(b: Barber) {
+    const availableServices = initialCatalog.services_by_barber[b.slug] ?? [];
     setBarberSlug(b.slug);
-    setServiceSlug(null);
-    setStep(1);
-  }
-
-  // Preselección de servicio (?servicio=slug) una vez cargados los servicios
-  useEffect(() => {
-    if (step === 1 && preselectServiceId && services.some((s) => s.slug === preselectServiceId)) {
+    setServices(availableServices);
+    if (preselectServiceId && availableServices.some((s) => s.slug === preselectServiceId)) {
       setServiceSlug(preselectServiceId);
       setStep(2);
+    } else {
+      setServiceSlug(null);
+      setStep(1);
     }
-  }, [step, services, preselectServiceId]);
+  }
 
   function pickService(s: Service) {
     setServiceSlug(s.slug);
@@ -207,7 +203,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
             El pago se realiza en el local · Av. Cabildo 2200, CABA.
             <br />Para cancelar o reprogramar escribinos por WhatsApp.
           </p>
-          <a href="/" className="nox-btn" style={{ display: "inline-block", marginTop: 24, padding: "14px 32px" }}>Volver al inicio</a>
+          <Link href="/" className="nox-btn" style={{ display: "inline-block", marginTop: 24, padding: "14px 32px" }}>Volver al inicio</Link>
         </div>
       </div>
     );
@@ -218,7 +214,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
       <div style={{ maxWidth: 1120, margin: "0 auto" }}>
         <header style={{ textAlign: "center" }}>
           <div style={{ fontSize: 12, letterSpacing: "0.4em", textTransform: "uppercase", opacity: 0.7 }}>
-            <a href="/" className="nox-link" style={{ opacity: 0.7 }}>NOX</a> · Reserva Online
+            <Link href="/" className="nox-link" style={{ opacity: 0.7 }}>NOX</Link> · Reserva Online
           </div>
           <h1 style={{ marginTop: 14, fontFamily: SERIF, fontWeight: 700, fontSize: "clamp(44px,6vw,76px)", lineHeight: 0.95, letterSpacing: "0.01em" }}>
             Agendá tu turno
@@ -227,12 +223,12 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
         </header>
 
         {errorMsg && (
-          <div style={{ margin: "24px auto 0", maxWidth: 640, border: "1px solid rgba(255,120,120,0.5)", background: "rgba(255,90,90,0.08)", color: "#ffb3b3", padding: "14px 18px", fontSize: 14, textAlign: "center" }}>
+          <div role="alert" style={{ margin: "24px auto 0", maxWidth: 640, border: "1px solid rgba(255,120,120,0.5)", background: "rgba(255,90,90,0.08)", color: "#ffb3b3", padding: "14px 18px", fontSize: 14, textAlign: "center" }}>
             {errorMsg}
           </div>
         )}
         {loadError && (
-          <div style={{ margin: "24px auto 0", maxWidth: 640, border: "1px solid rgba(255,120,120,0.5)", padding: "14px 18px", fontSize: 14, textAlign: "center", color: "#ffb3b3" }}>
+          <div role="alert" style={{ margin: "24px auto 0", maxWidth: 640, border: "1px solid rgba(255,120,120,0.5)", padding: "14px 18px", fontSize: 14, textAlign: "center", color: "#ffb3b3" }}>
             No pudimos cargar la información de reservas. Recargá la página o escribinos por WhatsApp.
           </div>
         )}
@@ -262,18 +258,27 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
               <p style={{ textAlign: "center", marginTop: 40, opacity: 0.5 }}>Cargando profesionales…</p>
             )}
             <div className="wz-barbers" style={{ marginTop: 36 }}>
-              {barbers.map((b) => {
+              {barbers.map((b, index) => {
                 const sel = b.slug === barberSlug;
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={b.slug}
                     onClick={() => pickBarber(b)}
-                    style={{ cursor: "pointer", border: `1px solid ${sel ? "#fff" : "rgba(255,255,255,0.14)"}`, background: "#101010", overflow: "hidden", transition: "border-color .25s" }}
+                    aria-pressed={sel}
+                    style={{ cursor: "pointer", border: `1px solid ${sel ? "#fff" : "rgba(255,255,255,0.24)"}`, background: "#101010", color: "#fff", overflow: "hidden", transition: "border-color .25s", padding: 0, textAlign: "left", fontFamily: SANS }}
                   >
                     <div style={{ position: "relative", height: 280, overflow: "hidden" }}>
                       {b.photo_url && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={b.photo_url} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 22%", filter: sel ? "none" : "grayscale(1) contrast(1.04)", transition: "filter .3s" }} />
+                        <Image
+                          src={b.photo_url}
+                          alt={b.name}
+                          fill
+                          unoptimized={b.photo_url.startsWith("/media/")}
+                          loading={index < 2 ? "eager" : "lazy"}
+                          sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw"
+                          style={{ objectFit: "cover", objectPosition: "center 22%", filter: sel ? "none" : "grayscale(1) contrast(1.04)", transition: "filter .3s" }}
+                        />
                       )}
                       <div style={{ position: "absolute", top: 12, left: 12, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", background: b.role === "ESTILISTA" ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.55)", color: b.role === "ESTILISTA" ? "#0a0a0a" : "#fff", padding: "4px 9px" }}>{b.role}</div>
                     </div>
@@ -281,7 +286,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                       <span style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600 }}>{b.name}</span>
                       <span style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", opacity: sel ? 1 : 0.5 }}>Elegir →</span>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -299,11 +304,12 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
             )}
             <div style={{ marginTop: 32, borderTop: "1px solid rgba(255,255,255,0.12)" }}>
               {services.map((s) => (
-                <div
+                <button
+                  type="button"
                   key={s.slug}
                   onClick={() => pickService(s)}
                   className="svc-row"
-                  style={{ padding: "24px 8px", borderBottom: "1px solid rgba(255,255,255,0.12)", cursor: "pointer" }}
+                  style={{ width: "100%", padding: "24px 8px", border: 0, borderBottom: "1px solid rgba(255,255,255,0.18)", cursor: "pointer", background: "transparent", color: "#fff", textAlign: "left", fontFamily: SANS }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -317,7 +323,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                     <div style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 600 }}>{s.variable_price ? `desde ${money(s.price)}` : money(s.price)}</div>
                     <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", background: "#fff", color: "#0a0a0a", padding: "6px 14px", display: "inline-block", fontWeight: 700 }}>Agendar</div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
             <button onClick={back} style={{ marginTop: 28, background: "none", border: "none", color: "rgba(255,255,255,0.55)", fontSize: 13, letterSpacing: "0.08em", cursor: "pointer", fontFamily: SANS }}>← Volver a elegir profesional</button>
@@ -333,11 +339,15 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
               <div style={{ border: "1px solid rgba(255,255,255,0.14)", background: "#101010", padding: 22 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <button
+                    type="button"
+                    aria-label="Mes anterior"
                     onClick={() => !prevDisabled && setView({ y: m === 0 ? y - 1 : y, m: m === 0 ? 11 : m - 1 })}
                     style={{ background: "none", border: "none", color: "#fff", fontSize: 18, cursor: prevDisabled ? "default" : "pointer", opacity: prevDisabled ? 0.25 : 1 }}
                   >‹</button>
                   <span style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600 }}>{MONTHS[m]} {y}</span>
                   <button
+                    type="button"
+                    aria-label="Mes siguiente"
                     onClick={() => setView({ y: m === 11 ? y + 1 : y, m: m === 11 ? 0 : m + 1 })}
                     style={{ background: "none", border: "none", color: "#fff", fontSize: 18, cursor: "pointer" }}
                   >›</button>
@@ -355,11 +365,15 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                     const disabled = past || sunday;
                     const sel = dateTs != null && date.getTime() === dateTs;
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={d}
                         onClick={() => { if (!disabled) { setDateTs(date.getTime()); setTime(null); } }}
-                        style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, background: sel ? "#fff" : "transparent", color: sel ? "#0a0a0a" : disabled ? "rgba(255,255,255,0.2)" : "#fff", cursor: disabled ? "not-allowed" : "pointer", border: `1px solid ${sel ? "#fff" : "rgba(255,255,255,0.08)"}` }}
-                      >{d}</div>
+                        disabled={disabled}
+                        aria-label={`${DOW[date.getDay()]} ${d} de ${MONTHS[m]}`}
+                        aria-pressed={sel}
+                        style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, background: sel ? "#fff" : "transparent", color: sel ? "#0a0a0a" : disabled ? "rgba(255,255,255,0.32)" : "#fff", cursor: disabled ? "not-allowed" : "pointer", border: `1px solid ${sel ? "#fff" : "rgba(255,255,255,0.16)"}`, fontFamily: SANS }}
+                      >{d}</button>
                     );
                   })}
                 </div>
@@ -370,7 +384,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                 <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600 }}>{selDate ? `Horarios — ${dateLabel}` : "Elegí una fecha"}</h3>
                 {selDate ? (
                   slotsLoading ? (
-                    <p style={{ marginTop: 16, color: "rgba(255,255,255,0.45)", fontSize: 14 }}>Buscando horarios…</p>
+                    <p role="status" aria-live="polite" style={{ marginTop: 16, color: "rgba(255,255,255,0.68)", fontSize: 14 }}>Buscando horarios…</p>
                   ) : slots.length === 0 ? (
                     <p style={{ marginTop: 16, color: "rgba(255,255,255,0.45)", fontSize: 14 }}>No quedan horarios libres ese día. Probá con otra fecha.</p>
                   ) : (
@@ -378,7 +392,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                       {slots.map((t) => {
                         const sel = time === t;
                         return (
-                          <div key={t} onClick={() => setTime(t)} style={{ textAlign: "center", padding: "11px 0", fontSize: 14, cursor: "pointer", border: `1px solid ${sel ? "#fff" : "rgba(255,255,255,0.18)"}`, background: sel ? "#fff" : "transparent", color: sel ? "#0a0a0a" : "#fff", transition: "background .15s" }}>{t}</div>
+                          <button type="button" aria-pressed={sel} key={t} onClick={() => setTime(t)} style={{ textAlign: "center", padding: "11px 0", fontSize: 14, cursor: "pointer", border: `1px solid ${sel ? "#fff" : "rgba(255,255,255,0.28)"}`, background: sel ? "#fff" : "transparent", color: sel ? "#0a0a0a" : "#fff", transition: "background .15s", fontFamily: SANS }}>{t}</button>
                         );
                       })}
                     </div>
@@ -406,10 +420,7 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                 <h3 style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600 }}>Resumen del turno</h3>
                 <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                    {barber.photo_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={barber.photo_url} alt="" style={{ width: 48, height: 48, objectFit: "cover", filter: "grayscale(1)" }} />
-                    )}
+                    {barber.photo_url && <Image src={barber.photo_url} alt="" width={48} height={48} sizes="48px" unoptimized={barber.photo_url.startsWith("/media/")} style={{ width: 48, height: 48, objectFit: "cover", filter: "grayscale(1)" }} />}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>Profesional</div>
                       <div style={{ fontWeight: 600, fontSize: 16, marginTop: 2 }}>{barber.name}</div>
@@ -434,14 +445,16 @@ export function EditorialWizard({ preselectServiceId }: { preselectServiceId?: s
                 <h3 style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600 }}>Tus datos</h3>
                 <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 20 }}>
                   {[
-                    { label: "Nombre completo", ph: "Ej: Juan Pérez", val: name, set: setName },
-                    { label: "Teléfono / WhatsApp", ph: "11 2345 6789", val: phone, set: setPhone },
-                    { label: "Email (opcional)", ph: "tu@email.com", val: email, set: setEmail },
+                    { label: "Nombre completo", ph: "Ej: Juan Pérez", val: name, set: setName, type: "text", autoComplete: "name" },
+                    { label: "Teléfono / WhatsApp", ph: "11 2345 6789", val: phone, set: setPhone, type: "tel", autoComplete: "tel" },
+                    { label: "Email (opcional)", ph: "tu@email.com", val: email, set: setEmail, type: "email", autoComplete: "email" },
                   ].map((f) => (
                     <label key={f.label} style={{ display: "block" }}>
                       <span style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }}>{f.label}</span>
                       <input
                         className="wz-input"
+                        type={f.type}
+                        autoComplete={f.autoComplete}
                         value={f.val}
                         placeholder={f.ph}
                         onChange={(e) => f.set(e.target.value)}

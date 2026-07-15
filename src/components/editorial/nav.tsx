@@ -1,5 +1,7 @@
-export const SERIF = "'Bodoni Moda', Georgia, serif";
-export const SANS = "'Archivo', system-ui, sans-serif";
+import Link from "next/link";
+
+export const SERIF = "var(--font-serif)";
+export const SANS = "var(--font-sans)";
 
 const items = [
   { href: "/servicios", label: "Servicios", key: "servicios" },
@@ -11,7 +13,7 @@ const items = [
 export function EditorialNav({ active }: { active?: string }) {
   return (
     <header className="enav">
-      <a
+      <Link
         href="/"
         style={{
           fontFamily: SERIF,
@@ -22,24 +24,24 @@ export function EditorialNav({ active }: { active?: string }) {
         }}
       >
         NOX
-      </a>
+      </Link>
       <nav className="enav-links">
         {items.map((it) => (
-          <a
+          <Link
             key={it.key}
             href={it.href}
             className="nox-link"
             style={{ opacity: active === it.key ? 1 : 0.7 }}
           >
             {it.label}
-          </a>
+          </Link>
         ))}
-        <a href="/login" className="nox-link" style={{ opacity: 0.7 }}>
+        <Link href="/login" className="nox-link" style={{ opacity: 0.7 }}>
           Ingresar
-        </a>
-        <a href="/agendar" className="nox-btn">
+        </Link>
+        <Link href="/agendar" prefetch className="nox-btn">
           Agendar Turno
-        </a>
+        </Link>
       </nav>
     </header>
   );
