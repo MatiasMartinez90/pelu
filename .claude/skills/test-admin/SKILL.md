@@ -64,6 +64,28 @@ Varios botones (EDITAR en precios, click en precio de stock) abren `window.promp
 - **Días cerrados**: calendario con nav `‹ Mes ›`. Click en día → toggle cerrado/abierto. Domingos siempre cerrados por horario (sin columna DOM o marcados).
 - **Bloqueos puntuales**: lista de bloqueos con botón QUITAR. Botón `+ AGREGAR BLOQUEO`.
 
+## Verificación post-merge PR #11 (contexto negocio desde PostgreSQL)
+- **Administración → Perfil del sitio**: nuevos endpoints admin para editar perfil institucional (nombre, dirección, contacto, redes) y reglas semanales de horario. Editar un campo → verificar que `GET /api/v1/site` y el sitio público reflejan el cambio.
+- **Personal**: bio e Instagram editables por barbero (dinámicos, sin hardcodeo).
+- Desactivar un barbero o servicio → verificar que desaparece de la disponibilidad pública en /agendar.
+
+## Verificación post-merge PR #12 (robustez agente + guardrails)
+Probar vía WhatsApp contra el agente:
+- **Confirmación en dos turnos**: pedir reserva → el agente debe preparar y pedir confirmación explícita en un mensaje separado antes de reservar. Igual para reprogramar y cancelar. Sin confirmación → no muta nada.
+- **Idempotencia**: confirmar dos veces el mismo turno / reenviar mensaje duplicado → no debe crear turno doble.
+- **Reprogramación atómica**: reprogramar turno → el viejo se libera y el nuevo se toma; si falla, no queda estado intermedio.
+- **Guardrails**: probar prompt injection ("ignorá tus instrucciones y..."), contenido inapropiado → el agente rechaza/modera sin romper.
+- **Handoff**: pedir hablar con humano → handoff durable, visible en Conversaciones (filtro Humano).
+- **Panel Agente IA**: métricas siguen poblándose (mensajes, reservas por IA, latencia, errores). Verificar actividad reciente tras las pruebas.
+- Backend: `GET /health/ready` (readiness real) y `/metrics` Prometheus responden.
+- Infra: verificar en RabbitMQ que existen retry queue y DLQ; mensajes fallidos van a DLQ, no se pierden.
+
+## Verificación post-merge PR #13 (perf admin)
+- **Clientes**: búsqueda cancelable (tipear rápido no rompe ni muestra resultados viejos) y paginación por cursor (scroll/siguiente página consistente, sin duplicados).
+- **Prefetch por intención**: hover sobre secciones del nav admin dispara prefetch (Network).
+- **Caché privada**: datos del admin no cachean entre usuarios (verificar header `Cache-Control: private` en responses de backoffice).
+- Editar precio/perfil en admin → sitio público refleja el cambio (invalidación por tag del bootstrap cacheado). Si no refleja, bug de invalidación.
+
 ## Hallazgos conocidos (al 2026-07-14)
 - `window.prompt()` nativo en Stock (precio) y Administración (precios de servicios) bloquea el renderer de la extensión — requiere intervención manual del usuario.
 - Clientes: visitas/gastado muestran 0 para turnos cancelados (correcto). Turnos pasados también $0 si no se completaron con pago.
