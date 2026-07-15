@@ -4,13 +4,19 @@ from datetime import date as date_type
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from ...db.pool import get_pool
-from ...db.repositories import catalog
+from ...db.repositories import catalog, site_context
 from ...integrations.redis_client import rate_limit_exceeded
 from ...services import availability_service, booking_service
 from ..client_ip import get_client_ip
 from ..schemas import AvailabilityOut, BarberOut, BookingIn, BookingOut, ServiceOut
 
 router = APIRouter(prefix="/api/v1", tags=["public"])
+
+
+@router.get("/site")
+async def site_data():
+    pool = await get_pool()
+    return await site_context.get_site_data(pool)
 
 
 @router.get("/barbers", response_model=list[BarberOut])
@@ -36,6 +42,10 @@ async def availability(
     s = await catalog.get_service_by_slug(pool, service)
     if b is None or s is None:
         raise HTTPException(404, "barbero o servicio inexistente")
+    if not b["active"] or not s["active"]:
+        raise HTTPException(404, "barbero o servicio no disponible")
+    if not await catalog.barber_offers_service(pool, b["id"], s["id"]):
+        raise HTTPException(422, "el profesional no ofrece ese servicio")
     slots = await availability_service.get_slots(pool, b, s, date)
     return AvailabilityOut(date=date, barber=barber, service=service, slots=slots)
 

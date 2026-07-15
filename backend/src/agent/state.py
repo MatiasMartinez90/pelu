@@ -7,3 +7,4 @@ class AgentState(BaseAgentState):
     phone: str
     conversation_id: int
     customer_name: str | None
+    business_context: str

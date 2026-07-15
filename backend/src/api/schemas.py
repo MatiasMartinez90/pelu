@@ -14,6 +14,8 @@ class BarberOut(BaseModel):
     name: str
     role: str
     photo_url: str | None
+    bio: str
+    instagram: str
 
 
 class ServiceOut(BaseModel):
