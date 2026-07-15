@@ -77,3 +77,36 @@ async def adjust_stock(product_id: UUID, body: AdjustIn, admin: dict = AdminUser
                 admin["email"],
             )
     return dict(row)
+
+
+class ProductPatch(BaseModel):
+    name: str | None = None
+    price: int | None = None
+    min_qty: int | None = None
+
+
+@router.patch("/products/{product_id}")
+async def patch_product(product_id: UUID, body: ProductPatch, admin: dict = AdminUser):
+    """Edita datos del producto (precio, nombre, stock mínimo). El stock (qty) va por /adjust."""
+    if body.price is not None and (body.price <= 0 or body.price > 100_000_000):
+        raise HTTPException(422, "precio inválido")
+    if body.min_qty is not None and body.min_qty < 0:
+        raise HTTPException(422, "stock mínimo inválido")
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        """
+        UPDATE products SET
+            name = COALESCE($2, name),
+            price = COALESCE($3, price),
+            min_qty = COALESCE($4, min_qty)
+        WHERE id = $1
+        RETURNING id, name, sku, qty, min_qty, price, active
+        """,
+        product_id,
+        body.name,
+        body.price,
+        body.min_qty,
+    )
+    if row is None:
+        raise HTTPException(404, "producto no encontrado")
+    return dict(row)

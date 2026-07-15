@@ -128,8 +128,11 @@ async def patch_price(service_id: UUID, body: PricePatch, admin: dict = AdminUse
             current = await conn.fetchval("SELECT price FROM services WHERE id = $1", service_id)
             if current is None:
                 raise HTTPException(404, "servicio no encontrado")
-            if body.new_price <= 0 or abs(body.new_price - current) > round(current * 0.10):
-                raise HTTPException(422, "el cambio de precio supera el ±10% permitido")
+            # El dueño fija sus propios precios: se permite cualquier valor positivo
+            # (antes había un cap ±10% por cambio que impedía ajustes legítimos).
+            # Queda auditado en service_price_history.
+            if body.new_price <= 0 or body.new_price > 100_000_000:
+                raise HTTPException(422, "precio inválido")
             await conn.execute(
                 "UPDATE services SET price = $2 WHERE id = $1", service_id, body.new_price
             )
