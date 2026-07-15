@@ -40,8 +40,8 @@ Verificar: payload `{barber, service (slug -barbero), date (YYYY-MM-DD local), t
 - `/mi-cuenta`, `/admin`, `/barbero` → deben redirigir 307 a `/login?callbackUrl=<ruta>`.
 
 ## Findings conocidos (verificar si siguen)
-- `/contacto`: el mapa es un `<iframe>` a `www.google.com/maps?...&output=embed` que Google **rechaza embeber** → ícono roto. Fix: Maps Embed API (`/maps/embed?pb=…` o API key).
-- `/faq`: `<title>` genérico en vez de propio (nit SEO).
+- `/contacto`: mapa → **FIXEADO** (2026-07-11): cambiado a OpenStreetMap embed + CSP `frame-src https://www.openstreetmap.org`. Verificar que el iframe carga correctamente.
+- `/faq`: título genérico → **FIXEADO** (2026-07-11): `layout.tsx` server component con metadata propia "Preguntas Frecuentes | NOX Barber". Verificar `<title>` en DevTools.
 
 ## Reporte
 Listar por página: OK / warning / bug, con screenshot y, para bugs, la causa (status HTTP, request fallida, elemento roto).
