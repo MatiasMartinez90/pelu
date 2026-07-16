@@ -86,6 +86,22 @@ Probar vía WhatsApp contra el agente:
 - **Caché privada**: datos del admin no cachean entre usuarios (verificar header `Cache-Control: private` en responses de backoffice).
 - Editar precio/perfil en admin → sitio público refleja el cambio (invalidación por tag del bootstrap cacheado). Si no refleja, bug de invalidación.
 
+## Portales por rol (post-login) — PR #14 en adelante
+Routing tras login con Google (`src/app/post-login/page.tsx`): rol `admin` → `/admin`, rol `barbero` → `/barbero`, cualquier otro logueado → `/mi-cuenta`. Roles vienen de Keycloak (realm nox).
+
+### /barbero (portal del barbero)
+- Requiere rol `barbero` o `admin` en Keycloak (middleware) **y** que `barbers.email` en la DB coincida con el email del login. Sin vínculo → pantalla 403 "Esta sección es para barberos del equipo... pedile al admin que vincule tu email" (verificado 2026-07-14, correcto).
+- Contenido: "Mi agenda" por día (turnos con cliente/servicio/hora/estado/total del día, nav ‹ › + Hoy) y "Mis estadísticas" mensuales (ingresos, completados, cancelados, clientes, servicios más pedidos). BFF: `/api/barber/*` → `/api/v1/barber/*`.
+- Vincular email a un barbero: `PATCH /api/backoffice/barbers/{id}` con `{"email": "..."}` (sesión admin). El rebind queda auditado en `barber_email_history`.
+- Cuentas de prueba: barbero → cloudit.arg@gmail.com; cliente → mmartinez.aws3@gmail.com (cliente no requiere registro previo).
+
+### /mi-cuenta (portal del cliente)
+- Guard client-side (fetch 401 → redirect a /login); NO está en el matcher del middleware — por diseño, no es bug.
+- Contenido: próximo turno con Cancelar (usa `confirm()` nativo — misma advertencia que prompt()), stats (completados, profesional de cabecera, invertido), historial con filtros Todos/Web/WhatsApp, botón "Vincular mi WhatsApp" (genera código y abre wa.me). BFF: `/api/me/*`.
+
+### Gotcha de sesión con la extensión
+La sesión de Auth.js es por perfil de Chrome: si el usuario se loguea en otra ventana/perfil, el tab MCP sigue sin sesión (`/api/auth/session` → null). Verificar sesión en el tab MCP antes de testear portales.
+
 ## Hallazgos conocidos (al 2026-07-14)
 - `window.prompt()` nativo en Stock (precio) y Administración (precios de servicios) bloquea el renderer de la extensión — requiere intervención manual del usuario.
 - Clientes: visitas/gastado muestran 0 para turnos cancelados (correcto). Turnos pasados también $0 si no se completaron con pago.
