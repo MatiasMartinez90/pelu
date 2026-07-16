@@ -3,7 +3,7 @@ name: build-deploy
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths-ignore:
       - "README.md"
 
@@ -66,7 +66,7 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_FRONT }}:${{ steps.tag.outputs.sha }}
-            ${{ env.IMAGE_FRONT }}:latest
+            ${{ env.IMAGE_FRONT }}:${{ github.ref_name == 'main' && 'latest' || 'dev-latest' }}
           cache-from: type=gha,scope=front
           cache-to: type=gha,mode=max,scope=front
 
@@ -77,11 +77,19 @@ jobs:
           if [ -z "$GH_TOKEN" ]; then echo "Sin INFRA_REPO_TOKEN — salteo el bump."; exit 0; fi
           git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/MatiasMartinez90/agents-hetzner-k3s.git" infra
           cd infra
-          sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-barber([:@]).*#image: ghcr.io/matiasmartinez90/nox-barber@${{ steps.build.outputs.digest }}#" manifests-contabo/nox-barber.yaml
+          if [ "$GITHUB_REF_NAME" = "dev" ]; then
+            manifest="manifests-contabo/nox-dev/nox-web.yaml"
+            environment="dev"
+          else
+            manifest="manifests-contabo/nox-barber.yaml"
+            environment="production"
+          fi
+          test -f "$manifest"
+          sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-barber([:@]).*#image: ghcr.io/matiasmartinez90/nox-barber@${{ steps.build.outputs.digest }}#" "$manifest"
           if git diff --quiet; then echo "sin cambios en el tag"; exit 0; fi
           git config user.name "nox-ci"
           git config user.email "ci@noxbarber.local"
-          git commit -am "ci(nox): imagen front ${{ steps.tag.outputs.sha }}"
+          git commit -am "ci(nox-${environment}): imagen front ${{ steps.tag.outputs.sha }}"
           git push
 
   build-backend:
@@ -118,7 +126,7 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_BACKEND }}:${{ steps.tag.outputs.sha }}
-            ${{ env.IMAGE_BACKEND }}:latest
+            ${{ env.IMAGE_BACKEND }}:${{ github.ref_name == 'main' && 'latest' || 'dev-latest' }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
@@ -129,12 +137,20 @@ jobs:
           if [ -z "$GH_TOKEN" ]; then echo "Sin INFRA_REPO_TOKEN — salteo el bump."; exit 0; fi
           git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/MatiasMartinez90/agents-hetzner-k3s.git" infra
           cd infra
+          if [ "$GITHUB_REF_NAME" = "dev" ]; then
+            manifest="manifests-contabo/nox-dev/nox-backend.yaml"
+            environment="dev"
+          else
+            manifest="manifests-contabo/nox-backend.yaml"
+            environment="production"
+          fi
+          test -f "$manifest"
           for i in 1 2 3; do
-            sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-backend([:@]).*#image: ghcr.io/matiasmartinez90/nox-backend@${{ steps.build.outputs.digest }}#" manifests-contabo/nox-backend.yaml
+            sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-backend([:@]).*#image: ghcr.io/matiasmartinez90/nox-backend@${{ steps.build.outputs.digest }}#" "$manifest"
             if git diff --quiet; then echo "sin cambios en el tag"; exit 0; fi
             git config user.name "nox-ci"
             git config user.email "ci@noxbarber.local"
-            git commit -am "ci(nox): imagen backend ${{ steps.tag.outputs.sha }}"
+            git commit -am "ci(nox-${environment}): imagen backend ${{ steps.tag.outputs.sha }}"
             git push && exit 0
             git pull --rebase
           done
