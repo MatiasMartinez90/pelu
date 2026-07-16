@@ -132,7 +132,7 @@ function prefetchSection(section: string) {
     clientes: ["/customers?search=&limit=50"],
     stock: ["/stock"],
     ia: ["/agent/metrics?days=30", "/agent/events?limit=20"],
-    ajustes: ["/barbers", "/services", "/settings", "/admins"],
+    ajustes: ["/barbers", "/services", "/settings", "/admins", "/site-profile", "/schedule-rules"],
   };
   for (const path of paths[section] ?? []) {
     if (!GET_CACHE.has(path)) void api(path).catch(() => {});
@@ -858,6 +858,175 @@ type Service = { id: string; slug: string; name: string; price: number; variable
 type Admin = { id: string; email: string; name: string; role: string; active: boolean };
 type Settings = { agenda_open: boolean; booking_channels: { web: boolean; whatsapp: boolean }; slot_granularity_min: number; min_lead_minutes: number; max_days_ahead: number };
 
+type SiteProfile = {
+  name: string; short_name: string; tagline: string; city: string; description: string;
+  phone_display: string; whatsapp: string; instagram: string; email: string; address: string;
+  maps_query: string; directions: string; payment_methods: string[]; payment_notes: string;
+  cancellation_notice_min: number; cancellation_notes: string; online_store_url: string | null;
+};
+type ScheduleRule = { dow: number; opens_at: string; closes_at: string; barber_slug: string | null };
+
+const PROFILE_INPUT: React.CSSProperties = { width: "100%", background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "inherit", padding: "10px 12px", fontSize: 14, fontFamily: SANS };
+
+const PROFILE_FIELDS: { key: keyof SiteProfile; label: string; long?: boolean }[] = [
+  { key: "name", label: "Nombre" },
+  { key: "short_name", label: "Nombre corto" },
+  { key: "tagline", label: "Tagline" },
+  { key: "city", label: "Ciudad" },
+  { key: "description", label: "Descripción", long: true },
+  { key: "phone_display", label: "Teléfono" },
+  { key: "whatsapp", label: "WhatsApp" },
+  { key: "instagram", label: "Instagram" },
+  { key: "email", label: "Email" },
+  { key: "address", label: "Dirección" },
+  { key: "maps_query", label: "Búsqueda en Maps" },
+  { key: "directions", label: "Cómo llegar", long: true },
+  { key: "payment_methods", label: "Medios de pago (separados por coma)" },
+  { key: "payment_notes", label: "Notas de pago" },
+  { key: "cancellation_notice_min", label: "Aviso de cancelación (min)" },
+  { key: "cancellation_notes", label: "Notas de cancelación" },
+  { key: "online_store_url", label: "URL tienda online" },
+];
+
+function profileToDraft(p: SiteProfile): Record<string, string> {
+  const d: Record<string, string> = {};
+  for (const f of PROFILE_FIELDS) {
+    const v = p[f.key];
+    d[f.key] = Array.isArray(v) ? v.join(", ") : v == null ? "" : String(v);
+  }
+  return d;
+}
+
+function PerfilSitio() {
+  const [profile, setProfile] = useState<SiteProfile | null>(() => getCached<SiteProfile>("/site-profile"));
+  const [draft, setDraft] = useState<Record<string, string> | null>(profile ? profileToDraft(profile) : null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    api<SiteProfile>("/site-profile").then((p) => { setProfile(p); setDraft(profileToDraft(p)); }).catch((e) => setMsg(e.message));
+  }, []);
+
+  if (!profile || !draft) return <div style={{ ...CARD, padding: 24, gridColumn: "1 / -1" }}><Sk h={220} /></div>;
+
+  const dirty = PROFILE_FIELDS.some((f) => draft[f.key] !== profileToDraft(profile)[f.key]);
+
+  async function save() {
+    if (!profile || !draft) return;
+    const base = profileToDraft(profile);
+    const values: Record<string, unknown> = {};
+    for (const f of PROFILE_FIELDS) {
+      if (draft[f.key] === base[f.key]) continue;
+      const raw = draft[f.key].trim();
+      if (f.key === "payment_methods") values[f.key] = raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+      else if (f.key === "cancellation_notice_min") values[f.key] = Math.max(0, Math.round(Number(raw) || 0));
+      else if (f.key === "online_store_url") values[f.key] = raw || null;
+      else values[f.key] = raw;
+    }
+    setSaving(true); setMsg("");
+    try {
+      const updated = await api<SiteProfile>("/site-profile", { method: "PATCH", body: JSON.stringify({ values }) });
+      setProfile(updated); setDraft(profileToDraft(updated)); setMsg("Guardado. El sitio público refleja el cambio.");
+    } catch (e) { setMsg((e as Error).message); } finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{ ...CARD, padding: 24, gridColumn: "1 / -1" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6 }}>Perfil del sitio</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {msg && <span style={{ fontSize: 12, opacity: 0.6 }}>{msg}</span>}
+          <button className="miniact" disabled={!dirty || saving} style={{ opacity: dirty && !saving ? 1 : 0.4 }} onClick={save}>{saving ? "Guardando…" : "Guardar cambios"}</button>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+        {PROFILE_FIELDS.map((f) => (
+          <label key={f.key} style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: f.long ? "1 / -1" : undefined }}>
+            <span style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.5 }}>{f.label}</span>
+            {f.long ? (
+              <textarea rows={3} style={{ ...PROFILE_INPUT, resize: "vertical" }} value={draft[f.key]} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} />
+            ) : (
+              <input style={PROFILE_INPUT} value={draft[f.key]} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} />
+            )}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HorarioSemanal() {
+  // Edita solo el horario general del local (barber_slug null); las reglas
+  // por profesional se preservan al hacer el PUT (el endpoint reemplaza todo).
+  const [rules, setRules] = useState<ScheduleRule[] | null>(() => getCached<ScheduleRule[]>("/schedule-rules"));
+  const [draft, setDraft] = useState<Record<number, { open: boolean; opens: string; closes: string }> | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const toDraft = (rs: ScheduleRule[]) => {
+    const d: Record<number, { open: boolean; opens: string; closes: string }> = {};
+    for (let dow = 0; dow < 7; dow++) {
+      const r = rs.find((x) => x.barber_slug === null && x.dow === dow);
+      d[dow] = r ? { open: true, opens: r.opens_at.slice(0, 5), closes: r.closes_at.slice(0, 5) } : { open: false, opens: "10:00", closes: "20:00" };
+    }
+    return d;
+  };
+
+  useEffect(() => {
+    api<ScheduleRule[]>("/schedule-rules").then((rs) => { setRules(rs); setDraft(toDraft(rs)); }).catch((e) => setMsg(e.message));
+  }, []);
+
+  if (!rules || !draft) return <div style={{ ...CARD, padding: 24 }}><Sk h={180} /></div>;
+
+  async function save() {
+    if (!rules || !draft) return;
+    const local = Object.entries(draft)
+      .filter(([, v]) => v.open)
+      .map(([dow, v]) => ({ dow: Number(dow), opens_at: v.opens, closes_at: v.closes, barber: null as string | null }));
+    const perBarber = rules
+      .filter((r) => r.barber_slug !== null)
+      .map((r) => ({ dow: r.dow, opens_at: r.opens_at.slice(0, 5), closes_at: r.closes_at.slice(0, 5), barber: r.barber_slug }));
+    setSaving(true); setMsg("");
+    try {
+      const updated = await api<ScheduleRule[]>("/schedule-rules", { method: "PUT", body: JSON.stringify({ rules: [...local, ...perBarber] }) });
+      setRules(updated); setDraft(toDraft(updated)); setMsg("Horario guardado.");
+    } catch (e) { setMsg((e as Error).message); } finally { setSaving(false); }
+  }
+
+  const ORDER = [1, 2, 3, 4, 5, 6, 0];
+  return (
+    <div style={{ ...CARD, padding: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.6 }}>Horario semanal del local</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {msg && <span style={{ fontSize: 12, opacity: 0.6 }}>{msg}</span>}
+          <button className="miniact" disabled={saving} onClick={save}>{saving ? "Guardando…" : "Guardar horario"}</button>
+        </div>
+      </div>
+      {ORDER.map((dow) => {
+        const d = draft[dow];
+        return (
+          <div key={dow} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, width: 120, fontSize: 13, textTransform: "capitalize", cursor: "pointer" }}>
+              <input type="checkbox" checked={d.open} onChange={(e) => setDraft({ ...draft, [dow]: { ...d, open: e.target.checked } })} />
+              {DOW[dow]}
+            </label>
+            {d.open ? (
+              <>
+                <input type="time" style={{ ...PROFILE_INPUT, width: 110, padding: "6px 8px" }} value={d.opens} onChange={(e) => setDraft({ ...draft, [dow]: { ...d, opens: e.target.value } })} />
+                <span style={{ opacity: 0.4 }}>→</span>
+                <input type="time" style={{ ...PROFILE_INPUT, width: 110, padding: "6px 8px" }} value={d.closes} onChange={(e) => setDraft({ ...draft, [dow]: { ...d, closes: e.target.value } })} />
+              </>
+            ) : (
+              <span style={{ fontSize: 12, opacity: 0.4, letterSpacing: "0.08em", textTransform: "uppercase" }}>Cerrado</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Ajustes() {
   const [staff, setStaff] = useState<Barber[] | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -961,7 +1130,9 @@ function Ajustes() {
             );
           })}
         </div>
+        <HorarioSemanal />
       </div>
+      <PerfilSitio />
     </div>
   );
 }
