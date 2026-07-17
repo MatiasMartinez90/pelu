@@ -163,6 +163,41 @@ def test_internal_signer_produces_api_compatible_signature():
     }
 
 
+def test_chatwoot_contact_ref_preserves_whatsapp_phone():
+    body = webhook.ChatwootWebhook.model_validate(
+        {
+            "conversation": {
+                "id": 1,
+                "channel": "Channel::Whatsapp",
+                "meta": {"sender": {"phone_number": "+5491112345678"}},
+            }
+        }
+    )
+    assert webhook._contact_ref(body) == "+5491112345678"
+
+
+def test_chatwoot_contact_ref_uses_stable_telegram_identity():
+    body = webhook.ChatwootWebhook.model_validate(
+        {
+            "conversation": {
+                "id": 1,
+                "channel": "Channel::Telegram",
+                "contact_inbox": {"source_id": "889507955"},
+                "meta": {
+                    "sender": {
+                        "id": 3,
+                        "phone_number": None,
+                        "additional_attributes": {
+                            "social_telegram_user_id": "889507955"
+                        },
+                    }
+                },
+            }
+        }
+    )
+    assert webhook._contact_ref(body) == "telegram:889507955"
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("dependency", "claims"),
