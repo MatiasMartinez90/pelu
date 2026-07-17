@@ -18,9 +18,14 @@ from ...services import availability_service, booking_service
 from .. import events
 from .booking import _fmt_dt, _resolve_requested_date
 
+_CONFIRM_WORD = (
+    r"(?:sí|si|confirmo|confirmado|confirmar|dale|ok|okay|de acuerdo"
+    r"|hacelo|reservá|reserva|cancelalo|cambialo)"
+)
 _CONFIRMATION = re.compile(
-    r"^\s*(sí|si|confirmo|confirmar|dale|ok|okay|de acuerdo|hacelo|reservá|reserva)"
-    r"(?:\s+(?:por favor|gracias))?[.!¡]*\s*$",
+    rf"^\s*{_CONFIRM_WORD}(?:[,;\s]+{_CONFIRM_WORD})*"
+    r"(?:[,\s]+(?:el cambio|la reserva|el turno|la cancelación))?"
+    r"(?:[,\s]+(?:por favor|gracias))?[.!¡]*\s*$",
     re.IGNORECASE,
 )
 

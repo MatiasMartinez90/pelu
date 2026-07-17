@@ -288,6 +288,84 @@ def test_jwt_rejects_expired_wrong_issuer_and_wrong_client(monkeypatch, failure)
     assert denied.value.status_code == 401
 
 
+def _demo_settings(*, enabled=True, secret="d" * 48):
+    return SimpleNamespace(
+        demo_mode=enabled,
+        demo_auth_secret=secret,
+        demo_auth_issuer="nox-demo",
+        demo_auth_audience="nox-demo-api",
+        keycloak_issuer="https://auth.example/realms/nox",
+        keycloak_client_id="nox-admin",
+    )
+
+
+def _demo_token(role="admin", *, secret="d" * 48, issuer="nox-demo", audience="nox-demo-api"):
+    now = int(time.time())
+    return jwt.encode(
+        {
+            "iss": issuer,
+            "aud": audience,
+            "sub": f"demo-{role}",
+            "iat": now,
+            "exp": now + 300,
+            "email": f"demo-{role}@nox.local",
+            "email_verified": True,
+            "name": f"Demo {role}",
+            "demo_role": role,
+            "demo_barber_slug": "thiago" if role == "barbero" else None,
+        },
+        secret,
+        algorithm="HS256",
+    )
+
+
+def test_demo_jwt_is_accepted_only_when_demo_mode_is_enabled(monkeypatch):
+    token = _demo_token()
+    monkeypatch.setattr(deps, "get_settings", lambda: _demo_settings(enabled=True))
+    claims = deps._decode_keycloak_token(request({"authorization": f"Bearer {token}"}))
+    assert claims["_nox_auth_source"] == "demo"
+    assert claims["demo_role"] == "admin"
+
+    monkeypatch.setattr(deps, "get_settings", lambda: _demo_settings(enabled=False))
+    with pytest.raises(HTTPException) as denied:
+        deps._decode_keycloak_token(request({"authorization": f"Bearer {token}"}))
+    assert denied.value.status_code == 401
+
+
+@pytest.mark.parametrize(
+    "token",
+    [
+        _demo_token(secret="x" * 48),
+        _demo_token(issuer="other-demo"),
+        _demo_token(audience="other-api"),
+        _demo_token(role="superadmin"),
+    ],
+)
+def test_demo_jwt_rejects_wrong_secret_scope_or_role(monkeypatch, token):
+    monkeypatch.setattr(deps, "get_settings", lambda: _demo_settings())
+    with pytest.raises(HTTPException) as denied:
+        deps._decode_keycloak_token(request({"authorization": f"Bearer {token}"}))
+    assert denied.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_demo_admin_cannot_cross_into_other_demo_roles(monkeypatch):
+    monkeypatch.setattr(deps, "get_settings", lambda: SimpleNamespace(auth_disabled=False))
+    monkeypatch.setattr(
+        deps,
+        "_decode_keycloak_token",
+        lambda req: {
+            "_nox_auth_source": "demo",
+            "demo_role": "cliente",
+            "email": "demo-cliente@nox.local",
+            "email_verified": True,
+        },
+    )
+    with pytest.raises(HTTPException) as denied:
+        await deps.require_admin(request())
+    assert denied.value.status_code == 403
+
+
 @pytest.mark.asyncio
 async def test_webhook_rejects_bad_signature(monkeypatch):
     monkeypatch.setattr(
