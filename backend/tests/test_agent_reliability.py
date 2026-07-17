@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -15,6 +15,7 @@ from src.agent.guardrails import (
 )
 from src.agent.tools import ALL_TOOLS
 from src.agent.tools import actions
+from src.agent.tools import booking
 from src.config import get_settings
 from src.integrations import chatwoot, redis_client
 from src.queue import producer as queue_producer
@@ -72,6 +73,23 @@ def test_confirmation_does_not_accept_changes_mixed_with_yes():
 def test_contact_channel_is_derived_from_stable_contact_ref():
     assert actions._contact_channel("telegram:889507955") == "telegram"
     assert actions._contact_channel("+5491112345678") == "whatsapp"
+
+
+@pytest.mark.parametrize(
+    ("message", "candidate", "expected"),
+    [
+        ("quiero mañana a las 15", "2026-07-17", date(2026, 7, 18)),
+        ("puede ser pasado mañana", "2026-07-17", date(2026, 7, 19)),
+        ("quiero el sábado", "2026-07-17", date(2026, 7, 18)),
+        ("quiero hoy", "2026-07-18", date(2026, 7, 17)),
+        ("quiero el 20", "2026-07-20", date(2026, 7, 20)),
+    ],
+)
+def test_relative_dates_are_resolved_deterministically(message, candidate, expected):
+    state = {"messages": [HumanMessage(content=message)]}
+    assert booking._resolve_requested_date(
+        candidate, state, today=date(2026, 7, 17)
+    ) == expected
 
 
 @pytest.mark.asyncio
