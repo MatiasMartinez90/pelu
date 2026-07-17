@@ -15,7 +15,7 @@ import asyncpg
 
 DEFAULTS: dict[str, Any] = {
     "agenda_open": True,
-    "booking_channels": {"web": True, "whatsapp": True},
+    "booking_channels": {"web": True, "whatsapp": True, "telegram": True},
     "slot_granularity_min": 30,
     "min_lead_minutes": 60,
     "max_days_ahead": 30,

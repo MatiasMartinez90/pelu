@@ -69,6 +69,34 @@ def test_confirmation_does_not_accept_changes_mixed_with_yes():
     assert not actions._CONFIRMATION.match("sí, pero cambialo para el sábado")
 
 
+def test_contact_channel_is_derived_from_stable_contact_ref():
+    assert actions._contact_channel("telegram:889507955") == "telegram"
+    assert actions._contact_channel("+5491112345678") == "whatsapp"
+
+
+@pytest.mark.asyncio
+async def test_expired_confirmation_requires_rechecking_availability(monkeypatch):
+    class Pool:
+        async def fetchrow(self, query, *args):
+            return None
+
+    async def pool():
+        return Pool()
+
+    monkeypatch.setattr(actions, "get_pool", pool)
+    result = await actions.confirm_pending_action.coroutine(
+        state={
+            "conversation_id": 1,
+            "phone": "telegram:889507955",
+            "turn_id": str(uuid4()),
+            "messages": [HumanMessage(content="confirmo!")],
+        }
+    )
+    assert "NO quedó reservado" in result
+    assert "consultar disponibilidad" in result
+    assert "error técnico" in result
+
+
 @pytest.mark.asyncio
 async def test_pending_action_cannot_execute_in_preparation_turn(monkeypatch):
     turn_id = uuid4()

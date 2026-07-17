@@ -38,6 +38,8 @@ class WebhookMessage(BaseModel):
 class WebhookConversation(BaseModel):
     id: int | None = None
     meta: dict = Field(default_factory=dict)
+    channel: str | None = None
+    contact_inbox: dict = Field(default_factory=dict)
 
 
 class ChatwootWebhook(BaseModel):
@@ -49,6 +51,38 @@ class ChatwootWebhook(BaseModel):
     content: str | None = None
     message_type: str | int | None = None
     source_id: str | None = None
+
+
+def _contact_ref(body: ChatwootWebhook) -> str:
+    """Return a stable channel identity for the Chatwoot contact.
+
+    WhatsApp contacts are keyed by their E.164 phone number. Telegram does not
+    expose a phone number, so use the Telegram user id supplied by Chatwoot.
+    Never return a shared empty identity for Telegram users.
+    """
+    sender: dict = {}
+    if body.conversation:
+        sender = body.conversation.meta.get("sender") or {}
+        phone = sender.get("phone_number") or ""
+        if phone:
+            return str(phone)
+    if body.message and body.message.sender:
+        sender = body.message.sender
+        phone = sender.get("phone_number") or ""
+        if phone:
+            return str(phone)
+
+    channel = (body.conversation.channel if body.conversation else "") or ""
+    if "telegram" not in channel.lower():
+        return ""
+
+    attributes = sender.get("additional_attributes") or {}
+    telegram_id = attributes.get("social_telegram_user_id")
+    if not telegram_id and body.conversation:
+        telegram_id = body.conversation.contact_inbox.get("source_id")
+    if not telegram_id:
+        telegram_id = sender.get("id")
+    return f"telegram:{telegram_id}" if telegram_id else ""
 
 
 async def _authenticate_webhook(request: Request, body: bytes, legacy_token: str) -> None:
@@ -115,22 +149,19 @@ async def chatwoot_webhook(request: Request, token: str = Query(default="")):
     if conversation_id is None or not content.strip():
         return {"status": "ignored"}
 
-    phone = ""
-    if body.conversation:
-        sender = body.conversation.meta.get("sender") or {}
-        phone = sender.get("phone_number") or ""
-    if not phone and body.message and body.message.sender:
-        phone = body.message.sender.get("phone_number") or ""
+    phone = _contact_ref(body)
 
     # Rate limit por teléfono ANTES de procesar el claim: evita que alguien
     # spamee intentos de adivinar un token de vinculación (NOX-LINK-xxxxxxxx)
     # sin límite. Comparte presupuesto con el resto de los mensajes del agente.
-    if phone and await rate_limit_exceeded(f"wa:{phone}"):
+    if phone and await rate_limit_exceeded(f"contact:{phone}"):
         await events.log_event("rate_limited", conversation_id=conversation_id, phone=phone)
         return {"status": "rate_limited"}
 
     # Vinculación de cuenta: si es un claim de /mi-cuenta, se procesa acá y no va al agente.
-    if await link_service.try_claim_whatsapp(content, phone, conversation_id):
+    if phone and not phone.startswith("telegram:") and await link_service.try_claim_whatsapp(
+        content, phone, conversation_id
+    ):
         return {"status": "linked"}
 
     # El cliente respondió: sale de abandonado/descartado y resetea el contador de follow-ups.
