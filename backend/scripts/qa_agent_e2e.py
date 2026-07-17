@@ -20,6 +20,9 @@ Config por env:
                         svc/chatwoot-web 3900:3000 y CHATWOOT_URL=http://127.0.0.1:3900)
     CHATWOOT_ACCOUNT    default 2   (Cloud-IT / NOX prod)
     CHATWOOT_INBOX      default 1   (inbox "Peluquería", Channel::Api)
+    CHATWOOT_QA_CONTACT opcional: ID de un contacto existente en el inbox.
+                        Es obligatorio para canales nativos como Telegram,
+                        donde Chatwoot no permite crear contactos por API.
     NOX_API_URL         default https://api-nox.cloud-it.com.ar
     QA_REPLY_TIMEOUT    default 90  (segundos de espera por respuesta del agente)
 """
@@ -29,7 +32,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 import time
 import unicodedata
@@ -47,6 +49,7 @@ REPLY_TIMEOUT = int(os.environ.get("QA_REPLY_TIMEOUT", "90"))
 POLL_INTERVAL = 3
 
 TOKEN = os.environ.get("CHATWOOT_QA_TOKEN", "")
+EXISTING_CONTACT_ID = int(os.environ.get("CHATWOOT_QA_CONTACT", "0"))
 
 QA_BARBER = os.environ.get("QA_BARBER", "bruno")
 QA_SERVICE = os.environ.get("QA_SERVICE", "corte-masculino-bruno")
@@ -82,18 +85,26 @@ def nox(path: str) -> dict:
 
 class Conversation:
     def __init__(self) -> None:
-        suffix = uuid.uuid4().hex[:8]
-        self.name = f"QA Agente {suffix}"
-        # Teléfono sintético argentino inexistente pero con formato válido.
-        self.phone = "+54911" + str(int(time.time()))[-8:]
-        contact = cw("POST", "/contacts", {
-            "inbox_id": INBOX,
-            "name": self.name,
-            "phone_number": self.phone,
-        })
-        payload = contact.get("payload", contact)
-        c = payload.get("contact", payload)
-        self.contact_id = c["id"]
+        if EXISTING_CONTACT_ID:
+            contact = cw("GET", f"/contacts/{EXISTING_CONTACT_ID}")
+            payload = contact.get("payload", contact)
+            c = payload.get("contact", payload)
+            self.contact_id = EXISTING_CONTACT_ID
+            self.name = c.get("name") or f"Contacto {self.contact_id}"
+            self.phone = c.get("phone_number") or ""
+        else:
+            suffix = uuid.uuid4().hex[:8]
+            self.name = f"QA Agente {suffix}"
+            # Teléfono sintético argentino inexistente pero con formato válido.
+            self.phone = "+54911" + str(int(time.time()))[-8:]
+            contact = cw("POST", "/contacts", {
+                "inbox_id": INBOX,
+                "name": self.name,
+                "phone_number": self.phone,
+            })
+            payload = contact.get("payload", contact)
+            c = payload.get("contact", payload)
+            self.contact_id = c["id"]
         source_id = None
         for ci in c.get("contact_inboxes", []):
             if ci.get("inbox", {}).get("id") == INBOX:
@@ -109,7 +120,7 @@ class Conversation:
         })
         self.conv_id = conv["id"]
         self.last_seen_id = 0
-        print(f"  contacto {self.contact_id} ({self.phone}) · conversación {self.conv_id}")
+        print(f"  contacto {self.contact_id} · conversación QA {self.conv_id}")
 
     def _messages(self) -> list[dict]:
         out = cw("GET", f"/conversations/{self.conv_id}/messages")
