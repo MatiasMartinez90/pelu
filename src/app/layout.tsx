@@ -53,6 +53,22 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-grain">
         <a className="skip-link" href="#contenido-principal">Saltar al contenido</a>
+        {process.env.DEMO_MODE === "true" && (
+          <div
+            role="status"
+            style={{
+              padding: "7px 16px",
+              background: "#ff0a0a",
+              color: "#fff",
+              textAlign: "center",
+              fontSize: 12,
+              fontWeight: 800,
+              letterSpacing: "0.14em",
+            }}
+          >
+            MODO DEMO · LOS DATOS SE RESTABLECEN PERIÓDICAMENTE
+          </div>
+        )}
         <div id="contenido-principal">{children}</div>
         <WebVitals />
         <RegisterSW />

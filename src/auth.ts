@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
+import Credentials from "next-auth/providers/credentials";
 
 // Allowlist de emails con rol admin garantizado (fallback si Keycloak aún no asigna roles).
 // Coma-separado en ADMIN_EMAILS.
@@ -9,6 +10,63 @@ const allow = (process.env.ADMIN_EMAILS ?? "")
   .filter(Boolean);
 
 type Role = "admin" | "barbero" | "cliente";
+
+const demoRequested = process.env.DEMO_MODE === "true";
+const demoAuthSecret = process.env.DEMO_AUTH_SECRET ?? "";
+
+// Fail closed: nunca habilitar el login público demo con un secreto ausente o débil.
+if (demoRequested && demoAuthSecret.length < 32) {
+  throw new Error("DEMO_MODE requiere DEMO_AUTH_SECRET de al menos 32 caracteres");
+}
+
+const demoEnabled = demoRequested && demoAuthSecret.length >= 32;
+const demoUsers: Record<Role, { name: string; email: string }> = {
+  admin: { name: "Administrador Demo", email: "demo-admin@nox.local" },
+  barbero: { name: "Barbero Demo", email: "demo-barbero@nox.local" },
+  cliente: { name: "Cliente Demo", email: "demo-cliente@nox.local" },
+};
+
+function isRole(value: unknown): value is Role {
+  return value === "admin" || value === "barbero" || value === "cliente";
+}
+
+function base64url(value: string | ArrayBuffer): string {
+  const bytes = typeof value === "string"
+    ? new TextEncoder().encode(value)
+    : new Uint8Array(value);
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function createDemoAccessToken(role: Role): Promise<{ token: string; expiresAt: number }> {
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = now + 8 * 60 * 60;
+  const user = demoUsers[role];
+  const header = base64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payload = base64url(JSON.stringify({
+    iss: process.env.DEMO_AUTH_ISSUER ?? "nox-demo",
+    aud: process.env.DEMO_AUTH_AUDIENCE ?? "nox-demo-api",
+    sub: `demo-${role}`,
+    iat: now,
+    exp: expiresAt,
+    email: user.email,
+    email_verified: true,
+    name: user.name,
+    demo_role: role,
+    demo_barber_slug: role === "barbero" ? "thiago" : undefined,
+  }));
+  const unsigned = `${header}.${payload}`;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(demoAuthSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(unsigned));
+  return { token: `${unsigned}.${base64url(signature)}`, expiresAt };
+}
 
 // Extrae realm_access.roles del access token de Keycloak (que ya los incluye por default).
 // Decodifica solo el payload (no valida firma: eso lo hace el backend contra JWKS).
@@ -37,7 +95,23 @@ function effectiveRoles(email: string | undefined, klRoles: Role[]): Role[] {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [Keycloak],
+  providers: [
+    Keycloak,
+    ...(demoEnabled
+      ? [Credentials({
+          id: "demo",
+          name: "Demo",
+          credentials: {
+            role: { label: "Perfil", type: "text" },
+          },
+          authorize(credentials) {
+            const role = credentials?.role;
+            if (!isRole(role)) return null;
+            return { id: `demo-${role}`, ...demoUsers[role] };
+          },
+        })]
+      : []),
+  ],
   // Página de login propia (estilo del sitio) en vez de la default de Auth.js.
   pages: { signIn: "/login" },
   callbacks: {
@@ -50,16 +124,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Guarda el access_token de Keycloak en el JWT de sesión: el BFF
     // (/api/backoffice) lo reenvía al backend, que lo valida contra JWKS.
     // El token nunca llega al browser. Se refresca solo al expirar.
-    async jwt({ token, account, profile }) {
+    async jwt({ token, account, profile, user }) {
+      if (account?.provider === "demo") {
+        const role = user?.id?.replace("demo-", "");
+        if (!isRole(role)) return null;
+        const demoToken = await createDemoAccessToken(role);
+        token.accessToken = demoToken.token;
+        token.expiresAt = demoToken.expiresAt;
+        token.email = demoUsers[role].email;
+        token.name = demoUsers[role].name;
+        token.roles = [role];
+        token.authProvider = "demo";
+        delete token.refreshToken;
+        return token;
+      }
       if (account?.access_token) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
         token.expiresAt = account.expires_at;
         token.email = (profile?.email as string | undefined) ?? (token.email as string | undefined);
         token.roles = effectiveRoles(token.email as string | undefined, rolesFromAccessToken(account.access_token));
+        token.authProvider = "keycloak";
         return token;
       }
       const expiresAt = (token.expiresAt as number | undefined) ?? 0;
+      if (token.authProvider === "demo") {
+        if (Date.now() >= (expiresAt - 30) * 1000) delete token.accessToken;
+        return token;
+      }
       if (Date.now() < (expiresAt - 30) * 1000 || !token.refreshToken) {
         return token;
       }
