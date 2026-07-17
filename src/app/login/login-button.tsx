@@ -14,16 +14,59 @@ function GoogleIcon() {
   );
 }
 
-export function LoginButton({ callbackUrl }: { callbackUrl: string }) {
-  const [loading, setLoading] = useState(false);
+type DemoRole = "admin" | "barbero" | "cliente";
+
+const demoProfiles: Array<{ role: DemoRole; label: string }> = [
+  { role: "admin", label: "Ingresar como administrador" },
+  { role: "barbero", label: "Ingresar como barbero" },
+  { role: "cliente", label: "Ingresar como cliente" },
+];
+
+export function LoginButton({ callbackUrl, demoMode }: { callbackUrl: string; demoMode: boolean }) {
+  const [loading, setLoading] = useState<string | null>(null);
+
+  if (demoMode) {
+    return (
+      <div style={{ width: "min(100%, 340px)", display: "grid", gap: 12 }}>
+        <p style={{ margin: 0, textAlign: "center", fontSize: 13, opacity: 0.72 }}>
+          Elegí el perfil que querés probar
+        </p>
+        {demoProfiles.map(({ role, label }) => (
+          <button
+            key={role}
+            type="button"
+            onClick={() => {
+              setLoading(role);
+              signIn("demo", { role, callbackUrl });
+            }}
+            disabled={loading !== null}
+            style={{
+              minHeight: 48,
+              border: "1px solid rgba(255,255,255,.28)",
+              borderRadius: 4,
+              background: role === "admin" ? "#fff" : "transparent",
+              color: role === "admin" ? "#111" : "#fff",
+              fontFamily: "var(--font-sans)",
+              fontSize: 14,
+              fontWeight: 650,
+              cursor: loading ? "default" : "pointer",
+              opacity: loading && loading !== role ? 0.45 : 1,
+            }}
+          >
+            {loading === role ? "Ingresando…" : label}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <button
       onClick={() => {
-        setLoading(true);
+        setLoading("keycloak");
         signIn("keycloak", { callbackUrl });
       }}
-      disabled={loading}
+      disabled={loading !== null}
       style={{
         display: "inline-flex",
         alignItems: "center",

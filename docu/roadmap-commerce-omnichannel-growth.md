@@ -1,10 +1,10 @@
 # Roadmap integral: mobile, SEO/GEO, shop, pagos, omnicanalidad y campañas
 
-**Estado:** plan aprobado; Fase 0 en implementación  
-**Fecha:** 2026-07-17  
-**Alcance de este documento:** análisis y plan de implementación. Este cambio no implementa funcionalidad productiva.  
+**Estado:** roadmap maestro activo; Fase 0 en normalización
+**Última actualización:** 2026-07-18
+**Alcance de este documento:** fuente de verdad de planificación, estado, criterios de aceptación y evidencias del roadmap integral.
 **Repositorio analizado:** `Pelu`  
-**Branch al momento del análisis:** `feat/frontend-performance-accessibility`
+**Branch de ejecución actual:** `chore/normalize-dev-main-demo`, creada desde `dev`
 
 ### Decisiones confirmadas el 2026-07-17
 
@@ -29,6 +29,52 @@
 - Dev reutilizará los mismos servidores de PostgreSQL, RabbitMQ, Redis, Chatwoot y Keycloak cuando sea seguro, pero con aislamiento lógico, usuarios, datos y credenciales propios.
 - Los PR funcionales #11, #12, #13 y #14 están mergeados en `main`. La rama persistente `dev` fue creada desde el baseline actualizado `6e19ff1` que contiene esos cambios.
 - Los PR abiertos #1–#10 son actualizaciones automáticas de Dependabot y no bloquean la creación del ambiente dev; deben revisarse por compatibilidad en PRs separados.
+
+### Decisión de promoción confirmada el 2026-07-18
+
+- La Fase 0 normalizará `dev`, `main` y `demo`: llevará los fixes #16, #17 y #18 a producción/demo e incorporará en `dev` todo lo agregado recientemente a `main`.
+- Desde la Fase 1 en adelante, los cambios se integrarán por PR únicamente a `dev` y se validarán en el ambiente dev.
+- No se abrirán ni mergearán promociones de las Fases 1–14 hacia `main` o `demo` sin una autorización futura y explícita del responsable del producto.
+- Esta pausa de promoción no reduce la Definition of Done de desarrollo: código, migraciones, tests, checks, documentación, GitOps y pruebas funcionales en dev siguen siendo obligatorios.
+- Producción y demo deben permanecer sobre el mismo código y los mismos digests. Sus únicas diferencias admitidas son configuración, secretos, dominios y datos.
+
+## 0. Control maestro de ejecución
+
+Los estados permitidos son `pendiente`, `en curso`, `validando`, `listo en dev`, `promoción autorizada` y `completo`. Ninguna fase se marca completa sólo por tener código; la evidencia debe cubrir PR, checks, despliegue y pruebas funcionales según el alcance autorizado.
+
+| Fase | Entrega | Dependencias | Criterio de aceptación resumido | Estado | Evidencia |
+|---|---|---|---|---|---|
+| 0 | Normalización de ramas | Ninguna | `dev`, `main` y `demo` sin divergencias funcionales; #16–#18 presentes; Telegram, persistencia, fechas y moderación reprobados | En curso | PRs #16, #17 y #18 ya mergeados en `dev`; auditoría 2026-07-18 registra divergencia desde `6e19ff1` |
+| 1 | Mobile y responsive | Fase 0 | Home, turnero, shop, admin, barbero y cliente cubiertos por matriz responsive y pruebas visuales | Pendiente | — |
+| 2 | SEO y GEO | Fases 0–1 | sitemap/robots/canonical/metadata/schema/servicios/`llms.txt` válidos y consistentes | Pendiente | — |
+| 3 | Cloudflare y medios | Fase 4 parcial para tenancy; puede prototiparse antes | Medios publicados por tenant, formatos responsive, caché y fallback probados | Pendiente | — |
+| 4 | Boilerplate integral | Fase 0 | Marca, negocio, dominios, módulos, pagos, canales y agente configurables sin hardcodes de NOX | Pendiente | — |
+| 5 | Shop independiente | Fases 3–4 | Subdominio propio, catálogo, detalle, búsqueda, carrito, checkout, retiro, stock y pedidos administrables | Pendiente | — |
+| 6 | Mercado Pago | Fase 5; modelo de pagos reutilizable | Turnos opcionales y shop total; webhooks auténticos/idempotentes; conciliación y auditoría | Pendiente | — |
+| 7 | Instagram y multicanal | Fases 4 y 10 parcial | Instagram→Chatwoot→agente operativo, handoff y canal visible en toda la administración | Pendiente | — |
+| 8 | Identidad de clientes | Fase 4 | Gmail, teléfono+email OTP, vinculación segura, deduplicación y cambio de cuenta verificados | Pendiente | — |
+| 9 | Abandonos y automatizaciones | Fases 5, 7, 8 y consentimiento | Detección durable, cadencias, quiet hours, opt-out, límites y métricas por canal | Pendiente | — |
+| 10 | Admin unificado | Fases 7–8 | “Agente y conversaciones”, bandeja multicanal, filtros, estados, handoff, cliente y métricas | Pendiente | — |
+| 11 | Campañas | Fases 7–10 | Editor/programación/segmentos/consentimiento/cancelación/auditoría/resultados | Pendiente | — |
+| 12 | Productos Sir Fausto | Fases 4–5 | Cinco productos demo con datos editables, stock, precio, SKU, SEO y medios autorizados | Pendiente | — |
+| 13 | Videos con IA | Fases 3 y 12 | Variantes mobile/desktop, CDN, reduced-motion y claims seguros | Pendiente | — |
+| 14 | Seguridad y operación | Transversal; cierre después de 1–13 | Threat model, RBAC, webhooks, rate limits, aislamiento, restore probado, CI y privacidad | Pendiente | — |
+
+### 0.1 Auditoría inicial verificable — 2026-07-18
+
+- `origin/dev`: `a4f2426`, incluye los merges #16, #17 y #18 y despliega artefactos propios en `nox-dev`.
+- `origin/main`: `dac69f1`, incluye cambios posteriores de autenticación demo, QA y dependencias que todavía no estaban en `dev`.
+- `origin/demo`: `d672e67`, merge de sincronización #20; su contenido corresponde a `main` al momento de esa promoción.
+- Merge-base inicial `dev`/`main`: `6e19ff1`. La divergencia era real y afectaba workflow de despliegue, agente, seguridad, autenticación, QA, dependencias y este documento.
+- PRs funcionales #11–#20: cerrados/mergeados. Permanecían abiertos únicamente Dependabot #7 y #9; no forman parte de la normalización funcional y requieren evaluación separada.
+- Argo CD: `nox`, `nox-backend`, `nox-dev` y `nox-demo` estaban `Synced/Healthy` sobre la revisión GitOps `91f98ce`.
+- Producción y demo exponían los mismos digests de frontend (`sha256:3b913f…`) y backend (`sha256:47a7fa…`). Dev exponía digests independientes, como corresponde.
+- El repositorio GitOps es `agents-hetzner-k3s`; las aplicaciones apuntan a `main` y separan manifests en producción, `nox-dev/` y `nox-demo/`.
+- Se observó drift ajeno al alcance en las aplicaciones Argo `postgres` y `rabbitmq-cluster` (`OutOfSync/Healthy`). No se modificará dentro de NOX sin diagnosticar su propietario y causa.
+
+### 0.2 Registro de evidencias
+
+Cada fase agregará aquí o en su subsección: branch, PR, commits, migraciones, comandos de prueba y resultados, checks de CI, digest desplegado, estado Argo, URLs/escenarios E2E y defectos/correcciones. Los secretos, tokens y PII nunca se copiarán como evidencia.
 
 ## 1. Objetivo
 
@@ -1101,8 +1147,9 @@ Realizar modelo de amenazas para:
 - `feat/*`, `fix/*`, `refactor/*`, `infra/*`: nacen de `dev` y vuelven a `dev` únicamente mediante PR;
 - cada PR debe ser pequeño e incluir migración, tests, screenshots, observabilidad y rollback cuando corresponda;
 - `dev` exige checks y review; no se habilitan pushes directos ordinarios;
-- una release se promueve mediante PR explícito `dev → main`, con changelog, verificación del ambiente dev y aprobación manual;
-- producción despliega sólo después de mergear ese PR en `main`;
+- una release sólo podrá promoverse mediante PR explícito `dev → main`, con changelog, verificación del ambiente dev y aprobación manual;
+- por decisión del 2026-07-18, las Fases 1–14 quedan retenidas en `dev`: no se abrirá ese PR de release hasta recibir autorización explícita;
+- producción despliega sólo después de mergear un PR de promoción autorizado en `main`; un push a `dev` nunca modifica manifests productivos ni de demo;
 - un hotfix productivo nace desde `main`, vuelve por PR a `main` y luego se integra inmediatamente en `dev` para evitar divergencia;
 - imágenes se etiquetan por SHA/digest. La promoción debe reutilizar el artefacto validado siempre que el pipeline lo permita, no recompilar código distinto;
 - feature flags permiten integrar código incompleto sin exponerlo, pero una flag no reemplaza pruebas ni aislamiento.
@@ -1535,4 +1582,4 @@ Una fase no está terminada hasta que:
 
 ## 25. Próximo paso inmediato
 
-Responder primero las decisiones abiertas 1, 2, 5, 6 y 8. Con eso se puede convertir la **Fase 0** en tickets y comenzar por la fundación white-label de ambientes/identidad sin bloquear el diseño del shop. La separación del shop y su hostname ya están cerrados.
+Completar la normalización de la Fase 0 mediante la branch `chore/normalize-dev-main-demo`: resolver la integración `main → dev`, ejecutar la suite completa, abrir/mergear el PR a `dev`, probar el ambiente dev y recién entonces promover únicamente esta normalización a `main` y sincronizar `demo`. Después, comenzar Fase 1 desde el `dev` normalizado y mantener todas las fases siguientes fuera de producción/demo hasta autorización explícita.

@@ -25,18 +25,45 @@ def _get_jwk_client() -> PyJWKClient:
 
 
 def _decode_keycloak_token(request: Request) -> dict:
-    """Valida firma/issuer/expiración del Bearer JWT de Keycloak y el cliente (azp/aud).
+    """Valida el Bearer JWT de Keycloak o, solo en DEMO_MODE, el JWT demo.
 
     Devuelve los claims. No hace autorización por rol/email: eso lo hace cada dep.
     """
     settings = get_settings()
-    if not settings.keycloak_issuer:
-        raise HTTPException(503, "auth no configurada")
-
     auth = request.headers.get("authorization", "")
     if not auth.startswith("Bearer "):
         raise HTTPException(401, "falta bearer token")
     token = auth.removeprefix("Bearer ").strip()
+
+    try:
+        header = jwt.get_unverified_header(token)
+    except jwt.PyJWTError:
+        raise HTTPException(401, "token inválido") from None
+
+    if header.get("alg") == "HS256":
+        secret = settings.demo_auth_secret
+        if not settings.demo_mode or len(secret) < 32:
+            raise HTTPException(401, "token demo no habilitado")
+        try:
+            claims = jwt.decode(
+                token,
+                secret,
+                algorithms=["HS256"],
+                issuer=settings.demo_auth_issuer,
+                audience=settings.demo_auth_audience,
+            )
+        except jwt.PyJWTError as e:
+            logger.warning("JWT demo inválido: %s", e)
+            raise HTTPException(401, "token inválido") from None
+        if claims.get("demo_role") not in {"admin", "barbero", "cliente"}:
+            raise HTTPException(401, "rol demo inválido")
+        claims["_nox_auth_source"] = "demo"
+        return claims
+
+    if header.get("alg") != "RS256":
+        raise HTTPException(401, "algoritmo JWT no permitido")
+    if not settings.keycloak_issuer:
+        raise HTTPException(503, "auth no configurada")
 
     try:
         signing_key = _get_jwk_client().get_signing_key_from_jwt(token)
@@ -62,6 +89,10 @@ def _decode_keycloak_token(request: Request) -> dict:
     return claims
 
 
+def _is_demo_role(claims: dict, role: str) -> bool:
+    return claims.get("_nox_auth_source") == "demo" and claims.get("demo_role") == role
+
+
 async def require_admin(request: Request) -> dict:
     """Valida Bearer JWT de Keycloak y que el email sea admin.
 
@@ -79,6 +110,11 @@ async def require_admin(request: Request) -> dict:
         raise HTTPException(403, "token sin email")
     if claims.get("email_verified") is not True:
         raise HTTPException(403, "email no verificado")
+
+    if claims.get("_nox_auth_source") == "demo":
+        if _is_demo_role(claims, "admin"):
+            return {"email": email, "name": claims.get("name", "")}
+        raise HTTPException(403, "perfil demo no autorizado")
 
     pool = await get_pool()
     is_admin = await pool.fetchval(
@@ -109,6 +145,9 @@ async def require_customer(request: Request) -> dict:
     if claims.get("email_verified") is not True:
         raise HTTPException(403, "email no verificado")
 
+    if claims.get("_nox_auth_source") == "demo" and not _is_demo_role(claims, "cliente"):
+        raise HTTPException(403, "perfil demo no autorizado")
+
     return {"email": email, "name": claims.get("name", ""), "sub": claims.get("sub", "")}
 
 
@@ -132,6 +171,17 @@ async def require_barber(request: Request) -> dict:
         raise HTTPException(403, "email no verificado")
 
     pool = await get_pool()
+    if claims.get("_nox_auth_source") == "demo":
+        if not _is_demo_role(claims, "barbero"):
+            raise HTTPException(403, "perfil demo no autorizado")
+        slug = claims.get("demo_barber_slug") or ""
+        row = await pool.fetchrow(
+            "SELECT id, slug, name, email FROM barbers WHERE slug = $1 AND active", slug
+        )
+        if row is None:
+            raise HTTPException(403, "barbero demo no configurado")
+        return dict(row)
+
     row = await pool.fetchrow(
         "SELECT id, slug, name, email FROM barbers WHERE lower(email) = $1 AND active", email
     )

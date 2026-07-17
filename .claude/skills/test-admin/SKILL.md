@@ -70,7 +70,9 @@ Varios botones (EDITAR en precios, click en precio de stock) abren `window.promp
 - Desactivar un barbero o servicio → verificar que desaparece de la disponibilidad pública en /agendar.
 
 ## Verificación post-merge PR #12 (robustez agente + guardrails)
-Probar vía WhatsApp contra el agente:
+**Automatizado**: `backend/scripts/qa_agent_e2e.py` corre todos estos escenarios vía la API de Chatwoot (inbox API dispara el pipeline real firmado, sin WhatsApp). Requiere env `CHATWOOT_QA_TOKEN`; si Envoy da 400 por el header `api_access_token`, usar `kubectl -n chatwoot port-forward svc/chatwoot-web 3900:3000` y `CHATWOOT_URL=http://127.0.0.1:3900`. Suite completa verde 2026-07-17. Ojo: un handoff silencia al agente para el resto de esa conversación (por eso injection/handoff usan conversaciones propias).
+
+Manual vía WhatsApp (solo para validar el tramo Meta):
 - **Confirmación en dos turnos**: pedir reserva → el agente debe preparar y pedir confirmación explícita en un mensaje separado antes de reservar. Igual para reprogramar y cancelar. Sin confirmación → no muta nada.
 - **Idempotencia**: confirmar dos veces el mismo turno / reenviar mensaje duplicado → no debe crear turno doble.
 - **Reprogramación atómica**: reprogramar turno → el viejo se libera y el nuevo se toma; si falla, no queda estado intermedio.
