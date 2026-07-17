@@ -16,7 +16,7 @@ from ...db.pool import get_pool
 from ...db.repositories import catalog
 from ...services import availability_service, booking_service
 from .. import events
-from .booking import _fmt_dt
+from .booking import _fmt_dt, _resolve_requested_date
 
 _CONFIRMATION = re.compile(
     r"^\s*(sí|si|confirmo|confirmar|dale|ok|okay|de acuerdo|hacelo|reservá|reserva)"
@@ -81,7 +81,7 @@ async def prepare_booking(
     if not await catalog.barber_offers_service(pool, b["id"], s["id"]):
         return f"{b['name']} no ofrece {s['name']}."
     try:
-        day = date_type.fromisoformat(date)
+        day = _resolve_requested_date(date, state)
     except ValueError:
         return "Fecha inválida: usá YYYY-MM-DD."
     slots = await availability_service.get_slots(pool, b, s, day)
@@ -93,14 +93,14 @@ async def prepare_booking(
         {
             "barber": barber,
             "service": service,
-            "date": date,
+            "date": day.isoformat(),
             "time": time,
             "customer_name": customer_name,
         },
     )
     return (
         f"Acción {action_id} preparada, todavía NO reservada: {s['name']} con "
-        f"{b['name']} el {date} a las {time}, a nombre de {customer_name}, "
+        f"{b['name']} el {day.isoformat()} a las {time}, a nombre de {customer_name}, "
         f"precio ${s['price']:,}. Pedile al cliente que confirme explícitamente "
         "dentro de 30 minutos. No digas que el turno ya está reservado y no ejecutes "
         "confirm_pending_action en este mismo turno."
