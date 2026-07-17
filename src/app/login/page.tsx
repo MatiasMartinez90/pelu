@@ -37,7 +37,10 @@ export default async function LoginPage({
         </span>
       </div>
 
-      <LoginButton callbackUrl={callbackUrl ?? "/post-login"} />
+      <LoginButton
+        callbackUrl={callbackUrl ?? "/post-login"}
+        demoMode={process.env.DEMO_MODE === "true"}
+      />
 
       <Link href="/" className="nox-link" style={{ color: "#fff", opacity: 0.72, fontSize: 13, letterSpacing: "0.08em" }}>
         ← Volver al sitio
