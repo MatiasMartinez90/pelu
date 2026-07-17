@@ -78,6 +78,7 @@ jobs:
           git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/MatiasMartinez90/agents-hetzner-k3s.git" infra
           cd infra
           sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-barber([:@]).*#image: ghcr.io/matiasmartinez90/nox-barber@${{ steps.build.outputs.digest }}#" manifests-contabo/nox-barber.yaml
+          sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-barber([:@]).*#image: ghcr.io/matiasmartinez90/nox-barber@${{ steps.build.outputs.digest }}#" manifests-contabo/nox-demo/nox-web.yaml
           if git diff --quiet; then echo "sin cambios en el tag"; exit 0; fi
           git config user.name "nox-ci"
           git config user.email "ci@noxbarber.local"
@@ -131,6 +132,7 @@ jobs:
           cd infra
           for i in 1 2 3; do
             sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-backend([:@]).*#image: ghcr.io/matiasmartinez90/nox-backend@${{ steps.build.outputs.digest }}#" manifests-contabo/nox-backend.yaml
+            sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-backend([:@]).*#image: ghcr.io/matiasmartinez90/nox-backend@${{ steps.build.outputs.digest }}#" manifests-contabo/nox-demo/nox-backend.yaml
             if git diff --quiet; then echo "sin cambios en el tag"; exit 0; fi
             git config user.name "nox-ci"
             git config user.email "ci@noxbarber.local"
