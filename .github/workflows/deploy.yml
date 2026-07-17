@@ -22,8 +22,8 @@ jobs:
       front: ${{ steps.filter.outputs.front }}
       backend: ${{ steps.filter.outputs.backend }}
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
         id: filter
         with:
           filters: |
@@ -42,7 +42,7 @@ jobs:
     if: needs.changes.outputs.front == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Tag corto
         id: tag
@@ -51,7 +51,7 @@ jobs:
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Login GHCR
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -59,7 +59,7 @@ jobs:
 
       - name: Build & push front (amd64)
         id: build
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           platforms: linux/amd64
@@ -78,6 +78,7 @@ jobs:
           git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/MatiasMartinez90/agents-hetzner-k3s.git" infra
           cd infra
           sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-barber([:@]).*#image: ghcr.io/matiasmartinez90/nox-barber@${{ steps.build.outputs.digest }}#" manifests-contabo/nox-barber.yaml
+          sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-barber([:@]).*#image: ghcr.io/matiasmartinez90/nox-barber@${{ steps.build.outputs.digest }}#" manifests-contabo/nox-demo/nox-web.yaml
           if git diff --quiet; then echo "sin cambios en el tag"; exit 0; fi
           git config user.name "nox-ci"
           git config user.email "ci@noxbarber.local"
@@ -94,7 +95,7 @@ jobs:
       (needs.build-front.result == 'success' || needs.build-front.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Tag corto
         id: tag
@@ -103,7 +104,7 @@ jobs:
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Login GHCR
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -111,7 +112,7 @@ jobs:
 
       - name: Build & push backend (amd64)
         id: build
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: ./backend
           platforms: linux/amd64
@@ -131,6 +132,7 @@ jobs:
           cd infra
           for i in 1 2 3; do
             sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-backend([:@]).*#image: ghcr.io/matiasmartinez90/nox-backend@${{ steps.build.outputs.digest }}#" manifests-contabo/nox-backend.yaml
+            sed -i -E "s#image: ghcr\.io/matiasmartinez90/nox-backend([:@]).*#image: ghcr.io/matiasmartinez90/nox-backend@${{ steps.build.outputs.digest }}#" manifests-contabo/nox-demo/nox-backend.yaml
             if git diff --quiet; then echo "sin cambios en el tag"; exit 0; fi
             git config user.name "nox-ci"
             git config user.email "ci@noxbarber.local"

@@ -64,6 +64,13 @@ class Settings(BaseSettings):
     keycloak_client_id: str = ""
     admin_emails: str = ""  # fallback coma-separado si admin_users está vacía
 
+    # Accesos rápidos del ambiente demo. Requiere secreto >= 32 caracteres;
+    # en producción DEMO_MODE queda false y los tokens HS256 se rechazan.
+    demo_mode: bool = False
+    demo_auth_secret: str = ""
+    demo_auth_issuer: str = "nox-demo"
+    demo_auth_audience: str = "nox-demo-api"
+
     # Comportamiento del agente
     agent_name: str = "NOX"
     timezone: str = "America/Argentina/Buenos_Aires"
