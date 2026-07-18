@@ -46,6 +46,7 @@ const serviceSlugs = seed.services.map(({ slug }) => slug);
 unique(professionalSlugs, "professionals.slug");
 unique(serviceSlugs, "services.slug");
 unique(seed.inventory.map(({ sku }) => sku), "inventory.sku");
+unique(seed.inventory.map(({ sku, slug }) => slug ?? sku.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")), "inventory.slug");
 if (!professionalSlugs.includes(installation.demo.defaultBarberSlug)) {
   errors.push(`demo.defaultBarberSlug no existe: ${installation.demo.defaultBarberSlug}`);
 }

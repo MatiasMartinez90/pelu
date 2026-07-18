@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     installation_id: str = "local"
     service_name: str = "Appointments Platform"
+    currency: str = "ARS"
 
     # OpenAI
     openai_api_key: str = ""

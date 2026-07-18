@@ -58,6 +58,15 @@ class SeedSchedule(StrictModel):
 class SeedInventory(StrictModel):
     sku: str = Field(pattern=r"^[A-Z0-9][A-Z0-9_-]{1,63}$")
     name: str = Field(min_length=2, max_length=160)
+    slug: str | None = Field(default=None, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    description: str = Field(default="", max_length=5000)
+    shortDescription: str = Field(default="", max_length=240)
+    categorySlug: str = Field(default="cuidado-personal", pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    categoryName: str = Field(default="Cuidado personal", min_length=2, max_length=100)
+    imageUrl: str | None = Field(default=None, max_length=2000)
+    gallery: list[str] = Field(default_factory=list, max_length=12)
+    featured: bool = False
+    sortOrder: int = Field(default=0, ge=0, le=10_000)
     quantity: int = Field(ge=0, le=1_000_000)
     minimumQuantity: int = Field(ge=0, le=1_000_000)
     price: int = Field(ge=0, le=100_000_000)
@@ -84,10 +93,15 @@ class SeedConfig(StrictModel):
         professional_slugs = [item.slug for item in self.professionals]
         service_slugs = [item.slug for item in self.services]
         inventory_skus = [item.sku for item in self.inventory]
+        inventory_slugs = [
+            item.slug or re.sub(r"[^a-z0-9]+", "-", item.sku.lower()).strip("-")
+            for item in self.inventory
+        ]
         for label, values in (
             ("professional slug", professional_slugs),
             ("service slug", service_slugs),
             ("inventory SKU", inventory_skus),
+            ("inventory slug", inventory_slugs),
         ):
             if len(values) != len(set(values)):
                 raise ValueError(f"{label} duplicado")
@@ -358,16 +372,42 @@ async def _upsert_settings_and_inventory(connection: asyncpg.Connection, seed: S
             json.dumps(value),
         )
     for product in seed.inventory:
+        slug = product.slug or re.sub(r"[^a-z0-9]+", "-", product.sku.lower()).strip("-")
+        category_id = await connection.fetchval(
+            """
+            INSERT INTO product_categories (slug, name)
+            VALUES ($1, $2)
+            ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, active = true, updated_at = now()
+            RETURNING id
+            """,
+            product.categorySlug,
+            product.categoryName,
+        )
         await connection.execute(
             """
-            INSERT INTO products (name, sku, qty, min_qty, price, active)
-            VALUES ($1, $2, $3, $4, $5, true)
+            INSERT INTO products (
+                name, sku, slug, description, short_description, category_id,
+                image_url, gallery, featured, sort_order, qty, min_qty, price, active
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12, $13, true)
             ON CONFLICT (sku) DO UPDATE SET
-                name = EXCLUDED.name, qty = EXCLUDED.qty, min_qty = EXCLUDED.min_qty,
-                price = EXCLUDED.price, active = true
+                name = EXCLUDED.name, slug = EXCLUDED.slug, description = EXCLUDED.description,
+                short_description = EXCLUDED.short_description, category_id = EXCLUDED.category_id,
+                image_url = EXCLUDED.image_url, gallery = EXCLUDED.gallery,
+                featured = EXCLUDED.featured, sort_order = EXCLUDED.sort_order,
+                qty = EXCLUDED.qty, min_qty = EXCLUDED.min_qty,
+                price = EXCLUDED.price, active = true, updated_at = now()
             """,
             product.name,
             product.sku,
+            slug,
+            product.description,
+            product.shortDescription,
+            category_id,
+            product.imageUrl,
+            json.dumps(product.gallery),
+            product.featured,
+            product.sortOrder,
             product.quantity,
             product.minimumQuantity,
             product.price,
