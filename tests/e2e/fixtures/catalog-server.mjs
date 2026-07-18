@@ -19,6 +19,11 @@ const products = [
   { slug: "aceite-barba", name: "Aceite para Barba", sku: "TEST-BAR", description: "Cuidado diario para barba.", short_description: "Cuidado diario para barba.", category_slug: "barba", category_name: "Barba", image_url: "/media/products/demo/beard-oil-cedro.v1.webp", gallery: [], price: 19000, available_qty: 50, in_stock: true, featured: false },
 ];
 const carts = new Map();
+const shopDelayMs = Math.max(0, Number(process.env.SHOP_FIXTURE_DELAY_MS ?? 0));
+
+async function shopDelay() {
+  if (shopDelayMs) await new Promise((resolve) => setTimeout(resolve, shopDelayMs));
+}
 
 function json(response, status, value, headers = {}) {
   response.writeHead(status, { "content-type": "application/json", ...headers });
@@ -49,12 +54,14 @@ createServer(async (request, response) => {
     return response.end(JSON.stringify(catalog));
   }
   if (url.pathname === "/api/v1/shop/categories" && request.method === "GET") {
+    await shopDelay();
     return json(response, 200, [
       { slug: "styling", name: "Styling", description: "Terminación y textura.", product_count: 2 },
       { slug: "barba", name: "Barba", description: "Cuidado de barba.", product_count: 1 },
     ]);
   }
   if (url.pathname === "/api/v1/shop/products" && request.method === "GET") {
+    await shopDelay();
     const category = url.searchParams.get("category");
     const query = url.searchParams.get("q")?.toLowerCase();
     const items = products.filter((product) => (!category || product.category_slug === category) && (!query || product.name.toLowerCase().includes(query)));

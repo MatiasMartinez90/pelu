@@ -43,10 +43,17 @@ async function proxy(req: NextRequest, { params }: { params: Promise<{ path: str
   ) {
     revalidateTag("booking-catalog", "max");
   }
+  if (resp.ok && req.method !== "GET" && /^products(\/|$)/.test(joinedPath)) {
+    revalidateTag("shop-products", "max");
+    revalidateTag("shop-categories", "max");
+  }
+  if (resp.ok && req.method !== "GET" && /^product-categories(\/|$)/.test(joinedPath)) {
+    revalidateTag("shop-categories", "max");
+  }
   const privateMaxAge =
     req.method === "GET" && joinedPath === "dashboard/summary"
       ? 10
-      : req.method === "GET" && /^(barbers|services|settings|stock)$/.test(joinedPath)
+      : req.method === "GET" && /^(barbers|services|settings|stock|products|product-categories)$/.test(joinedPath)
         ? 30
         : 0;
   return new NextResponse(body, {

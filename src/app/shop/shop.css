@@ -104,6 +104,7 @@
 .shop-confirmation dd { margin: 0; }
 .shop-loading { min-height: 65vh; padding: 8vw 5vw; display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
 .shop-loading span { min-height: 500px; background: linear-gradient(100deg,#121212 25%,#1c1c1c 40%,#121212 55%); background-size: 300% 100%; animation: shop-shimmer 1.5s infinite; }
+.shop-shell:has(.shop-loading) .shop-footer { display: none; }
 @keyframes shop-shimmer { to { background-position: -120% 0; } }
 .shop-footer { min-height: 180px; padding: 45px clamp(18px,4vw,64px); display: flex; align-items: center; justify-content: space-between; gap: 30px; border-top: 1px solid var(--shop-line); color: var(--shop-muted); font-size: 11px; line-height: 1.7; }
 .shop-footer div { display: flex; flex-direction: column; }

@@ -31,6 +31,7 @@ __pycache__/
 *.pem
 playwright-report/
 test-results/
+.lighthouseci/
 
 # debug
 npm-debug.log*

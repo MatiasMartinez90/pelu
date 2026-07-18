@@ -117,10 +117,11 @@ function SkResumen() {
 const NAV = [
   { key: "resumen", label: "Resumen" }, { key: "agenda", label: "Agenda" },
   { key: "clientes", label: "Clientes" }, { key: "stock", label: "Stock" },
+  { key: "pedidos", label: "Pedidos" },
   { key: "ia", label: "Agente IA" }, { key: "conversaciones", label: "Conversaciones" },
   { key: "ajustes", label: "Administración" }, { key: "disponibilidad", label: "Disponibilidad" },
 ];
-const TITLES: Record<string, string> = { resumen: "Resumen", agenda: "Agenda", clientes: "Clientes", stock: "Gestión de stock", ia: "Agente IA · WhatsApp", conversaciones: "Conversaciones · WhatsApp", ajustes: "Administración del sitio", disponibilidad: "Disponibilidad de la agenda" };
+const TITLES: Record<string, string> = { resumen: "Resumen", agenda: "Agenda", clientes: "Clientes", stock: "Catálogo y stock", pedidos: "Pedidos del shop", ia: "Agente IA · WhatsApp", conversaciones: "Conversaciones · WhatsApp", ajustes: "Administración del sitio", disponibilidad: "Disponibilidad de la agenda" };
 
 function prefetchSection(section: string) {
   const today = dateKey(new Date());
@@ -129,7 +130,8 @@ function prefetchSection(section: string) {
     resumen: [`/dashboard/summary?month=${month}`],
     agenda: [`/agenda?date=${today}`],
     clientes: ["/customers?search=&limit=50"],
-    stock: ["/stock"],
+    stock: ["/products", "/product-categories"],
+    pedidos: ["/orders?limit=50"],
     ia: ["/agent/metrics?days=30", "/agent/events?limit=20"],
     ajustes: ["/barbers", "/services", "/settings", "/admins", "/site-profile", "/schedule-rules"],
   };
@@ -186,6 +188,7 @@ export default function AdminPage() {
         {section === "agenda" && <Agenda />}
         {section === "clientes" && <Clientes />}
         {section === "stock" && <Stock />}
+        {section === "pedidos" && <Orders />}
         {section === "ia" && <IA />}
         {section === "conversaciones" && <Conversaciones />}
         {section === "ajustes" && <Ajustes />}
@@ -505,14 +508,40 @@ function Clientes() {
 
 // ── Stock ──────────────────────────────────────────────────────────────
 
-type Product = { id: string; name: string; sku: string; qty: number; min_qty: number; price: number };
+type Product = {
+  id: string;
+  name: string;
+  sku: string;
+  slug: string;
+  qty: number;
+  min_qty: number;
+  price: number;
+  active: boolean;
+  description: string;
+  short_description: string;
+  image_url: string | null;
+  gallery: string[];
+  featured: boolean;
+  sort_order: number;
+  category_slug: string | null;
+};
+type ProductCategory = { id: string; slug: string; name: string; description: string; sort_order: number; active: boolean };
 
 function Stock() {
   const [products, setProducts] = useState<Product[] | null>(() => getCached<Product[]>("/products"));
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [editing, setEditing] = useState<Product | null>(null);
   const [error, setError] = useState("");
 
   const load = useCallback(() => {
-    api<Product[]>("/products").then(setProducts).catch((e) => setError(e.message));
+    Promise.all([api<Product[]>("/products"), api<ProductCategory[]>("/product-categories")])
+      .then(([nextProducts, nextCategories]) => {
+        setProducts(nextProducts);
+        setCategories(nextCategories);
+        setEditing((current) => current ? nextProducts.find((product) => product.id === current.id) ?? null : null);
+        setError("");
+      })
+      .catch((e) => setError(e.message));
   }, []);
   useEffect(load, [load]);
 
@@ -530,6 +559,18 @@ function Stock() {
     if (!price || price <= 0) { alert("Precio inválido"); return; }
     try {
       await api(`/products/${p.id}`, { method: "PATCH", body: JSON.stringify({ price }) });
+      load();
+    } catch (e) { setError((e as Error).message); }
+  }
+
+  async function createCategory() {
+    const name = prompt("Nombre de la nueva categoría:");
+    if (!name?.trim()) return;
+    const suggested = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const slug = prompt("Slug de la categoría:", suggested);
+    if (!slug?.trim()) return;
+    try {
+      await api("/product-categories", { method: "POST", body: JSON.stringify({ name: name.trim(), slug: slug.trim(), description: "", sort_order: categories.length }) });
       load();
     } catch (e) { setError((e as Error).message); }
   }
@@ -556,26 +597,225 @@ function Stock() {
           </div>
         ))}
       </div>
+      <div style={{ marginTop: 18, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <p style={{ margin: 0, maxWidth: 620, fontSize: 13, lineHeight: 1.6, opacity: 0.62 }}>El stock se ajusta con movimientos auditados. La ficha pública controla cómo aparece cada producto en el shop.</p>
+        <button type="button" className="miniact" onClick={createCategory}>+ Nueva categoría</button>
+      </div>
+      {editing && <ProductEditor key={editing.id} product={editing} categories={categories} onClose={() => setEditing(null)} onSaved={load} />}
       <div className="tbl-wrap" style={{ marginTop: 22, ...CARD }}>
-        <div className="tbl-row" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.9fr 1.3fr 1fr 1.1fr", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-          <span>Producto</span><span>Precio</span><span>Stock</span><span>Ajustar</span><span>Valor</span><span style={{ textAlign: "right" }}>Estado</span>
+        <div className="tbl-row" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.8fr 1.2fr 1fr 1fr 1.1fr", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
+          <span>Producto</span><span>Precio</span><span>Stock</span><span>Ajustar</span><span>Valor</span><span>Shop</span><span style={{ textAlign: "right" }}>Estado</span>
         </div>
         {products.map((p) => {
           const status = p.qty === 0 ? "Agotado" : p.qty <= p.min_qty ? "Stock bajo" : "En stock";
           const col = p.qty === 0 ? "#ff7a7a" : p.qty <= p.min_qty ? "#ffcf66" : "rgba(255,255,255,0.85)";
           const border = p.qty === 0 ? "rgba(255,90,90,0.5)" : p.qty <= p.min_qty ? "rgba(255,200,80,0.5)" : "rgba(255,255,255,0.3)";
           return (
-            <div key={p.sku} className="arow tbl-row" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.9fr 1.3fr 1fr 1.1fr", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+            <div key={p.sku} className="arow tbl-row" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 0.8fr 1.2fr 1fr 1fr 1.1fr", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
               <span><span style={{ fontFamily: SERIF, fontSize: 17 }}>{p.name}</span><br /><span style={{ fontSize: 11, opacity: 0.4, letterSpacing: "0.08em" }}>{p.sku}</span></span>
               <button type="button" onClick={() => editPrice(p)} aria-label={`Editar precio de ${p.name}`} title="Editar precio" style={{ width: "fit-content", padding: 0, background: "none", color: "inherit", border: 0, borderBottom: "1px dotted rgba(255,255,255,0.3)", fontFamily: SERIF, fontSize: 16, cursor: "pointer" }}>{money(p.price)}</button>
               <span style={{ fontSize: 16, color: col }}>{p.qty}</span>
               <span style={{ display: "flex", gap: 8, alignItems: "center" }}><button className="qbtn" onClick={() => adjust(p, -1)}>−</button><button className="qbtn" onClick={() => adjust(p, 1)}>+</button></span>
               <span style={{ opacity: 0.85 }}>{money(p.price * p.qty)}</span>
+              <button type="button" className="miniact" onClick={() => setEditing(p)}>{editing?.id === p.id ? "Editando" : "Editar ficha"}</button>
               <span style={{ textAlign: "right" }}><span style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", padding: "4px 9px", border: `1px solid ${border}`, color: col }}>{status}</span></span>
             </div>
           );
         })}
       </div>
+    </>
+  );
+}
+
+function ProductEditor({ product, categories, onClose, onSaved }: { product: Product; categories: ProductCategory[]; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    slug: product.slug,
+    short_description: product.short_description ?? "",
+    description: product.description ?? "",
+    category_slug: product.category_slug ?? "",
+    image_url: product.image_url ?? "",
+    gallery: (product.gallery ?? []).join("\n"),
+    featured: product.featured,
+    active: product.active,
+    sort_order: product.sort_order,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const field = (key: keyof typeof form, value: string | boolean | number) => setForm((current) => ({ ...current, [key]: value }));
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await api(`/products/${product.id}/shop`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          ...form,
+          image_url: form.image_url.trim() || null,
+          gallery: form.gallery.split("\n").map((value) => value.trim()).filter(Boolean),
+          sort_order: Number(form.sort_order),
+        }),
+      });
+      onSaved();
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={save} style={{ ...CARD, marginTop: 22, padding: "clamp(18px, 3vw, 28px)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 20 }}>
+        <div><div style={{ fontFamily: SERIF, fontSize: 24 }}>{product.name}</div><div style={{ marginTop: 5, fontSize: 11, opacity: 0.45 }}>{product.sku}</div></div>
+        <button type="button" className="qbtn" aria-label="Cerrar editor" onClick={onClose}>×</button>
+      </div>
+      <div className="adm-form-grid" style={{ marginTop: 22 }}>
+        <label className="adm-field">Slug público<input required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" value={form.slug} onChange={(event) => field("slug", event.target.value)} /></label>
+        <label className="adm-field">Categoría<select required value={form.category_slug} onChange={(event) => field("category_slug", event.target.value)}><option value="">Elegir categoría</option>{categories.filter((category) => category.active).map((category) => <option key={category.slug} value={category.slug}>{category.name}</option>)}</select></label>
+        <label className="adm-field">Orden<input type="number" min="0" max="10000" value={form.sort_order} onChange={(event) => field("sort_order", Number(event.target.value))} /></label>
+        <label className="adm-field adm-span-2">Descripción breve<input maxLength={240} value={form.short_description} onChange={(event) => field("short_description", event.target.value)} /></label>
+        <label className="adm-field adm-span-2">Descripción completa<textarea rows={4} maxLength={5000} value={form.description} onChange={(event) => field("description", event.target.value)} /></label>
+        <label className="adm-field adm-span-2">URL de imagen<input type="url" placeholder="https://…" value={form.image_url} onChange={(event) => field("image_url", event.target.value)} /></label>
+        <label className="adm-field adm-span-2">Galería (una URL por línea)<textarea rows={3} value={form.gallery} onChange={(event) => field("gallery", event.target.value)} /></label>
+      </div>
+      <div style={{ display: "flex", gap: 22, flexWrap: "wrap", marginTop: 18 }}>
+        <label className="adm-check"><input type="checkbox" checked={form.active} onChange={(event) => field("active", event.target.checked)} /> Visible en el shop</label>
+        <label className="adm-check"><input type="checkbox" checked={form.featured} onChange={(event) => field("featured", event.target.checked)} /> Destacado</label>
+      </div>
+      {error && <ErrorBox msg={error} />}
+      <div style={{ display: "flex", gap: 10, marginTop: 22 }}><button type="submit" className="miniact" disabled={saving}>{saving ? "Guardando…" : "Guardar ficha"}</button><button type="button" className="miniact" onClick={onClose}>Cancelar</button></div>
+    </form>
+  );
+}
+
+// ── Pedidos del shop ──────────────────────────────────────────────────
+
+type OrderStatus = "pending" | "confirmed" | "ready" | "completed" | "cancelled";
+type OrderSummary = {
+  id: string;
+  order_number: number;
+  customer_name: string;
+  status: OrderStatus;
+  payment_method: string;
+  payment_status: string;
+  total: number;
+  currency: string;
+  item_count: number;
+  created_at: string;
+};
+type ShopOrder = OrderSummary & {
+  customer_email: string;
+  customer_phone: string;
+  subtotal: number;
+  pickup_location: string;
+  customer_notes: string;
+  cancellation_reason: string;
+  updated_at: string;
+  items: { product_slug: string; product_name: string; sku: string; unit_price: number; quantity: number; line_total: number }[];
+};
+
+const ORDER_STATUS: Record<OrderStatus, { label: string; color: string }> = {
+  pending: { label: "Pendiente", color: "#ffcf66" },
+  confirmed: { label: "Confirmado", color: "#7cc6ff" },
+  ready: { label: "Listo para retirar", color: "#a9e6a0" },
+  completed: { label: "Entregado", color: "#fff" },
+  cancelled: { label: "Cancelado", color: "#ff7a7a" },
+};
+const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["ready", "cancelled"],
+  ready: ["completed", "cancelled"],
+  completed: [],
+  cancelled: [],
+};
+
+function OrderBadge({ status }: { status: OrderStatus }) {
+  const value = ORDER_STATUS[status];
+  return <span style={{ display: "inline-block", border: `1px solid ${value.color}66`, color: value.color, padding: "5px 9px", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" }}>{value.label}</span>;
+}
+
+function Orders() {
+  const [filter, setFilter] = useState<"" | OrderStatus>("");
+  const [orders, setOrders] = useState<OrderSummary[] | null>(() => getCached<OrderSummary[]>("/orders?limit=50"));
+  const [selected, setSelected] = useState<ShopOrder | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    const path = `/orders?limit=50${filter ? `&status=${filter}` : ""}`;
+    api<OrderSummary[]>(path).then((value) => { setOrders(value); setError(""); }).catch((cause) => setError(cause.message));
+  }, [filter]);
+  useEffect(load, [load]);
+
+  async function open(order: OrderSummary) {
+    try {
+      setSelected(await api<ShopOrder>(`/orders/${order.id}`));
+      setError("");
+    } catch (cause) { setError((cause as Error).message); }
+  }
+
+  async function transition(status: OrderStatus) {
+    if (!selected) return;
+    let note = "";
+    if (status === "cancelled") {
+      note = prompt("Motivo de cancelación (el stock se devolverá automáticamente):")?.trim() ?? "";
+      if (!note) return;
+    }
+    setBusy(true);
+    try {
+      const updated = await api<ShopOrder>(`/orders/${selected.id}/status`, { method: "PATCH", body: JSON.stringify({ status, note }) });
+      setSelected(updated);
+      load();
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const activeOrders = orders?.filter((order) => !["completed", "cancelled"].includes(order.status)).length ?? 0;
+  const readyOrders = orders?.filter((order) => order.status === "ready").length ?? 0;
+  const pendingTotal = orders?.filter((order) => !["completed", "cancelled"].includes(order.status)).reduce((sum, order) => sum + order.total, 0) ?? 0;
+
+  return (
+    <>
+      <div className="adm-kpis" style={{ marginTop: 28 }}>
+        {[{ label: "Pedidos activos", value: activeOrders }, { label: "Listos para retirar", value: readyOrders }, { label: "Total abierto", value: money(pendingTotal) }].map((item) => <div key={item.label} style={{ ...CARD, padding: "18px 22px" }}><div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.5 }}>{item.label}</div><div style={{ marginTop: 8, fontFamily: SERIF, fontSize: 28 }}>{item.value}</div></div>)}
+      </div>
+      <div style={{ marginTop: 20, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <label className="adm-field" style={{ minWidth: 230 }}>Filtrar por estado<select value={filter} onChange={(event) => setFilter(event.target.value as "" | OrderStatus)}><option value="">Todos</option>{Object.entries(ORDER_STATUS).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></label>
+        <button type="button" className="miniact" onClick={load}>Actualizar</button>
+      </div>
+      {error && <ErrorBox msg={error} />}
+      {selected && (
+        <section aria-label={`Detalle del pedido ${selected.order_number}`} style={{ ...CARD, marginTop: 20, padding: "clamp(18px, 3vw, 28px)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 16, flexWrap: "wrap" }}>
+            <div><div style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.5 }}>Pedido #{selected.order_number}</div><div style={{ marginTop: 7, fontFamily: SERIF, fontSize: 26 }}>{selected.customer_name}</div><div style={{ marginTop: 5, fontSize: 13, opacity: 0.65 }}>{selected.customer_email} · {selected.customer_phone}</div></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><OrderBadge status={selected.status} /><button type="button" className="qbtn" aria-label="Cerrar detalle" onClick={() => setSelected(null)}>×</button></div>
+          </div>
+          <div className="adm-order-meta" style={{ marginTop: 20 }}>
+            <div><small>Pago</small><strong>En el local · {selected.payment_status === "paid" ? "Pagado" : "Pendiente"}</strong></div>
+            <div><small>Retiro</small><strong>{selected.pickup_location}</strong></div>
+            <div><small>Creado</small><strong>{new Date(selected.created_at).toLocaleString(site.locale)}</strong></div>
+          </div>
+          <div className="tbl-wrap" style={{ marginTop: 20, border: "1px solid rgba(255,255,255,0.1)" }}>
+            <div className="tbl-row" style={{ minWidth: 560, display: "grid", gridTemplateColumns: "1fr 80px 120px 120px", padding: "12px 16px", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.48 }}><span>Producto</span><span>Cant.</span><span>Unitario</span><span>Total</span></div>
+            {selected.items.map((item) => <div className="tbl-row" key={`${item.sku}-${item.quantity}`} style={{ minWidth: 560, display: "grid", gridTemplateColumns: "1fr 80px 120px 120px", padding: "14px 16px", borderTop: "1px solid rgba(255,255,255,0.08)", alignItems: "center" }}><span>{item.product_name}<small style={{ display: "block", marginTop: 3, opacity: 0.4 }}>{item.sku}</small></span><span>{item.quantity}</span><span>{money(item.unit_price)}</span><strong>{money(item.line_total)}</strong></div>)}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, marginTop: 18, flexWrap: "wrap", alignItems: "center" }}><div style={{ fontSize: 13, opacity: 0.66 }}>{selected.customer_notes ? `Nota: ${selected.customer_notes}` : "Sin notas del cliente"}</div><div style={{ fontFamily: SERIF, fontSize: 25 }}>Total {money(selected.total)}</div></div>
+          {selected.cancellation_reason && <div style={{ marginTop: 16, color: "#ff9b9b", fontSize: 13 }}>Motivo: {selected.cancellation_reason}</div>}
+          {ORDER_TRANSITIONS[selected.status].length > 0 && <div style={{ display: "flex", gap: 10, marginTop: 22, flexWrap: "wrap" }}>{ORDER_TRANSITIONS[selected.status].map((next) => <button type="button" key={next} disabled={busy} className={`miniact ${next === "cancelled" ? "dng" : ""}`} onClick={() => transition(next)}>{next === "ready" ? "Marcar listo" : next === "completed" ? "Marcar entregado" : next === "confirmed" ? "Confirmar" : "Cancelar pedido"}</button>)}</div>}
+        </section>
+      )}
+      {!orders ? <SkTable rows={6} cols={5} /> : (
+        <div className="tbl-wrap" style={{ marginTop: 20, ...CARD }}>
+          <div className="tbl-row" style={{ display: "grid", gridTemplateColumns: "0.7fr 1.5fr 1fr 0.8fr 1fr 1fr", minWidth: 760, padding: "16px 20px", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.45 }}><span>Pedido</span><span>Cliente</span><span>Fecha</span><span>Items</span><span>Total</span><span>Estado</span></div>
+          {orders.map((order) => <button type="button" className="arow tbl-row adm-order-row" key={order.id} onClick={() => open(order)}><span>#{order.order_number}</span><span>{order.customer_name}</span><span>{fmtDate(order.created_at)}</span><span>{order.item_count}</span><strong>{money(order.total)}</strong><OrderBadge status={order.status} /></button>)}
+          {orders.length === 0 && <div style={{ padding: 32, opacity: 0.5 }}>No hay pedidos para este estado.</div>}
+        </div>
+      )}
     </>
   );
 }

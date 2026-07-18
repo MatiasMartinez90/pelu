@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 const env = {
   ...process.env,
   BACKEND_URL: process.env.BACKEND_URL ?? "http://127.0.0.1:3998",
+  SHOP_FIXTURE_DELAY_MS: process.env.SHOP_FIXTURE_DELAY_MS ?? "350",
 };
 const fixture = spawn(process.execPath, ["tests/e2e/fixtures/catalog-server.mjs"], {
   env,
