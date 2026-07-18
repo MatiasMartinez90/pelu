@@ -1,6 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
-import { HeroVideo } from "@/components/sections/hero-video";
+import { HeroMedia } from "@/components/sections/hero-media";
 import { mediaSource } from "@/lib/media";
 import { site } from "@/lib/site";
 
@@ -27,25 +26,10 @@ export function Hero({ brand = site.shortName, videoSrc = DEFAULT_VIDEO, videoWe
 
   return (
     <section
-      className="nox-hero nox-hero-enter"
+      className="nox-hero"
       style={{ background: "#0a0a0a", fontFamily: SANS, color: "#fff" }}
     >
-      <Image
-        src={posterUrl}
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        aria-hidden="true"
-        style={{
-          objectFit: "cover",
-          objectPosition: "55% 26%",
-        }}
-      />
-      <HeroVideo mp4={videoUrl} webm={videoWebmUrl} poster={posterUrl} />
-
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(95deg, rgba(8,8,8,0.82) 0%, rgba(8,8,8,0.5) 34%, rgba(8,8,8,0.12) 56%, rgba(8,8,8,0) 72%)" }} />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0) 22%, rgba(8,8,8,0) 62%, rgba(8,8,8,0.7) 100%)" }} />
+      <HeroMedia mp4={videoUrl} webm={videoWebmUrl} poster={posterUrl} />
 
       {/* Top utility bar */}
       <header className="nox-hero-top">
@@ -89,7 +73,7 @@ export function Hero({ brand = site.shortName, videoSrc = DEFAULT_VIDEO, videoWe
       <div className="nox-hero-vert" style={{ position: "absolute", right: 30, top: "50%", transform: "translateY(-50%) rotate(180deg)", writingMode: "vertical-rl", zIndex: 10, fontSize: 11, letterSpacing: "0.34em", textTransform: "uppercase", opacity: 0.6 }}>{site.content.heroHighlights.join(" · ")}</div>
 
       {/* Bottom marquee */}
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 15, overflow: "hidden", borderTop: "1px solid rgba(255,255,255,0.16)", padding: "16px 0", backdropFilter: "blur(2px)" }}>
+      <div className="nox-hero-marquee" style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 15, overflow: "hidden", borderTop: "1px solid rgba(255,255,255,0.16)", padding: "16px 0", backdropFilter: "blur(2px)" }}>
         <div style={{ display: "flex", width: "max-content", animation: "nox-marquee 26s linear infinite", whiteSpace: "nowrap" }}>
           <span className="nox-marquee-txt">{marquee}</span>
           <span className="nox-marquee-txt">{marquee}</span>
