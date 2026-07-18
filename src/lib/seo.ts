@@ -21,7 +21,7 @@ export function pageMetadata({ title, description, path, noIndex = false }: Page
     robots: { index, follow: index, googleBot: { index, follow: index } },
     openGraph: {
       type: "website",
-      locale: "es_AR",
+      locale: site.locale.replace("-", "_"),
       siteName: site.name,
       title: `${title} | ${site.name}`,
       description,
@@ -34,7 +34,7 @@ export function pageMetadata({ title, description, path, noIndex = false }: Page
 
 export const localBusinessJsonLd = {
   "@context": "https://schema.org",
-  "@type": "HairSalon",
+  "@type": site.businessType === "appointments_business" ? "LocalBusiness" : "HairSalon",
   "@id": `${site.url}/#business`,
   name: site.name,
   url: site.url,
@@ -42,14 +42,14 @@ export const localBusinessJsonLd = {
   telephone: site.phoneDisplay,
   email: site.email,
   image: socialImageUrl,
-  priceRange: "$$",
-  currenciesAccepted: "ARS",
-  paymentAccepted: "Efectivo, transferencia",
+  priceRange: site.seo.priceRange,
+  currenciesAccepted: site.currency,
+  paymentAccepted: site.payments,
   address: {
     "@type": "PostalAddress",
     streetAddress: site.streetAddress,
     addressLocality: site.city,
-    addressRegion: "CABA",
+    addressRegion: site.region,
     postalCode: site.postalCode,
     addressCountry: site.countryCode,
   },
@@ -58,9 +58,11 @@ export const localBusinessJsonLd = {
     latitude: site.latitude,
     longitude: site.longitude,
   },
-  openingHoursSpecification: [
-    { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "10:00", closes: "21:00" },
-    { "@type": "OpeningHoursSpecification", dayOfWeek: "Saturday", opens: "11:00", closes: "20:00" },
-  ],
-  sameAs: [site.instagramUrl],
+  openingHoursSpecification: site.openingHours.map((hours) => ({
+    "@type": "OpeningHoursSpecification",
+    dayOfWeek: hours.days,
+    opens: hours.opens,
+    closes: hours.closes,
+  })),
+  sameAs: site.channels.instagram.enabled ? [site.instagramUrl] : [],
 };

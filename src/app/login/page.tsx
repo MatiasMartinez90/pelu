@@ -2,8 +2,9 @@ import { LoginButton } from "./login-button";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
+import { site } from "@/lib/site";
 
-export const metadata: Metadata = pageMetadata({ title: "Ingresar", description: "Acceso a tu cuenta NOX.", path: "/login", noIndex: true });
+export const metadata: Metadata = pageMetadata({ title: "Ingresar", description: `Acceso a tu cuenta ${site.shortName}.`, path: "/login", noIndex: true });
 
 const SERIF = "var(--font-serif)";
 const SANS = "var(--font-sans)";
@@ -34,10 +35,10 @@ export default async function LoginPage({
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
         <span style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 64, lineHeight: 0.9, letterSpacing: "0.01em" }}>
-          NOX
+          {site.shortName}
         </span>
         <span style={{ fontSize: 11, letterSpacing: "0.42em", textTransform: "uppercase", opacity: 0.55 }}>
-          Barbería Premium
+          {site.tagline}
         </span>
       </div>
 

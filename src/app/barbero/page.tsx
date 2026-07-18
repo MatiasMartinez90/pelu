@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { money, site } from "@/lib/site";
 
 const SERIF = "var(--font-serif)";
 const SANS = "var(--font-sans)";
-const ars = new Intl.NumberFormat("es-AR");
-const money = (n: number) => `$${ars.format(Math.round(n))}`;
 const CARD = { border: "1px solid rgba(255,255,255,0.14)" } as const;
 
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
@@ -15,7 +14,7 @@ const dateKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padS
 const parseKey = (k: string) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
 const curMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
 const monthLabel = (m: string) => { const [y, mm] = m.split("-").map(Number); return `${MONTHS[mm - 1]} ${y}`; };
-const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString(site.locale, { hour: "2-digit", minute: "2-digit" });
 
 async function api<T>(path: string): Promise<T | { __err: number }> {
   const res = await fetch(`/api/barber${path}`, { headers: { "content-type": "application/json" }, cache: "no-store" });
@@ -83,7 +82,7 @@ export default function BarberoPage() {
   if (forbidden) {
     return (
       <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: 24, textAlign: "center" }}>
-        <span style={{ fontFamily: SERIF, fontSize: 48 }}>NOX</span>
+        <span style={{ fontFamily: SERIF, fontSize: 48 }}>{site.shortName}</span>
         <p style={{ opacity: 0.7, maxWidth: 420 }}>Esta sección es para barberos del equipo. Si sos parte del equipo y ves esto, pedile al admin que vincule tu email.</p>
         <Link href="/" className="nox-btn">Volver al sitio</Link>
       </div>
@@ -94,7 +93,7 @@ export default function BarberoPage() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <header className="acct-top">
         <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
-          <Link href="/" style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 24, color: "#fff" }}>NOX</Link>
+          <Link href="/" style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 24, color: "#fff" }}>{site.shortName}</Link>
           <span style={{ fontSize: 11, letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.5 }}>Barbero</span>
         </div>
         {name && <div style={{ fontSize: 14, opacity: 0.8 }}>{name}</div>}

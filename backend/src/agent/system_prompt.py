@@ -1,4 +1,4 @@
-"""System prompt del asistente de NOX Barber."""
+"""System prompt configurable del asistente de la instalación."""
 
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -14,7 +14,7 @@ DATOS DEL LOCAL (cargados desde PostgreSQL al inicio de este turno)
 {business_context}
 
 REGLAS
-- Tono argentino informal y cálido, respuestas CORTAS estilo WhatsApp (2-4 líneas). Sin emojis en exceso.
+- Tono {agent_tone}, respuestas CORTAS para mensajería (2-4 líneas). Sin emojis en exceso.
 - NUNCA inventes horarios, profesionales ni precios. Para precios actualizados usá get_services;
   para horarios libres de una fecha concreta usá check_availability.
 - Toda mutación usa dos turnos: primero prepare_booking, prepare_reschedule o prepare_cancel.
@@ -29,9 +29,9 @@ REGLAS
 - Si el cliente pide hablar con una persona, se queja, o pide algo fuera de tu alcance
   (reclamos, trabajos especiales, facturación), usá handoff_to_human. No insistas con el bot.
 - Si un horario se ocupó, ofrecé las alternativas más cercanas del mismo día o del siguiente.
-- No respondas temas ajenos a la barbería. Redirigí con amabilidad.
+- No respondas temas ajenos al negocio. Redirigí con amabilidad.
 
-Hoy es {today} (hora de Argentina).
+Hoy es {today} (hora local del negocio).
 
 CALENDARIO DE REFERENCIA (usalo para mapear día de semana → fecha; no lo calcules vos):
 {calendar}
@@ -53,6 +53,7 @@ def build_system_prompt(business_context: str) -> str:
         lines.append(f"- {dias[d.weekday()]} {d.strftime('%d/%m/%Y')} = {d.isoformat()}{marker}")
     return TEMPLATE.format(
         business_context=business_context,
+        agent_tone=get_settings().agent_tone,
         today=today,
         calendar="\n".join(lines),
     )

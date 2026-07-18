@@ -1,4 +1,4 @@
-"""Agente ReAct de NOX: create_react_agent + AsyncPostgresSaver + Langfuse."""
+"""Agente ReAct: create_react_agent + AsyncPostgresSaver + Langfuse."""
 
 import logging
 import time
@@ -30,16 +30,31 @@ from .guardrails import (
 
 logger = logging.getLogger(__name__)
 
-BUDGET_REPLY = (
-    "En este momento no puedo tomar reservas por acá. "
-    "Podés reservar desde la web: https://nox.cloud-it.com.ar/agendar 🙏"
-)
 
-AGENT_ERROR_REPLY = (
-    "Perdón, tuve un problema técnico y no pude procesar tu mensaje. "
-    "Probá de nuevo en un ratito, o reservá directo desde "
-    "https://nox.cloud-it.com.ar/agendar 🙏"
-)
+def _booking_url() -> str:
+    settings = get_settings()
+    if not settings.public_site_url:
+        return ""
+    return f"{settings.public_site_url.rstrip('/')}/{settings.public_booking_path.lstrip('/')}"
+
+
+def _budget_reply() -> str:
+    booking_url = _booking_url()
+    return "En este momento no puedo tomar reservas por acá. " + (
+        f"Podés reservar desde la web: {booking_url} 🙏"
+        if booking_url
+        else "Probá de nuevo en un ratito."
+    )
+
+
+def _agent_error_reply() -> str:
+    booking_url = _booking_url()
+    return "Perdón, tuve un problema técnico y no pude procesar tu mensaje. " + (
+        f"Probá de nuevo en un ratito, o reservá directo desde {booking_url} 🙏"
+        if booking_url
+        else "Probá de nuevo en un ratito."
+    )
+
 
 _langfuse_handler = None
 
@@ -126,9 +141,7 @@ async def _track_cost(budget_key: str, tokens_in: int, tokens_out: int) -> float
 
 async def _release_budget_reservation(budget_key: str) -> None:
     settings = get_settings()
-    await (await get_redis()).incrbyfloat(
-        budget_key, -settings.budget_reserve_per_turn_usd
-    )
+    await (await get_redis()).incrbyfloat(budget_key, -settings.budget_reserve_per_turn_usd)
 
 
 def _turn_usage(messages: list, user_message: str) -> tuple[int, int]:
@@ -161,7 +174,7 @@ async def run_agent(
     if budget_key is None:
         AGENT_TURNS.labels("budget_limited").inc()
         await events.log_event("rate_limited", conversation_id=conversation_id, phone=phone)
-        return BUDGET_REPLY
+        return _budget_reply()
 
     if is_prompt_injection(message):
         AGENT_TURNS.labels("prompt_injection").inc()
@@ -217,7 +230,7 @@ async def run_agent(
         await events.log_event("agent_error", conversation_id=conversation_id, phone=phone)
         if allow_fallback:
             AGENT_TURNS.labels("fallback").inc()
-            return AGENT_ERROR_REPLY
+            return _agent_error_reply()
         AGENT_TURNS.labels("error").inc()
         raise
 
@@ -230,9 +243,7 @@ async def run_agent(
     output_flagged = await moderation_categories(reply)
     if output_flagged:
         AGENT_TURNS.labels("output_moderation_blocked").inc()
-        await events.log_event(
-            "moderation_blocked", conversation_id=conversation_id, phone=phone
-        )
+        await events.log_event("moderation_blocked", conversation_id=conversation_id, phone=phone)
         await perform_handoff(
             f"moderación de salida: {', '.join(output_flagged)}",
             {"conversation_id": conversation_id, "phone": phone, "turn_id": str(turn_id)},
@@ -241,9 +252,7 @@ async def run_agent(
 
     evidence = [business_context]
     evidence.extend(
-        str(msg.content)
-        for msg in result["messages"]
-        if getattr(msg, "type", None) == "tool"
+        str(msg.content) for msg in result["messages"] if getattr(msg, "type", None) == "tool"
     )
     reply = validate_output(reply, evidence)
 

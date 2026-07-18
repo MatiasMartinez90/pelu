@@ -1,0 +1,125 @@
+{
+  "$schema": "./installation.schema.json",
+  "schemaVersion": 1,
+  "tenant": "nox",
+  "businessType": "hair_salon",
+  "localization": {
+    "language": "es",
+    "locale": "es-AR",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "countryCode": "AR",
+    "countryName": "Argentina",
+    "currency": { "code": "ARS", "symbol": "$", "fractionDigits": 0 }
+  },
+  "brand": {
+    "name": "NOX Barber",
+    "shortName": "NOX",
+    "establishedYear": 2014,
+    "tagline": "Barbería Premium",
+    "description": "NOX Barber — barbería premium en Buenos Aires. Agendá tu turno online. Cortes, fade, barba, diseño y color con un equipo profesional.",
+    "theme": {
+      "primary": "#ff0a0a",
+      "background": "#0a0a0a",
+      "foreground": "#ffffff",
+      "card": "#171717"
+    }
+  },
+  "seo": {
+    "keywords": ["barbería", "barbershop", "corte de pelo", "fade", "barba", "turno online"],
+    "priceRange": "$$"
+  },
+  "domains": {
+    "site": "https://nox.cloud-it.com.ar",
+    "shop": "https://tienda.noxbarber.com.ar"
+  },
+  "contact": {
+    "phoneDisplay": "+54 9 11 5555-0123",
+    "email": "hola@noxbarber.com.ar"
+  },
+  "location": {
+    "city": "Buenos Aires",
+    "region": "Ciudad Autónoma de Buenos Aires",
+    "address": "Av. Cabildo 2200, CABA",
+    "streetAddress": "Av. Cabildo 2200",
+    "postalCode": "C1428",
+    "neighborhood": "Belgrano",
+    "latitude": -34.5625,
+    "longitude": -58.456,
+    "mapsQuery": "Av. Cabildo 2200, CABA",
+    "directions": "Subte D, estación Ministro Carranza. Colectivos 15, 29, 60 y 152.",
+    "mapsEmbed": "https://www.openstreetmap.org/export/embed.html?bbox=-58.466%2C-34.572%2C-58.446%2C-34.552&layer=mapnik&marker=-34.5625%2C-58.456"
+  },
+  "hours": [
+    { "day": "Lunes a Viernes", "time": "10:00 – 21:00" },
+    { "day": "Sábados", "time": "11:00 – 20:00" },
+    { "day": "Domingos", "time": "Cerrado" }
+  ],
+  "openingHours": [
+    { "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "10:00", "closes": "21:00" },
+    { "days": ["Saturday"], "opens": "11:00", "closes": "20:00" }
+  ],
+  "payments": {
+    "methods": ["cash", "bank_transfer"],
+    "display": "Efectivo y transferencia. El pago se realiza en el local.",
+    "allowPayAtStore": true,
+    "allowOnline": false
+  },
+  "booking": {
+    "enabled": true,
+    "path": "/agendar",
+    "slotGranularityMinutes": 30,
+    "minimumLeadMinutes": 60,
+    "maximumDaysAhead": 30
+  },
+  "policies": {
+    "cancellationNoticeMinutes": 120,
+    "cancellationNotes": "Las cancelaciones y reprogramaciones no tienen costo.",
+    "arrivalRecommendation": "Llegá 5 minutos antes para comenzar puntual."
+  },
+  "channels": {
+    "whatsapp": { "enabled": true, "address": "5491155550123" },
+    "instagram": { "enabled": true, "address": "noxbarber", "url": "https://instagram.com/noxbarber" },
+    "telegram": { "enabled": false, "address": "" },
+    "email": { "enabled": true, "address": "hola@noxbarber.com.ar" }
+  },
+  "shop": { "enabled": true, "url": "https://tienda.noxbarber.com.ar", "pickupOnly": true },
+  "agent": {
+    "enabled": true,
+    "name": "NOX",
+    "tone": "argentino informal y cálido",
+    "scope": ["appointments", "business_information"]
+  },
+  "demo": {
+    "defaultBarberSlug": "thiago"
+  },
+  "features": {
+    "customerPortal": true,
+    "barberPortal": true,
+    "newsletter": false,
+    "campaigns": false,
+    "onlinePayments": false
+  },
+  "content": {
+    "heroHighlights": ["Cortes", "Fade", "Barba", "Color"],
+    "servicesIntro": "Conocé los servicios disponibles, su duración y precio actualizado.",
+    "teamIntro": "Conocé al equipo y elegí con quién querés reservar tu próximo turno.",
+    "galleryIntro": "Una selección de trabajos realizados por nuestro equipo.",
+    "about": {
+      "lead": "Empezamos con una silla, una tijera y la idea de que un corte puede cambiarte el día.",
+      "body": [
+        "Hoy somos un espacio donde la técnica y el detalle mandan. Cada servicio comienza escuchando qué querés y termina con una ejecución precisa, sin apuros ni trabajo en serie.",
+        "Trabajamos con productos profesionales, un equipo que se capacita constantemente y un ambiente pensado para que disfrutes la experiencia."
+      ],
+      "values": [
+        { "title": "Precisión", "text": "Cada servicio se piensa y se ejecuta con detalle." },
+        { "title": "Tiempo", "text": "Turnos sin apuro. Tu momento es tuyo, de principio a fin." },
+        { "title": "Oficio", "text": "Un equipo que se capacita siempre, con técnica y productos profesionales." }
+      ]
+    }
+  },
+  "copy": {
+    "bookingCta": "Agendar Turno",
+    "demoBanner": "MODO DEMO · LOS DATOS SE RESTABLECEN PERIÓDICAMENTE",
+    "newsletterTitle": "Sumate y enterate de novedades y promos."
+  }
+}

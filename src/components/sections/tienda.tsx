@@ -1,12 +1,10 @@
 import Image from "next/image";
 import { mediaAsset } from "@/lib/media-assets";
+import { money, site } from "@/lib/site";
 
 const SERIF = "var(--font-serif)";
 
-const ars = new Intl.NumberFormat("es-AR");
-const money = (n: number) => `$${ars.format(n)}`;
-
-const SHOP_URL = "https://tienda.noxbarber.com.ar";
+const SHOP_URL = site.onlineStoreUrl;
 
 type Product = {
   slug: string;

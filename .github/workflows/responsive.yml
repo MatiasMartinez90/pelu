@@ -5,7 +5,7 @@ on:
     paths:
       - "src/**"
       - "public/**"
-      - "config/media-assets.json"
+      - "config/**"
       - "tests/e2e/**"
       - "playwright.config.ts"
       - "package.json"

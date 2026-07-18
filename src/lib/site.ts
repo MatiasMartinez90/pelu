@@ -1,34 +1,52 @@
-// Configuración central del sitio. Cambiá estos valores para rebrandear.
+import { formatMoney, installation } from "@/lib/installation";
+
+// Vista backward-compatible del contrato de instalación. Los componentes no
+// deben mantener copias propias de marca, contacto, moneda ni canales.
 export const site = {
-  url: (process.env.SITE_URL ?? "https://nox.cloud-it.com.ar").replace(/\/$/, ""),
-  name: "NOX Barber",
-  shortName: "NOX",
-  tagline: "Barbería Premium",
-  city: "Buenos Aires",
-  description:
-    "NOX Barber — barbería premium en Buenos Aires. Agendá tu turno online. Cortes, fade, barba, diseño y color con un equipo profesional.",
-  // Datos de contacto (placeholders — reemplazá por los reales)
-  phoneDisplay: "+54 9 11 5555-0123",
-  whatsapp: "5491155550123", // sin signos, formato wa.me
-  instagram: "noxbarber",
-  instagramUrl: "https://instagram.com/noxbarber",
-  email: "hola@noxbarber.com.ar",
-  address: "Av. Cabildo 2200, CABA",
-  streetAddress: "Av. Cabildo 2200",
-  postalCode: "C1428",
-  neighborhood: "Belgrano",
-  countryCode: "AR",
-  latitude: -34.5625,
-  longitude: -58.456,
-  mapsQuery: "Av. Cabildo 2200, CABA",
-  mapsEmbed:
-    "https://www.google.com/maps?q=Av.%20Cabildo%202200%2C%20CABA&output=embed",
-  hours: [
-    { day: "Lunes a Viernes", time: "10:00 – 21:00" },
-    { day: "Sábados", time: "11:00 – 20:00" },
-    { day: "Domingos", time: "Cerrado" },
-  ],
-  payments: "Efectivo y transferencia. El pago se realiza en el local.",
+  tenant: installation.tenant,
+  businessType: installation.businessType,
+  url: (process.env.SITE_URL ?? installation.domains.site).replace(/\/$/, ""),
+  name: installation.brand.name,
+  shortName: installation.brand.shortName,
+  establishedYear: installation.brand.establishedYear,
+  tagline: installation.brand.tagline,
+  city: installation.location.city,
+  region: installation.location.region,
+  description: installation.brand.description,
+  phoneDisplay: installation.contact.phoneDisplay,
+  whatsapp: installation.channels.whatsapp.address,
+  instagram: installation.channels.instagram.address,
+  instagramUrl: installation.channels.instagram.url,
+  email: installation.contact.email,
+  address: installation.location.address,
+  streetAddress: installation.location.streetAddress,
+  postalCode: installation.location.postalCode,
+  neighborhood: installation.location.neighborhood,
+  countryCode: installation.localization.countryCode,
+  countryName: installation.localization.countryName,
+  latitude: installation.location.latitude,
+  longitude: installation.location.longitude,
+  mapsQuery: installation.location.mapsQuery,
+  directions: installation.location.directions,
+  mapsEmbed: installation.location.mapsEmbed,
+  hours: installation.hours,
+  openingHours: installation.openingHours,
+  payments: installation.payments.display,
+  bookingEnabled: installation.booking.enabled,
+  bookingPath: installation.booking.path,
+  policies: installation.policies,
+  onlineStoreUrl: process.env.NEXT_PUBLIC_SHOP_URL ?? installation.shop.url,
+  locale: installation.localization.locale,
+  language: installation.localization.language,
+  timezone: installation.localization.timezone,
+  currency: installation.localization.currency.code,
+  theme: installation.brand.theme,
+  seo: installation.seo,
+  content: installation.content,
+  copy: installation.copy,
+  features: installation.features,
+  shop: installation.shop,
+  channels: installation.channels,
 } as const;
 
 export const publicIndexingEnabled = process.env.SITE_INDEXABLE !== "false";
@@ -42,7 +60,6 @@ export function waLink(message?: string) {
   return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }
 
-const ars = new Intl.NumberFormat("es-AR");
 export function money(n: number) {
-  return `$${ars.format(n)}`;
+  return formatMoney(n);
 }

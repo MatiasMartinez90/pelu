@@ -3,8 +3,7 @@
 // token sea un barbero registrado y filtra todo por ese barber.
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://nox-api.nox.svc.cluster.local";
+import { backendUrl } from "@/lib/backend-url";
 
 async function proxy(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   // getToken() lee el JWT crudo sin pasar por session() (ver backoffice/route.ts).
@@ -15,7 +14,7 @@ async function proxy(req: NextRequest, { params }: { params: Promise<{ path: str
   }
 
   const { path } = await params;
-  const url = new URL(`${BACKEND_URL}/api/v1/barber/${path.join("/")}`);
+  const url = new URL(`${backendUrl}/api/v1/barber/${path.join("/")}`);
   req.nextUrl.searchParams.forEach((v, k) => url.searchParams.set(k, v));
 
   const init: RequestInit = {

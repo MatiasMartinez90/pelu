@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { backendUrl } from "@/lib/backend-url";
 
 const METRICS = new Set(["FCP", "LCP", "CLS", "INP", "TTFB"]);
 const RATINGS = new Set(["good", "needs-improvement", "poor"]);
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://nox-api.nox.svc.cluster.local";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     device: body.device,
   };
   try {
-    const response = await fetch(`${BACKEND_URL}/api/v1/telemetry/web-vitals`, {
+    const response = await fetch(`${backendUrl}/api/v1/telemetry/web-vitals`, {
       method: "POST",
       headers: {
         "content-type": "application/json",

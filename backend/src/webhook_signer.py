@@ -1,4 +1,4 @@
-"""Adaptador interno Chatwoot -> webhook NOX firmado.
+"""Adaptador interno Chatwoot -> webhook firmado.
 
 Chatwoot autentica contra este servicio privado con el token legado. El
 adaptador firma el body exacto y lo reenvía a la API, que nunca acepta ese
@@ -39,9 +39,11 @@ async def forward_chatwoot(request: Request, token: str = Query(default="")):
     headers["content-type"] = request.headers.get("content-type", "application/json")
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            upstream = await client.post(settings.webhook_signer_target_url, content=body, headers=headers)
+            upstream = await client.post(
+                settings.webhook_signer_target_url, content=body, headers=headers
+            )
     except httpx.HTTPError:
-        raise HTTPException(502, "API NOX no disponible") from None
+        raise HTTPException(502, "API de destino no disponible") from None
     return Response(
         content=upstream.content,
         status_code=upstream.status_code,

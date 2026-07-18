@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/v1/me", tags=["cliente"])
 async def link_whatsapp_start(customer: dict = CustomerUser):
     """Genera el código que el cliente envía desde su WhatsApp para vincular su número."""
     token = await link_service.issue_token(customer["email"])
-    return {"code": f"{link_service.PREFIX}{token}", "expires_in": link_service.TOKEN_TTL}
+    return {"code": f"{link_service.prefix()}{token}", "expires_in": link_service.TOKEN_TTL}
 
 
 @router.get("/bookings")

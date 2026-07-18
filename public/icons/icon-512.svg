@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#1d1d1d"/>
-  <circle cx="256" cy="256" r="190" fill="none" stroke="#FF0A0A" stroke-width="14"/>
-  <text x="256" y="300" font-family="Oswald, Arial, sans-serif" font-size="180" font-weight="700" fill="#ffffff" text-anchor="middle">NOX</text>
-  <rect x="176" y="338" width="160" height="12" rx="6" fill="#FF0A0A"/>
-</svg>

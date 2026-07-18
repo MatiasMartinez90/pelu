@@ -2,12 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { site } from "@/lib/site";
+import { money, site } from "@/lib/site";
 
 const SERIF = "var(--font-serif)";
 const SANS = "var(--font-sans)";
-const ars = new Intl.NumberFormat("es-AR");
-const money = (n: number) => `$${ars.format(Math.round(n))}`;
 
 function Dot({ green }: { green: boolean }) {
   return <span style={{ width: 7, height: 7, borderRadius: "50%", background: green ? "#25D366" : "rgba(255,255,255,0.6)", display: "inline-block" }} />;
@@ -28,10 +26,10 @@ type MeBookings = { email: string; name: string; upcoming: Booking[]; history: B
 const isWa = (ch: string) => ch?.toLowerCase() === "whatsapp";
 const chLabel = (ch: string) => (isWa(ch) ? "WhatsApp" : "Web");
 const statusLabel = (s: string) => (s === "completed" ? "Completado" : s === "cancelled" ? "Cancelado" : "Confirmado");
-const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("es-AR");
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(site.locale);
 const fmtDateTime = (iso: string) => {
   const d = new Date(iso);
-  return `${d.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "2-digit" })} · ${d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} hs`;
+  return `${d.toLocaleDateString(site.locale, { weekday: "long", day: "2-digit", month: "2-digit" })} · ${d.toLocaleTimeString(site.locale, { hour: "2-digit", minute: "2-digit" })} hs`;
 };
 const daysUntil = (iso: string) => Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000));
 const firstName = (n: string, email: string) => (n?.trim()?.split(" ")[0] || email?.split("@")[0] || "");
@@ -122,11 +120,11 @@ export default function MiCuentaPage() {
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <header className="acct-top">
         <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
-          <Link href="/" style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 24, color: "#fff" }}>NOX</Link>
+          <Link href="/" style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 24, color: "#fff" }}>{site.shortName}</Link>
           <span style={{ fontSize: 11, letterSpacing: "0.24em", textTransform: "uppercase", opacity: 0.5 }}>Mi Cuenta</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <Link href="/agendar" className="nox-btn">Agendar Turno</Link>
+          {site.bookingEnabled && <Link href={site.bookingPath} className="nox-btn">{site.copy.bookingCta}</Link>}
         </div>
       </header>
 
@@ -143,12 +141,12 @@ export default function MiCuentaPage() {
         {data && (
           <>
             {/* Vincular WhatsApp: para ver turnos hechos por WhatsApp */}
-            <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
+            {site.channels.whatsapp.enabled && <div style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
               <span>¿Reservaste por WhatsApp con otro número?</span>
               <button onClick={linkWhatsapp} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.5)", color: "#25D366", padding: "7px 14px", fontFamily: SANS, fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", cursor: "pointer" }}>
                 <Dot green /> Vincular mi WhatsApp
               </button>
-            </div>
+            </div>}
 
             {/* Próximo turno */}
             <div style={{ marginTop: 44 }}>
@@ -172,7 +170,7 @@ export default function MiCuentaPage() {
               ) : (
                 <div style={{ border: "1px dashed rgba(255,255,255,0.2)", padding: 40, textAlign: "center" }}>
                   <p style={{ opacity: 0.7, fontSize: 15 }}>No tenés turnos próximos.</p>
-                  <Link href="/agendar" className="nox-btn" style={{ display: "inline-block", marginTop: 18 }}>Agendar ahora</Link>
+                  {site.bookingEnabled && <Link href={site.bookingPath} className="nox-btn" style={{ display: "inline-block", marginTop: 18 }}>Agendar ahora</Link>}
                 </div>
               )}
             </div>

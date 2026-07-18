@@ -30,7 +30,7 @@ jobs:
             front:
               - "src/**"
               - "public/**"
-              - "config/media-assets.json"
+              - "config/**"
               - "package.json"
               - "package-lock.json"
               - "next.config.ts"

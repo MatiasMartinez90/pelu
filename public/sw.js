@@ -2,8 +2,8 @@
 // videos) los maneja el browser con HTTP cache normal — la v1 cacheaba
 // assets con cache-first y servía CSS/JS viejos después de cada deploy,
 // y rompía los range requests de los videos.
-const CACHE = "nox-barber-v2";
-const APP_SHELL = ["/", "/manifest.json", "/icons/icon-192.svg", "/icons/icon-512.svg"];
+const CACHE = "app-shell-v3";
+const APP_SHELL = ["/", "/manifest.webmanifest", "/api/icon/192", "/api/icon/512"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)));

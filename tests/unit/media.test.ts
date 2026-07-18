@@ -50,7 +50,7 @@ test("rechaza rutas ambiguas y evita tenants vacíos", () => {
     NEXT_PUBLIC_MEDIA_TENANT: "---",
   });
 
-  assert.equal(media.source("/poster.webp"), "https://media.example.test/nox/poster.webp");
+  assert.equal(media.source("/poster.webp"), "https://media.example.test/installation/poster.webp");
   assert.throws(() => media.source("/media/../secret.jpg"), /invalid media path/);
 });
 

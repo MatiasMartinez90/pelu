@@ -18,28 +18,19 @@ export const metadata: Metadata = {
   },
   description: site.description,
   applicationName: site.name,
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: site.name,
   },
-  keywords: [
-    site.name,
-    "barbería",
-    "barbershop",
-    "corte de pelo",
-    "fade",
-    "barba",
-    "turno online",
-    site.city,
-  ],
+  keywords: [site.name, ...site.seo.keywords, site.city],
   openGraph: {
     type: "website",
     title: `${site.name} | ${site.tagline}`,
     description: site.description,
     siteName: site.name,
-    locale: "es_AR",
+    locale: site.locale.replace("-", "_"),
     url: site.url,
     images: [{ url: rootSocialImage, width: 640, height: 360, alt: `${site.name} — ${site.tagline}` }],
   },
@@ -47,13 +38,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   robots: { index: publicIndexingEnabled, follow: publicIndexingEnabled },
   icons: {
-    icon: "/icons/icon-192.svg",
-    apple: "/icons/icon-192.svg",
+    icon: "/api/icon/192",
+    apple: "/api/icon/192",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FF0A0A",
+  themeColor: site.theme.primary,
   width: "device-width",
   initialScale: 1,
 };
@@ -63,8 +54,20 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
-      lang="es"
+      lang={site.language}
       className="h-full antialiased"
+      style={{
+        "--background": site.theme.background,
+        "--foreground": site.theme.foreground,
+        "--card": site.theme.card,
+        "--popover": site.theme.card,
+        "--primary": site.theme.primary,
+        "--ring": site.theme.primary,
+        "--destructive": site.theme.primary,
+        "--sidebar": site.theme.card,
+        "--sidebar-primary": site.theme.primary,
+        "--chart-1": site.theme.primary,
+      } as React.CSSProperties}
     >
       <body className="min-h-full flex flex-col bg-grain">
         <StructuredData data={localBusinessJsonLd} />
@@ -82,7 +85,7 @@ export default function RootLayout({
               letterSpacing: "0.14em",
             }}
           >
-            MODO DEMO · LOS DATOS SE RESTABLECEN PERIÓDICAMENTE
+            {site.copy.demoBanner}
           </div>
         )}
         <div id="contenido-principal">{children}</div>

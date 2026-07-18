@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { backendUrl } from "@/lib/backend-url";
 
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://nox-api.nox.svc.cluster.local";
 const ALLOWED = new Set(["api/v1/availability", "api/v1/bookings"]);
 
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
@@ -10,7 +10,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  const target = new URL(`${BACKEND_URL}/${joined}`);
+  const target = new URL(`${backendUrl}/${joined}`);
   request.nextUrl.searchParams.forEach((value, key) => target.searchParams.set(key, value));
   const headers: Record<string, string> = {
     accept: "application/json",
