@@ -2,7 +2,7 @@
 
 ## Estado
 
-En curso en `dev`. La implementación se divide en incrementos revisables y no se promueve a `main`, demo ni producción sin autorización explícita.
+Listo y verificado en `dev`. No se promovió a `main`, demo ni producción; cualquier promoción futura requiere autorización explícita.
 
 ## Alcance
 
@@ -102,6 +102,18 @@ Evidencia local del incremento 5.3:
 - E2E: transición de pedido, edición de ficha sin enviar `qty` y viewport mobile/desktop;
 - las pruebas PostgreSQL del core cubren checkout concurrente/idempotente, ledger y restauración única al cancelar.
 - Lighthouse reproduce 350 ms de latencia del catálogo para cubrir el streaming; CLS del shop fue 0 en 3/3 corridas tras estabilizar el footer durante `loading`.
+
+Evidencia CI y ambiente del incremento 5.3:
+
+- PR [#42](https://github.com/MatiasMartinez90/pelu/pull/42), squash `98e0adf` hacia `dev`;
+- CI verde: código/configuración, dependencias, 4m04s de matriz responsive y 4m31s de Lighthouse/budgets;
+- workflow de deploy `29636577136` exitoso;
+- GitOps PR [#14](https://github.com/MatiasMartinez90/agents-hetzner-k3s/pull/14), moneda `ARS` explícita sólo en `nox-dev`;
+- Argo CD `Synced/Healthy` en revisión `7ef0465`, con web y API listas;
+- checkout real en `shop-dev-nox.cloud-it.com.ar`: pedido #1 por ARS 21.000 con `pay_at_store`;
+- cancelación real auditada: stock de `nox-sss` pasó 9 → 8 → 9 y el pedido quedó `cancelled`;
+- el login real de `dev` conserva Google; la interacción del admin se cubrió por E2E porque una sesión Google no se automatiza con credenciales simuladas;
+- los digests de demo y producción permanecieron sin cambios.
 
 ## Rollback
 
