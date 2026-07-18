@@ -1,11 +1,12 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "npm run start",
+      "startServerCommand": "node scripts/start-performance-server.mjs",
       "startServerReadyPattern": "Ready",
       "url": [
         "http://127.0.0.1:3000/",
-        "http://127.0.0.1:3000/faq"
+        "http://127.0.0.1:3000/faq",
+        "http://shop.localhost:3000/"
       ],
       "numberOfRuns": 3,
       "settings": {

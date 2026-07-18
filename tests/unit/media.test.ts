@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createMediaConfig } from "../../src/lib/media";
-import { mediaAsset } from "../../src/lib/media-assets";
+import { mediaAsset, mediaAssetPath } from "../../src/lib/media-assets";
 
 test("preserva assets locales cuando el CDN no está configurado", () => {
   const media = createMediaConfig({});
@@ -57,5 +57,9 @@ test("rechaza rutas ambiguas y evita tenants vacíos", () => {
 test("el manifiesto conserva fallback local y remoto antes del cutover", () => {
   assert.equal(mediaAsset("team.thiago"), "/media/team/thiago.v1.webp");
   assert.match(mediaAsset("gallery.work01"), /^https:\/\/images\.unsplash\.com\//);
+  assert.match(
+    mediaAssetPath("/media/products/demo/texture-mash-matte.v1.webp"),
+    /^https:\/\/images\.unsplash\.com\//,
+  );
   assert.throws(() => mediaAsset("asset.inexistente"), /unknown media asset/);
 });
