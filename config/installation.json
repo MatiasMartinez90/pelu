@@ -30,7 +30,7 @@
   },
   "domains": {
     "site": "https://nox.cloud-it.com.ar",
-    "shop": "https://shop.nox.cloud-it.com.ar"
+    "shop": "https://tienda.noxbarber.com.ar"
   },
   "contact": {
     "phoneDisplay": "+54 9 11 5555-0123",
@@ -82,7 +82,7 @@
     "telegram": { "enabled": false, "address": "" },
     "email": { "enabled": true, "address": "hola@noxbarber.com.ar" }
   },
-  "shop": { "enabled": false, "url": "https://shop.nox.cloud-it.com.ar", "pickupOnly": true },
+  "shop": { "enabled": true, "url": "https://tienda.noxbarber.com.ar", "pickupOnly": true },
   "agent": {
     "enabled": true,
     "name": "NOX",
