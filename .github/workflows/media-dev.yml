@@ -3,11 +3,15 @@ name: publish-dev-media
 on:
   workflow_dispatch:
     inputs:
-      provision:
-        description: "Crear/verificar bucket y dominio antes de publicar"
+      action:
+        description: "Etapa segura del cutover"
         required: true
-        default: true
-        type: boolean
+        default: provision
+        type: choice
+        options:
+          - provision
+          - publish
+          - all
 
 permissions:
   contents: read
@@ -25,7 +29,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Provisionar R2 dev
-        if: inputs.provision
+        if: inputs.action == 'provision' || inputs.action == 'all'
         run: npm run media:provision -- --apply
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_R2_ADMIN_TOKEN }}
@@ -34,6 +38,7 @@ jobs:
           R2_BUCKET: nox-dev-media
           MEDIA_DOMAIN: media-dev-nox.cloud-it.com.ar
       - name: Publicar y verificar assets
+        if: inputs.action == 'publish' || inputs.action == 'all'
         run: npm run media:publish -- --apply
         env:
           R2_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
