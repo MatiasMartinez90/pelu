@@ -228,9 +228,9 @@ function Resumen() {
 
   const header = (
     <div style={{ marginTop: 26, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", ...CARD, padding: "14px 18px" }}>
-      <button className="qbtn" aria-label="Mes anterior" onClick={() => shiftMonth(-1)} style={{ width: 32, height: 32, fontSize: 17 }}>‹</button>
+      <button className="qbtn" aria-label="Mes anterior" onClick={() => shiftMonth(-1)} style={{ fontSize: 17 }}>‹</button>
       <div style={{ fontFamily: SERIF, fontSize: 24, lineHeight: 1, textTransform: "capitalize", minWidth: 180 }}>{monthLabel(selMonth)}</div>
-      <button className="qbtn" aria-label="Mes siguiente" onClick={() => shiftMonth(1)} disabled={atCurrent} style={{ width: 32, height: 32, fontSize: 17, opacity: atCurrent ? 0.45 : 1, cursor: atCurrent ? "default" : "pointer" }}>›</button>
+      <button className="qbtn" aria-label="Mes siguiente" onClick={() => shiftMonth(1)} disabled={atCurrent} style={{ fontSize: 17, opacity: atCurrent ? 0.45 : 1, cursor: atCurrent ? "default" : "pointer" }}>›</button>
       {!atCurrent && <button className="miniact" onClick={() => setSelMonth(curMonth())} style={{ marginLeft: 6 }}>Mes actual</button>}
     </div>
   );
@@ -385,11 +385,11 @@ function Agenda() {
     <>
       <div style={{ marginTop: 26, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, ...CARD, padding: "14px 18px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          <button className="qbtn" aria-label="Día anterior" onClick={() => shiftDay(-1)} style={{ width: 32, height: 32, fontSize: 17 }}>‹</button>
+          <button className="qbtn" aria-label="Día anterior" onClick={() => shiftDay(-1)} style={{ fontSize: 17 }}>‹</button>
           <div style={{ minWidth: 220 }}>
             <div style={{ fontFamily: SERIF, fontSize: 24, lineHeight: 1, textTransform: "capitalize" }}>{`${DOW[sel.getDay()]} ${sel.getDate()} ${MONTHS[sel.getMonth()]}`}</div>
           </div>
-          <button className="qbtn" aria-label="Día siguiente" onClick={() => shiftDay(1)} style={{ width: 32, height: 32, fontSize: 17 }}>›</button>
+          <button className="qbtn" aria-label="Día siguiente" onClick={() => shiftDay(1)} style={{ fontSize: 17 }}>›</button>
           <button className="miniact" onClick={() => setSelDate(dateKey(new Date()))} style={{ marginLeft: 6 }}>Hoy</button>
         </div>
         <input type="date" aria-label="Fecha de la agenda" value={selDate} onChange={(e) => e.target.value && setSelDate(e.target.value)} style={{ background: "#161616", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "8px 10px", fontFamily: SANS, colorScheme: "dark" }} />

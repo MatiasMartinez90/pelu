@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function GoogleIcon() {
   return (
@@ -24,6 +24,9 @@ const demoProfiles: Array<{ role: DemoRole; label: string }> = [
 
 export function LoginButton({ callbackUrl, demoMode }: { callbackUrl: string; demoMode: boolean }) {
   const [loading, setLoading] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => setHydrated(true), []);
 
   if (demoMode) {
     return (
@@ -39,7 +42,7 @@ export function LoginButton({ callbackUrl, demoMode }: { callbackUrl: string; de
               setLoading(role);
               signIn("demo", { role, callbackUrl });
             }}
-            disabled={loading !== null}
+            disabled={!hydrated || loading !== null}
             style={{
               minHeight: 48,
               border: "1px solid rgba(255,255,255,.28)",
@@ -49,7 +52,7 @@ export function LoginButton({ callbackUrl, demoMode }: { callbackUrl: string; de
               fontFamily: "var(--font-sans)",
               fontSize: 14,
               fontWeight: 650,
-              cursor: loading ? "default" : "pointer",
+              cursor: !hydrated || loading ? "default" : "pointer",
               opacity: loading && loading !== role ? 0.45 : 1,
             }}
           >
@@ -66,7 +69,7 @@ export function LoginButton({ callbackUrl, demoMode }: { callbackUrl: string; de
         setLoading("keycloak");
         signIn("keycloak", { callbackUrl });
       }}
-      disabled={loading !== null}
+      disabled={!hydrated || loading !== null}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -80,7 +83,7 @@ export function LoginButton({ callbackUrl, demoMode }: { callbackUrl: string; de
         fontSize: 15,
         fontWeight: 600,
         letterSpacing: "0.02em",
-        cursor: loading ? "default" : "pointer",
+        cursor: !hydrated || loading ? "default" : "pointer",
         opacity: loading ? 0.7 : 1,
         transition: "opacity .2s, transform .2s",
       }}

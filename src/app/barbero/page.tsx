@@ -106,9 +106,9 @@ export default function BarberoPage() {
         {/* Agenda */}
         <h1 style={{ marginTop: 20, fontFamily: SERIF, fontWeight: 700, fontSize: "clamp(34px,5vw,54px)", lineHeight: 0.95 }}>Mi agenda</h1>
         <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", ...CARD, padding: "12px 16px" }}>
-          <button className="qbtn" onClick={() => shiftDay(-1)} style={{ width: 32, height: 32, fontSize: 17 }}>‹</button>
+          <button className="qbtn" aria-label="Día anterior" onClick={() => shiftDay(-1)} style={{ fontSize: 17 }}>‹</button>
           <div style={{ fontFamily: SERIF, fontSize: 22, textTransform: "capitalize", minWidth: 210 }}>{`${DOW[sel.getDay()]} ${sel.getDate()} ${MONTHS[sel.getMonth()]}`}</div>
-          <button className="qbtn" onClick={() => shiftDay(1)} style={{ width: 32, height: 32, fontSize: 17 }}>›</button>
+          <button className="qbtn" aria-label="Día siguiente" onClick={() => shiftDay(1)} style={{ fontSize: 17 }}>›</button>
           <button className="miniact" onClick={() => setSelDate(dateKey(new Date()))}>Hoy</button>
           <div style={{ marginLeft: "auto", display: "flex", gap: 20, fontSize: 13, opacity: 0.75 }}>
             <span>{active.length} turno{active.length !== 1 ? "s" : ""}</span>
@@ -122,7 +122,7 @@ export default function BarberoPage() {
           {(appts ?? []).map((a) => {
             const cancel = a.status === "cancelled";
             return (
-              <div key={a.id} style={{ display: "grid", gridTemplateColumns: "70px 1fr auto auto", alignItems: "center", gap: 14, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", opacity: cancel ? 0.45 : 1 }}>
+              <div key={a.id} className="barber-appt-row" style={{ opacity: cancel ? 0.45 : 1 }}>
                 <span style={{ fontFamily: SERIF, fontSize: 18 }}>{fmtTime(a.starts_at)}</span>
                 <div>
                   <div style={{ fontSize: 15 }}>{a.customer}</div>
@@ -138,9 +138,9 @@ export default function BarberoPage() {
         {/* Estadísticas */}
         <h2 style={{ marginTop: 48, fontFamily: SERIF, fontWeight: 600, fontSize: 32 }}>Mis estadísticas</h2>
         <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", ...CARD, padding: "12px 16px" }}>
-          <button className="qbtn" onClick={() => shiftMonth(-1)} style={{ width: 32, height: 32, fontSize: 17 }}>‹</button>
+          <button className="qbtn" aria-label="Mes anterior" onClick={() => shiftMonth(-1)} style={{ fontSize: 17 }}>‹</button>
           <div style={{ fontFamily: SERIF, fontSize: 22, textTransform: "capitalize", minWidth: 170 }}>{monthLabel(selMonth)}</div>
-          <button className="qbtn" onClick={() => shiftMonth(1)} disabled={atCurrent} style={{ width: 32, height: 32, fontSize: 17, opacity: atCurrent ? 0.3 : 1, cursor: atCurrent ? "default" : "pointer" }}>›</button>
+          <button className="qbtn" aria-label="Mes siguiente" onClick={() => shiftMonth(1)} disabled={atCurrent} style={{ fontSize: 17, opacity: atCurrent ? 0.3 : 1, cursor: atCurrent ? "default" : "pointer" }}>›</button>
           {!atCurrent && <button className="miniact" onClick={() => setSelMonth(curMonth())}>Mes actual</button>}
         </div>
 

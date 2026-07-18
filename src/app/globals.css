@@ -259,6 +259,7 @@
 .nox-prod:hover .nox-prod__cta { opacity: 1; transform: translateY(0); }
 
 .nox-news {
+  min-height: 44px;
   border: 1px solid rgba(255,255,255,0.45); background: none; color: #fff;
   font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
   padding: 13px 22px; cursor: pointer; transition: background 0.25s, color 0.25s;
@@ -267,7 +268,7 @@
 .nox-foot-input::placeholder { color: rgba(255,255,255,0.4); }
 
 /* === NOX páginas internas (servicios, equipo, galería, cuenta, admin) === */
-.nox-btn { position: relative; background: #fff; color: #0a0a0a; padding: 7px 16px; font-weight: 700; letter-spacing: 0.14em; font-size: 12px; text-transform: uppercase; transition: background .25s, color .25s; }
+.nox-btn { position: relative; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; background: #fff; color: #0a0a0a; padding: 8px 16px; font-weight: 700; letter-spacing: 0.14em; font-size: 12px; text-transform: uppercase; transition: background .25s, color .25s; }
 .nox-btn:hover { background: #0a0a0a; color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5); }
 
 .svc-row { transition: background .25s; }
@@ -357,7 +358,7 @@
 
 /* --- Footer --- */
 .nfoot-grid { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr); }
-.nfoot-cell { padding: clamp(28px, 4vw, 48px) clamp(20px, 3vw, 36px); border-right: 1px solid rgba(255,255,255,0.12); }
+.nfoot-cell { min-width: 0; padding: clamp(28px, 4vw, 48px) clamp(20px, 3vw, 36px); border-right: 1px solid rgba(255,255,255,0.12); }
 .nfoot-grid > .nfoot-cell:last-child { border-right: none; }
 .nfoot-bottom {
   display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,2fr) minmax(0,1fr);
@@ -371,7 +372,7 @@
   .nfoot-grid > .nfoot-cell:nth-child(2n) { border-right: none; }
 }
 @media (max-width: 640px) {
-  .nfoot-grid { grid-template-columns: 1fr; }
+  .nfoot-grid { grid-template-columns: minmax(0, 1fr); }
   .nfoot-grid > .nfoot-cell { border-right: none; }
   .nfoot-bottom { grid-template-columns: 1fr; }
   .nfoot-bottom > .nfoot-bcell { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.12); }
@@ -396,6 +397,10 @@
   .grid-3cells { grid-template-columns: 1fr; }
   .grid-3cells > .cell-line { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); }
   .grid-3cells > .cell-line:last-child { border-bottom: none; }
+}
+@media (max-width: 420px) {
+  .grid-stats { grid-template-columns: minmax(0, 1fr); }
+  .grid-stats > .cell-line { border-right: none; }
 }
 
 .nox-split { display: grid; grid-template-columns: 1fr 1.2fr; gap: 60px; align-items: start; }
@@ -477,13 +482,20 @@
 
 .navit { display: flex; align-items: center; gap: 12px; padding: 12px 16px; font-size: 13px; letter-spacing: 0.06em; cursor: pointer; border-left: 2px solid transparent; transition: background .2s, color .2s, border-color .2s; }
 .navit:hover { background: rgba(255,255,255,0.04); }
-.qbtn { width: 26px; height: 26px; border: 1px solid rgba(255,255,255,0.25); background: none; color: #fff; cursor: pointer; font-size: 15px; line-height: 1; transition: background .2s, color .2s; }
+.qbtn { width: 44px; height: 44px; flex: 0 0 44px; border: 1px solid rgba(255,255,255,0.25); background: none; color: #fff; cursor: pointer; font-size: 15px; line-height: 1; transition: background .2s, color .2s; }
 .qbtn:hover { background: #fff; color: #0a0a0a; }
-.miniact { background: none; border: 1px solid rgba(255,255,255,0.22); color: #fff; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 11px; cursor: pointer; font-family: var(--font-sans); transition: background .2s, color .2s; }
+.miniact { min-height: 44px; background: none; border: 1px solid rgba(255,255,255,0.22); color: #fff; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 12px; cursor: pointer; font-family: var(--font-sans); transition: background .2s, color .2s; }
 .miniact:hover { background: #fff; color: #0a0a0a; }
 .miniact.dng:hover { background: #ff5a5a; color: #fff; border-color: #ff5a5a; }
 .arow:hover { background: rgba(255,255,255,0.03); }
 .wz-input::placeholder { color: rgba(255,255,255,0.32); }
+
+.barber-appt-row { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+@media (max-width: 520px) {
+  .barber-appt-row { grid-template-columns: 56px minmax(0, 1fr); gap: 10px 12px; }
+  .barber-appt-row > :nth-child(3),
+  .barber-appt-row > :nth-child(4) { grid-column: 2; justify-self: start; min-width: 0 !important; text-align: left !important; }
+}
 
 /* Skeletons del admin (shimmer) */
 .adm-sk { background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.11) 37%, rgba(255,255,255,0.05) 63%); background-size: 400% 100%; animation: adm-shimmer 1.4s ease infinite; }
