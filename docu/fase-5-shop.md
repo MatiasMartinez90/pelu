@@ -37,13 +37,17 @@ Branch `feat/shop-commerce-core`:
 
 ### 5.2 Experiencia independiente
 
-Pendiente:
+Branch `feat/shop-standalone-experience`:
 
 - shell propio del shop en el host configurado;
 - home del shop, búsqueda/categorías, fichas y datos estructurados Product;
 - carrito responsive persistido y checkout accesible;
 - estados de carga, vacío, error, sin stock y confirmación;
 - BFF same-origin para no exponer detalles internos del backend.
+- `robots.txt`, sitemap y canonical propios del subdominio;
+- teaser del Home alimentado por el mismo catálogo PostgreSQL, sin productos hardcodeados;
+- budgets iniciales de 210 KB JS gzip y 25 KB CSS gzip para la ruta Shop;
+- Lighthouse mobile/desktop configurado también para el host del Shop.
 
 ### 5.3 Operación y despliegue
 
@@ -74,6 +78,15 @@ Pendiente:
 - PostgreSQL 16 descartable con las 12 migraciones: `4 passed` para bootstrap + commerce;
 - checkout repetido devuelve el mismo pedido y descuenta stock una sola vez;
 - cancelación restaura stock una sola vez y deja movimiento en el ledger.
+
+Evidencia local del incremento 5.2:
+
+- lint, TypeScript y build de producción verdes;
+- budgets: 200.844 B JS gzip y 16.457 B CSS gzip, debajo de los límites;
+- 78/78 pruebas responsive existentes sin regresiones;
+- 10/10 pruebas Shop relevantes: seis snapshots, accesibilidad mobile/desktop, checkout completo y SEO;
+- SEO del host: canonical, Product JSON-LD, moneda, robots y sitemap verificados;
+- servidor de performance con fixture aislado y smoke de home/robots/sitemap en 200.
 
 La evidencia CI, PR, deploy y smoke se agrega al completar cada incremento.
 

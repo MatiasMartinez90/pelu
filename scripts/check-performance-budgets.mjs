@@ -37,6 +37,10 @@ routeAssets("admin", [
   ".next/server/app/admin/page_client-reference-manifest.js",
   ".next/server/app/admin/page/build-manifest.json",
 ], 215_000, 25_000);
+routeAssets("shop", [
+  ".next/server/app/shop/page_client-reference-manifest.js",
+  ".next/server/app/shop/page/build-manifest.json",
+], 210_000, 25_000);
 
 for (const [asset, maximum] of [
   ["public/img/hero-poster.jpg", 120_000],

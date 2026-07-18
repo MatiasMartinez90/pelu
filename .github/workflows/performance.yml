@@ -29,6 +29,7 @@ jobs:
       - run: npm run build
         env:
           BACKEND_URL: https://api-nox.cloud-it.com.ar
+          NEXT_PUBLIC_SHOP_URL: http://shop.localhost:3000
           NEXT_PUBLIC_MEDIA_PUBLIC_URL: https://media-dev-nox.cloud-it.com.ar
           NEXT_PUBLIC_MEDIA_TRANSFORM_URL: https://media-dev-nox.cloud-it.com.ar
           NEXT_PUBLIC_MEDIA_TENANT: nox

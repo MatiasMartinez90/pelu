@@ -46,6 +46,7 @@ export default defineConfig({
       BACKEND_URL: "http://127.0.0.1:3998",
       SITE_URL: baseURL,
       SITE_INDEXABLE: "true",
+      NEXT_PUBLIC_SHOP_URL: "http://shop.localhost:3100",
     },
   }],
   projects: [
