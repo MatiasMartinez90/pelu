@@ -102,6 +102,19 @@ class Settings(BaseSettings):
     moderation_fail_closed: bool = False
     store_event_phone_plaintext: bool = False
 
+    # Pagos. `demo` habilita un checkout local funcional sin credenciales;
+    # `mercado_pago` exige Access Token y firma de webhook por ambiente.
+    payment_provider: str = "disabled"
+    payment_public_url: str = ""
+    payment_webhook_url: str = ""
+    payment_link_secret: str = ""
+    payment_preference_expiration_minutes: int = 30
+    mercado_pago_access_token: str = ""
+    mercado_pago_webhook_secret: str = ""
+    mercado_pago_api_url: str = "https://api.mercadopago.com"
+    mercado_pago_statement_descriptor: str = "NOX"
+    payment_webhook_max_skew_seconds: int = 300
+
     # API
     cors_origins: str = "http://localhost:3000"
     cors_origin_regex: str = r"^http://localhost:\d+$"  # dev; vaciar para desactivar
