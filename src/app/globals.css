@@ -321,9 +321,11 @@
 /* Entrada tipo cortina: todo el hero (fondo + contenido) aparece en un solo
    fade lento sobre el negro base, en vez de que cada pieza popee por separado. */
 @keyframes nox-hero-fade-in { from { opacity: 0; } to { opacity: 1; } }
-.nox-hero-enter > * { animation: nox-hero-fade-in 1.6s ease both; }
+/* El poster (img, elemento LCP) queda fuera del fade: animarlo desde opacity 0
+   rompe la medición de LCP en Lighthouse (budget CI) y atrasa el paint real. */
+.nox-hero-enter > *:not(img) { animation: nox-hero-fade-in 1.6s ease both; }
 @media (prefers-reduced-motion: reduce) {
-  .nox-hero-enter > * { animation: none; }
+  .nox-hero-enter > *:not(img) { animation: none; }
 }
 .nox-hero-top {
   position: absolute; top: 0; left: 0; right: 0; z-index: 20;
