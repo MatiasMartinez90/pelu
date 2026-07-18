@@ -87,6 +87,30 @@ async def test_mercado_pago_payment_is_normalized_server_side():
 
 
 @pytest.mark.asyncio
+async def test_mercado_pago_reconciliation_searches_by_external_reference():
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["request"] = request
+        return httpx.Response(200, json={"results": [{
+            "id": 988,
+            "status": "approved",
+            "transaction_amount": 21000,
+            "currency_id": "ARS",
+            "external_reference": preference().external_reference,
+        }]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        payment = await MercadoPagoProvider(
+            access_token="APP_USR-secret", client=client
+        ).find_payment(preference().external_reference)
+    assert captured["request"].url.path == "/v1/payments/search"
+    assert captured["request"].url.params["external_reference"] == preference().external_reference
+    assert payment is not None
+    assert payment.provider_payment_id == "988"
+
+
+@pytest.mark.asyncio
 async def test_preference_rejects_client_side_total_mismatch():
     request = preference()
     invalid = PreferenceRequest(**{**request.__dict__, "amount": 1})
@@ -96,4 +120,3 @@ async def test_preference_rejects_client_side_total_mismatch():
             await provider.create_preference(invalid)
     finally:
         await provider.client.aclose()
-

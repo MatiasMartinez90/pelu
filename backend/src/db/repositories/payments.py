@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
@@ -85,8 +86,14 @@ async def create_intent(
     idempotency_key: str,
     expires_at: datetime,
 ) -> tuple[dict, bool]:
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,62}", installation_id):
+        raise PaymentConflict("installation_id inválido")
     if provider not in {"demo", "mercado_pago"}:
         raise PaymentConflict("proveedor inválido")
+    if not 16 <= len(idempotency_key) <= 128:
+        raise PaymentConflict("Idempotency-Key inválida")
+    if payer_email and len(payer_email) > 320:
+        raise PaymentConflict("email inválido")
     if expires_at.tzinfo is None or expires_at <= datetime.now(timezone.utc):
         raise PaymentConflict("vencimiento inválido")
     idempotency_hash = _sha256(idempotency_key)
@@ -203,6 +210,20 @@ async def get_intent_by_reference(pool: asyncpg.Pool, external_reference: str) -
     return _render(row)
 
 
+async def shop_order_belongs_to_cart(
+    pool: asyncpg.Pool, order_id: UUID, cart_token: str
+) -> bool:
+    """Usa el token-capability del carrito sin guardar ni comparar el valor plano."""
+    if len(cart_token) < 32 or len(cart_token) > 128:
+        return False
+    return bool(await pool.fetchval(
+        """SELECT 1 FROM shop_orders o
+           JOIN shopping_carts c ON c.id = o.cart_id
+           WHERE o.id = $1 AND c.token_hash = $2""",
+        order_id, _sha256(cart_token),
+    ))
+
+
 def sanitized_provider_payload(payload: dict) -> dict:
     allowed = {
         "id", "status", "status_detail", "external_reference", "transaction_amount",
@@ -257,6 +278,17 @@ async def finish_event(
                   error_code = $4, processed_at = now() WHERE id = $1""",
         event_id, intent_id, status, error_code,
     )
+
+
+async def retry_failed_event(pool: asyncpg.Pool, event_id: int) -> bool:
+    """Permite que un reintento del proveedor recupere un fallo transitorio."""
+    return bool(await pool.fetchval(
+        """UPDATE payment_events SET processing_status = 'received', error_code = '',
+                  processed_at = NULL
+           WHERE id = $1 AND processing_status = 'failed'
+           RETURNING 1""",
+        event_id,
+    ))
 
 
 _TRANSITIONS = {
@@ -319,28 +351,58 @@ async def apply_provider_payment(
             old_order_status = await connection.fetchval(
                 "SELECT status FROM shop_orders WHERE id = $1", row["shop_order_id"]
             )
-            new_order_status = (
-                "confirmed" if status == "approved" and old_order_status == "pending"
-                else old_order_status
-            )
+            new_order_status = old_order_status
+            if status == "approved" and old_order_status == "pending":
+                new_order_status = "confirmed"
+            elif status in {"cancelled", "expired"} and old_order_status == "pending":
+                new_order_status = "cancelled"
             await connection.execute(
                 """UPDATE shop_orders SET payment_status = $2, status = $3, updated_at = now()
                    WHERE id = $1""",
                 row["shop_order_id"], payment_status, new_order_status,
             )
             if new_order_status != old_order_status:
+                note = (
+                    "Pago online acreditado"
+                    if new_order_status == "confirmed"
+                    else "Reserva de stock liberada por vencimiento del pago"
+                )
                 await connection.execute(
                     """INSERT INTO shop_order_status_history
                            (order_id, from_status, to_status, note, actor)
-                       VALUES ($1,$2,$3,'Pago online acreditado','payments')""",
-                    row["shop_order_id"], old_order_status, new_order_status,
+                       VALUES ($1,$2,$3,$4,'payments')""",
+                    row["shop_order_id"], old_order_status, new_order_status, note,
                 )
+            if new_order_status == "cancelled" and old_order_status == "pending":
+                items = await connection.fetch(
+                    "SELECT product_id, quantity FROM shop_order_items WHERE order_id = $1",
+                    row["shop_order_id"],
+                )
+                for item in items:
+                    await connection.execute(
+                        "UPDATE products SET qty = qty + $2, updated_at = now() WHERE id = $1",
+                        item["product_id"], item["quantity"],
+                    )
+                    await connection.execute(
+                        """INSERT INTO stock_movements
+                               (product_id, delta, reason, created_by)
+                           VALUES ($1,$2,'pago online vencido','payments')""",
+                        item["product_id"], item["quantity"],
+                    )
         else:
-            await connection.execute(
-                """UPDATE appointments SET payment_status = $2, updated_at = now()
-                   WHERE id = $1""",
-                row["appointment_id"], payment_status,
-            )
+            if status in {"cancelled", "expired"}:
+                await connection.execute(
+                    """UPDATE appointments SET payment_method = 'pay_at_store',
+                              payment_status = 'unpaid', updated_at = now()
+                       WHERE id = $1""",
+                    row["appointment_id"],
+                )
+            else:
+                await connection.execute(
+                    """UPDATE appointments SET payment_status = $2, updated_at = now()
+                       WHERE id = $1""",
+                    row["appointment_id"], payment_status,
+                )
         return _render(updated)
 
 

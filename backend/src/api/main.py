@@ -24,6 +24,8 @@ from .routers import (
     admin_stock,
     barber,
     me,
+    payment_webhook,
+    payments,
     public,
     shop,
     webhook,
@@ -110,6 +112,7 @@ async def timeout_middleware(request: Request, call_next):
 
 app.include_router(public.router)
 app.include_router(shop.router)
+app.include_router(payments.router)
 app.include_router(me.router)
 app.include_router(barber.router)
 app.include_router(admin_dashboard.router)
@@ -119,6 +122,7 @@ app.include_router(admin_orders.router)
 app.include_router(admin_settings.router)
 app.include_router(admin_conversations.router)
 app.include_router(webhook.router)
+app.include_router(payment_webhook.router)
 
 
 @app.get("/health")

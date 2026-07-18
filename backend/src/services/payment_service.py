@@ -16,6 +16,7 @@ from ..payments.providers import (
     PreferenceRequest,
     payment_provider,
 )
+from ..payments.security import sign_public_reference, verify_public_reference
 
 
 async def _items(pool: asyncpg.Pool, intent: dict) -> tuple[PaymentItem, ...]:
@@ -92,7 +93,10 @@ async def create_preference(
     )
     if intent.get("checkout_url"):
         return intent, created
-    reference = quote(intent["external_reference"], safe="")
+    status_token = sign_public_reference(
+        intent["external_reference"], settings.payment_link_secret
+    )
+    reference = quote(status_token, safe="")
     result_url = f"{public_url}/pago/resultado?reference={reference}"
     request = PreferenceRequest(
         external_reference=intent["external_reference"],
@@ -123,6 +127,84 @@ async def create_preference(
     return intent, created
 
 
+async def public_status(token: str, *, settings: Settings | None = None) -> dict:
+    settings = settings or get_settings()
+    reference = verify_public_reference(token, settings.payment_link_secret)
+    intent = await payments.get_intent_by_reference(await get_pool(), reference)
+    return {
+        "purpose": intent["purpose"],
+        "status": intent["status"],
+        "amount": intent["amount"],
+        "currency": intent["currency"].strip(),
+        "expires_at": intent["expires_at"],
+        "sandbox": intent["sandbox"],
+    }
+
+
+async def settle_demo_payment(
+    token: str,
+    outcome: str,
+    *,
+    settings: Settings | None = None,
+) -> dict:
+    settings = settings or get_settings()
+    if settings.payment_provider != "demo":
+        raise PaymentProviderError("demo_payments_disabled")
+    if outcome not in {"approved", "rejected"}:
+        raise PaymentProviderError("demo_outcome_invalid")
+    reference = verify_public_reference(token, settings.payment_link_secret)
+    pool = await get_pool()
+    intent = await payments.get_intent_by_reference(pool, reference)
+    if intent["provider"] != "demo":
+        raise payments.PaymentConflict("la intención no pertenece al proveedor demo")
+    event_key = f"demo:{intent['id']}:{outcome}"
+    event_id, created = await payments.register_event(
+        pool,
+        provider="demo",
+        provider_event_id=event_key,
+        event_type="payment",
+        action=outcome,
+        signature_valid=True,
+        payload={
+            "id": event_key,
+            "status": outcome,
+            "external_reference": reference,
+            "transaction_amount": intent["amount"],
+            "currency_id": intent["currency"].strip(),
+        },
+    )
+    if not created:
+        return await public_status(token, settings=settings)
+    try:
+        updated = await payments.apply_provider_payment(
+            pool,
+            external_reference=reference,
+            provider_payment_id=f"demo-{intent['id']}",
+            status=outcome,
+            amount=intent["amount"],
+            currency=intent["currency"].strip(),
+            provider_event_id=event_key,
+            actor="demo_checkout",
+        )
+    except Exception:
+        await payments.finish_event(
+            pool, event_id, intent_id=UUID(str(intent["id"])), status="failed",
+            error_code="demo_settlement_failed",
+        )
+        raise
+    await payments.finish_event(
+        pool, event_id, intent_id=UUID(str(intent["id"])), status="processed"
+    )
+    return {
+        "purpose": updated["purpose"],
+        "status": updated["status"],
+        "amount": updated["amount"],
+        "currency": updated["currency"].strip(),
+        "expires_at": updated["expires_at"],
+        "sandbox": updated["sandbox"],
+    }
+
+
 async def reconcile_provider_payment(
     provider_payment_id: str,
     *,
@@ -142,3 +224,58 @@ async def reconcile_provider_payment(
         provider_event_id=provider_event_id,
         actor=actor,
     )
+
+
+async def reconcile_pending(
+    *,
+    settings: Settings | None = None,
+    provider: PaymentProvider | None = None,
+    limit: int = 100,
+) -> dict[str, int]:
+    settings = settings or get_settings()
+    pool = await get_pool()
+    intents = await payments.pending_for_reconciliation(pool, limit)
+    counts = {"checked": 0, "updated": 0, "expired": 0, "failed": 0}
+    configured_provider = provider
+    for intent in intents:
+        counts["checked"] += 1
+        try:
+            expires_at = datetime.fromisoformat(intent["expires_at"])
+            if expires_at <= datetime.now(timezone.utc):
+                await payments.apply_provider_payment(
+                    pool,
+                    external_reference=intent["external_reference"],
+                    provider_payment_id=f"expired-{intent['id']}",
+                    status="expired",
+                    amount=intent["amount"],
+                    currency=intent["currency"].strip(),
+                    provider_event_id=f"expiry:{intent['id']}",
+                    actor="reconciliation",
+                )
+                counts["expired"] += 1
+                continue
+            if intent["provider"] == "demo":
+                continue
+            current_provider = configured_provider or payment_provider(settings)
+            if current_provider.name != intent["provider"]:
+                raise PaymentProviderError("provider_configuration_mismatch")
+            if intent.get("provider_payment_id"):
+                snapshot = await current_provider.get_payment(intent["provider_payment_id"])
+            else:
+                snapshot = await current_provider.find_payment(intent["external_reference"])
+            if snapshot is None:
+                continue
+            await payments.apply_provider_payment(
+                pool,
+                external_reference=snapshot.external_reference,
+                provider_payment_id=snapshot.provider_payment_id,
+                status=snapshot.status,
+                amount=snapshot.amount,
+                currency=snapshot.currency,
+                provider_event_id=f"reconcile:{snapshot.provider_payment_id}",
+                actor="reconciliation",
+            )
+            counts["updated"] += 1
+        except (payments.PaymentError, PaymentProviderError, ValueError):
+            counts["failed"] += 1
+    return counts

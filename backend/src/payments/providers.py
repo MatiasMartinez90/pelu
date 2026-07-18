@@ -67,6 +67,8 @@ class PaymentProvider(Protocol):
 
     async def get_payment(self, payment_id: str) -> ProviderPayment: ...
 
+    async def find_payment(self, external_reference: str) -> ProviderPayment | None: ...
+
 
 def normalize_provider_status(value: str) -> str:
     if value == "approved":
@@ -99,6 +101,9 @@ class DemoPaymentProvider:
 
     async def get_payment(self, payment_id: str) -> ProviderPayment:
         raise PaymentProviderError("demo_payment_lookup_not_supported")
+
+    async def find_payment(self, external_reference: str) -> ProviderPayment | None:
+        return None
 
 
 class MercadoPagoProvider:
@@ -195,6 +200,9 @@ class MercadoPagoProvider:
         value = await self._request(
             "GET", f"/v1/payments/{quote(payment_id, safe='')}", headers=self._headers()
         )
+        return self._normalize_payment(value)
+
+    def _normalize_payment(self, value: dict) -> ProviderPayment:
         try:
             decimal_amount = Decimal(str(value["transaction_amount"]))
             if decimal_amount != decimal_amount.to_integral_value():
@@ -214,6 +222,28 @@ class MercadoPagoProvider:
             currency=currency,
             raw=value,
         )
+
+    async def find_payment(self, external_reference: str) -> ProviderPayment | None:
+        if not external_reference or len(external_reference) > 300:
+            raise PaymentProviderError("provider_reference_invalid")
+        value = await self._request(
+            "GET",
+            "/v1/payments/search",
+            params={
+                "sort": "date_created",
+                "criteria": "desc",
+                "external_reference": external_reference,
+            },
+            headers=self._headers(),
+        )
+        results = value.get("results")
+        if not isinstance(results, list):
+            raise PaymentProviderError("provider_invalid_response")
+        candidates = [row for row in results if isinstance(row, dict)]
+        if not candidates:
+            return None
+        approved = next((row for row in candidates if row.get("status") == "approved"), None)
+        return self._normalize_payment(approved or candidates[0])
 
 
 def payment_provider(settings: Settings, *, client: httpx.AsyncClient | None = None) -> PaymentProvider:
