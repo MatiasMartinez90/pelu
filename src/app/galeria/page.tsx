@@ -4,11 +4,9 @@ import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { site } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: `Galería | ${site.name}`,
-  description: "Una selección de cortes, fades y diseños hechos en el local.",
-};
+export const metadata: Metadata = pageMetadata({ title: "Galería", description: `Cortes, fades, barba y diseños realizados por el equipo de ${site.name}.`, path: "/galeria" });
 
 const urls = [
   "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&q=80&auto=format&fit=crop",

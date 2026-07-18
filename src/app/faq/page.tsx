@@ -1,8 +1,8 @@
 import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
-
-const WA = "https://wa.me/5491155550123";
+import { StructuredData } from "@/components/structured-data";
+import { waLink } from "@/lib/site";
 
 const faqs = [
   { q: "¿Necesito reservar turno o puedo ir sin cita?", a: "Trabajamos con turno para que no esperes. Podés reservar por la web o por WhatsApp en segundos. Si venís sin turno, te atendemos según disponibilidad del momento." },
@@ -15,8 +15,18 @@ const faqs = [
 ];
 
 export default function FaqPage() {
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map(({ q, a }) => ({
+      "@type": "Question",
+      name: q,
+      acceptedAnswer: { "@type": "Answer", text: a },
+    })),
+  };
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
+      <StructuredData data={faqJsonLd} schema="faq-page" />
       <EditorialNav />
 
       <section className="px-fluid" style={{ paddingTop: "clamp(48px,8vw,84px)", paddingBottom: 56, maxWidth: 900, margin: "0 auto" }}>
@@ -42,7 +52,7 @@ export default function FaqPage() {
             <h2 style={{ fontFamily: SERIF, fontSize: "clamp(26px,3.4vw,38px)", fontWeight: 600 }}>¿No encontrás tu respuesta?</h2>
             <p style={{ marginTop: 10, opacity: 0.65, fontSize: 15 }}>Escribinos por WhatsApp y te ayudamos al toque.</p>
           </div>
-          <a href={WA} target="_blank" rel="noreferrer" className="nox-btn" style={{ fontSize: 13, padding: "16px 32px" }}>Escribir por WhatsApp</a>
+          <a href={waLink()} target="_blank" rel="noreferrer" className="nox-btn" style={{ fontSize: 13, padding: "16px 32px" }}>Escribir por WhatsApp</a>
         </div>
       </section>
 

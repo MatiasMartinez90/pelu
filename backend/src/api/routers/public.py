@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from ...db.pool import get_pool
 from ...db.repositories import catalog, site_context
 from ...integrations.redis_client import rate_limit_exceeded
+from ...observability import record_web_vital
 from ...services import availability_service, booking_service
 from ..client_ip import get_client_ip
 from ..schemas import (
@@ -17,9 +18,19 @@ from ..schemas import (
     BookingIn,
     BookingOut,
     ServiceOut,
+    WebVitalIn,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["public"])
+
+
+@router.post("/telemetry/web-vitals", status_code=204, include_in_schema=False)
+async def collect_web_vital(body: WebVitalIn, request: Request):
+    client_ip = get_client_ip(request)
+    if await rate_limit_exceeded(f"rum-ip:{client_ip}"):
+        raise HTTPException(429, "Demasiadas métricas")
+    record_web_vital(body.name, body.path, body.device, body.rating, body.value)
+    return Response(status_code=204)
 
 
 def _cache_public(response: Response, request: Request, value, max_age: int = 300) -> bool:

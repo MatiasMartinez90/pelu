@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 function GoogleIcon() {
   return (
@@ -22,11 +22,11 @@ const demoProfiles: Array<{ role: DemoRole; label: string }> = [
   { role: "cliente", label: "Ingresar como cliente" },
 ];
 
+const subscribeToHydration = () => () => {};
+
 export function LoginButton({ callbackUrl, demoMode }: { callbackUrl: string; demoMode: boolean }) {
   const [loading, setLoading] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => setHydrated(true), []);
+  const hydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
 
   if (demoMode) {
     return (

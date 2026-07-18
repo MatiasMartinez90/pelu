@@ -5,11 +5,9 @@ import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { site } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: `Nosotros | ${site.name}`,
-  description: "Desde 2014 en Buenos Aires. El oficio detrás de NOX.",
-};
+export const metadata: Metadata = pageMetadata({ title: "Nosotros", description: `La historia, el oficio y los valores detrás de ${site.name} en ${site.city}.`, path: "/nosotros" });
 
 const values = [
   { num: "01", title: "Precisión", text: "Cada corte se piensa y se ejecuta con detalle. No hay dos cabezas iguales." },
@@ -57,7 +55,7 @@ export default function NosotrosPage() {
         <div className="grid-3cells" style={{ borderTop: "1px solid rgba(255,255,255,0.14)" }}>
           {values.map((v) => (
             <div key={v.num} className="cell-line" style={{ padding: "40px 32px 40px 0" }}>
-              <div style={{ fontFamily: SERIF, fontSize: 44, fontWeight: 600, opacity: 0.3 }}>{v.num}</div>
+              <div style={{ fontFamily: SERIF, fontSize: 44, fontWeight: 600, opacity: 0.4 }}>{v.num}</div>
               <h3 style={{ marginTop: 18, fontFamily: SERIF, fontSize: 26, fontWeight: 600 }}>{v.title}</h3>
               <p style={{ marginTop: 12, fontSize: 15, lineHeight: 1.6, opacity: 0.65 }}>{v.text}</p>
             </div>

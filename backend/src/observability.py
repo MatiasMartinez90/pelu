@@ -20,3 +20,36 @@ LOCK_CONTENTION = Counter(
 OUTBOX_PUBLISH = Counter(
     "nox_outbox_publish_total", "Transactional outbox publish outcomes", ("result",)
 )
+
+WEB_VITAL_VALUE = Histogram(
+    "nox_web_vital_value",
+    "Browser Web Vital value (milliseconds except CLS)",
+    ("name", "path", "device"),
+    buckets=(0.01, 0.05, 0.1, 0.25, 1, 2.5, 5, 10, 50, 100, 250, 500, 1000, 2500, 4000, 8000, 16000),
+)
+WEB_VITAL_REPORTS = Counter(
+    "nox_web_vital_reports_total",
+    "Accepted browser Web Vital reports",
+    ("name", "path", "device", "rating"),
+)
+
+_PUBLIC_RUM_PATHS = {
+    "/", "/agendar", "/servicios", "/equipo", "/galeria", "/nosotros",
+    "/faq", "/contacto", "/login", "/admin", "/barbero", "/mi-cuenta",
+}
+
+
+def normalize_rum_path(path: str) -> str:
+    """Keep Prometheus labels bounded while preserving useful route groups."""
+    clean = "/" + path.strip().split("?", 1)[0].strip("/")
+    if clean.startswith("/servicios/"):
+        return "/servicios/:slug"
+    return clean if clean in _PUBLIC_RUM_PATHS else "/other"
+
+
+def record_web_vital(name: str, path: str, device: str, rating: str, value: float) -> None:
+    normalized_path = normalize_rum_path(path)
+    WEB_VITAL_VALUE.labels(name=name, path=normalized_path, device=device).observe(value)
+    WEB_VITAL_REPORTS.labels(
+        name=name, path=normalized_path, device=device, rating=rating
+    ).inc()

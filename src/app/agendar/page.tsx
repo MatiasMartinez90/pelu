@@ -2,13 +2,10 @@ import type { Metadata } from "next";
 import { EditorialNav } from "@/components/editorial/nav";
 import { EditorialWizard } from "@/components/booking/editorial-wizard";
 import { WhatsappFab } from "@/components/whatsapp-fab";
-import { site } from "@/lib/site";
 import { getBookingCatalog } from "@/lib/booking-catalog";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: `Agendá tu turno | ${site.name}`,
-  description: "Reservá tu turno online en segundos.",
-};
+export const metadata: Metadata = pageMetadata({ title: "Agendá tu turno", description: "Reservá tu turno online en NOX Barber: elegí profesional, servicio, fecha y horario disponible.", path: "/agendar" });
 
 export default async function AgendarPage({
   searchParams,

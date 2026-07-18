@@ -4,7 +4,9 @@ import re
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, field_validator
+from typing import Literal
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 PHONE_RE = re.compile(r"^\+?[0-9][0-9\s\-()]{6,20}$")
 
@@ -31,6 +33,14 @@ class ServiceOut(BaseModel):
 class BookingBootstrapOut(BaseModel):
     barbers: list[BarberOut]
     services_by_barber: dict[str, list[ServiceOut]]
+
+
+class WebVitalIn(BaseModel):
+    name: Literal["FCP", "LCP", "CLS", "INP", "TTFB"]
+    value: float = Field(ge=0, le=120_000)
+    rating: Literal["good", "needs-improvement", "poor"]
+    path: str = Field(min_length=1, max_length=160)
+    device: Literal["mobile", "desktop"]
 
 
 class AvailabilityOut(BaseModel):

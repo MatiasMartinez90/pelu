@@ -3,26 +3,24 @@ import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { site } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: `Cómo llegar | ${site.name}`,
-  description: "Dirección, horarios y contacto de NOX Barber.",
-};
+export const metadata: Metadata = pageMetadata({ title: "Cómo llegar", description: `Dirección, horarios y contacto de ${site.name} en ${site.neighborhood}, ${site.city}.`, path: "/contacto" });
 
-const ADDR = "Av. Cabildo 2200, C1428 CABA";
-const WA = "https://wa.me/5491155550123";
+const ADDR = `${site.streetAddress}, ${site.postalCode} CABA`;
+const WA = `https://wa.me/${site.whatsapp}`;
 const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ADDR)}`;
 // Google Maps rechaza el embed sin API key (X-Frame-Options). OpenStreetMap sí es
 // frameable sin key. Coords aprox de Av. Cabildo 2200, Belgrano CABA.
-const LAT = -34.5625;
-const LON = -58.456;
+const LAT = site.latitude;
+const LON = site.longitude;
 const mapEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${LON - 0.004}%2C${LAT - 0.003}%2C${LON + 0.004}%2C${LAT + 0.003}&layer=mapnik&marker=${LAT}%2C${LON}`;
 
 const info = [
-  { label: "Dirección", value: "Av. Cabildo 2200", sub: "Belgrano, CABA" },
+  { label: "Dirección", value: site.streetAddress, sub: `${site.neighborhood}, CABA` },
   { label: "Cómo llegar", value: "Subte D · Estación Ministro Carranza", sub: "Colectivos: 15, 29, 60, 152" },
-  { label: "Teléfono / WhatsApp", value: "+54 9 11 5555-0123", sub: "" },
-  { label: "Email", value: "hola@noxbarber.com.ar", sub: "" },
+  { label: "Teléfono / WhatsApp", value: site.phoneDisplay, sub: "" },
+  { label: "Email", value: site.email, sub: "" },
 ];
 const hours = [
   { days: "Lunes a Viernes", time: "10:00 – 21:00", color: "#fff" },

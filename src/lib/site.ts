@@ -1,11 +1,12 @@
 // Configuración central del sitio. Cambiá estos valores para rebrandear.
 export const site = {
+  url: (process.env.SITE_URL ?? "https://nox.cloud-it.com.ar").replace(/\/$/, ""),
   name: "NOX Barber",
   shortName: "NOX",
   tagline: "Barbería Premium",
   city: "Buenos Aires",
   description:
-    "NOX Barber — barbería premium en Buenos Aires. Agendá tu turno online. Cortes, fade, barba, diseño y color con los mejores barberos.",
+    "NOX Barber — barbería premium en Buenos Aires. Agendá tu turno online. Cortes, fade, barba, diseño y color con un equipo profesional.",
   // Datos de contacto (placeholders — reemplazá por los reales)
   phoneDisplay: "+54 9 11 5555-0123",
   whatsapp: "5491155550123", // sin signos, formato wa.me
@@ -13,6 +14,12 @@ export const site = {
   instagramUrl: "https://instagram.com/noxbarber",
   email: "hola@noxbarber.com.ar",
   address: "Av. Cabildo 2200, CABA",
+  streetAddress: "Av. Cabildo 2200",
+  postalCode: "C1428",
+  neighborhood: "Belgrano",
+  countryCode: "AR",
+  latitude: -34.5625,
+  longitude: -58.456,
   mapsQuery: "Av. Cabildo 2200, CABA",
   mapsEmbed:
     "https://www.google.com/maps?q=Av.%20Cabildo%202200%2C%20CABA&output=embed",
@@ -23,6 +30,12 @@ export const site = {
   ],
   payments: "Efectivo y transferencia. El pago se realiza en el local.",
 } as const;
+
+export const publicIndexingEnabled = process.env.SITE_INDEXABLE !== "false";
+
+export function absoluteUrl(path = "/") {
+  return new URL(path, site.url).toString();
+}
 
 export function waLink(message?: string) {
   const base = `https://wa.me/${site.whatsapp}`;

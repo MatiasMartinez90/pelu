@@ -5,11 +5,9 @@ import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { site } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: `Equipo | ${site.name}`,
-  description: "Seis profesionales, un mismo estándar premium.",
-};
+export const metadata: Metadata = pageMetadata({ title: "Equipo", description: `Conocé a los profesionales de ${site.name}: especialistas en cortes, fades, barba, color y estilo.`, path: "/equipo" });
 
 type Member = {
   name: string;

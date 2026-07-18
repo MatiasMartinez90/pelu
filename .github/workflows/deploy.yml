@@ -69,6 +69,9 @@ jobs:
             ${{ env.IMAGE_FRONT }}:${{ github.ref_name == 'main' && 'latest' || 'dev-latest' }}
           cache-from: type=gha,scope=front
           cache-to: type=gha,mode=max,scope=front
+          build-args: |
+            SITE_URL=${{ github.ref_name == 'dev' && 'https://dev-nox.cloud-it.com.ar' || 'https://nox.cloud-it.com.ar' }}
+            SITE_INDEXABLE=${{ github.ref_name == 'main' && 'true' || 'false' }}
 
       - name: Actualizar manifest en repo GitOps
         env:
