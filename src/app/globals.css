@@ -323,12 +323,18 @@
 /* Arranca en 0.05 (no 0): Chrome descarta como candidato LCP lo que pinta
    con opacity 0 y Lighthouse termina en NO_LCP. Visualmente es idéntico. */
 @keyframes nox-hero-fade-in { from { opacity: 0.05; } to { opacity: 1; } }
-/* El poster (img, elemento LCP) queda fuera del fade: animarlo desde opacity 0
-   rompe la medición de LCP en Lighthouse (budget CI) y atrasa el paint real. */
-.nox-hero-enter > *:not(img) { animation: nox-hero-fade-in 1.6s ease both; }
-@media (prefers-reduced-motion: reduce) {
-  .nox-hero-enter > *:not(img) { animation: none; }
+/* El fondo (poster/video/gradientes) NO usa esta animación: su fade lo maneja
+   HeroMedia por JS recién cuando el poster cargó, sincronizado con la imagen. */
+.nox-hero-top, .nox-hero-main, .nox-hero-vert, .nox-hero-marquee {
+  animation: nox-hero-fade-in 1.6s ease both;
 }
+@media (prefers-reduced-motion: reduce) {
+  .nox-hero-top, .nox-hero-main, .nox-hero-vert, .nox-hero-marquee { animation: none; }
+}
+/* Failsafe: si la hidratación falla o tarda, la animación (que pisa el style
+   inline por cascada) fuerza el fondo a opacidad plena a los 4s. */
+@keyframes nox-hero-media-reveal { to { opacity: 1; } }
+.nox-hero-media { animation: nox-hero-media-reveal 1.4s ease 4s forwards; }
 .nox-hero-top {
   position: absolute; top: 0; left: 0; right: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between;
