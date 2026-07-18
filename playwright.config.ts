@@ -22,7 +22,12 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  webServer: {
+  webServer: [{
+    command: "node tests/e2e/fixtures/catalog-server.mjs",
+    url: "http://127.0.0.1:3998/health",
+    reuseExistingServer: !process.env.CI,
+    timeout: 10_000,
+  }, {
     // Se prueba el artefacto de producción: evita watchers, reproduce el runtime
     // desplegado y funciona también en hosts con límites conservadores de inotify.
     command: "npm run build && npm run start -- --hostname 127.0.0.1 --port 3100",
@@ -38,8 +43,11 @@ export default defineConfig({
       AUTH_KEYCLOAK_SECRET: "responsive-tests",
       DEMO_MODE: "true",
       DEMO_AUTH_SECRET: "responsive-tests-demo-secret-with-32-characters",
+      BACKEND_URL: "http://127.0.0.1:3998",
+      SITE_URL: baseURL,
+      SITE_INDEXABLE: "true",
     },
-  },
+  }],
   projects: [
     {
       name: "android-small",

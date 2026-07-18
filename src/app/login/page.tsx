@@ -1,5 +1,9 @@
 import { LoginButton } from "./login-button";
 import Link from "next/link";
+import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({ title: "Ingresar", description: "Acceso a tu cuenta NOX.", path: "/login", noIndex: true });
 
 const SERIF = "var(--font-serif)";
 const SANS = "var(--font-sans)";

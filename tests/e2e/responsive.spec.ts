@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { allowHttpTestOrigin } from "./support/local-origin";
 
 const publicRoutes = [
   "/",
@@ -15,18 +16,6 @@ const publicRoutes = [
 const now = new Date();
 const future = new Date(now.getTime() + 7 * 86_400_000).toISOString();
 const past = new Date(now.getTime() - 30 * 86_400_000).toISOString();
-
-async function allowHttpTestOrigin(page: Page) {
-  // Producción sirve HTTPS. WebKit aplica `upgrade-insecure-requests` también
-  // a localhost y bloquearía los chunks JS del servidor HTTP de Playwright.
-  await page.route("**/*", async (route) => {
-    if (route.request().resourceType() !== "document") return route.fallback();
-    const response = await route.fetch();
-    const headers = response.headers();
-    delete headers["content-security-policy"];
-    await route.fulfill({ response, headers });
-  });
-}
 
 async function mockPrivateApis(page: Page) {
   await page.route("**/api/backoffice/**", async (route) => {

@@ -236,7 +236,7 @@ export function EditorialWizard({
         {/* Stepper */}
         <div style={{ marginTop: 44, display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "8px 0" }}>
           {stepDefs.map((s, i) => {
-            const op = i === step ? 1 : i < step ? 0.7 : 0.32;
+            const op = i === step ? 1 : i < step ? 0.7 : 0.5;
             const bar = i === step ? "#fff" : "transparent";
             return (
               <div key={s.n} style={{ display: "flex", alignItems: "center" }}>
@@ -244,7 +244,7 @@ export function EditorialWizard({
                   <span style={{ fontFamily: SERIF, fontSize: 20, opacity: op }}>{s.n}</span>
                   <span style={{ fontSize: 11.5, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600, opacity: op }}>{s.label}</span>
                 </div>
-                {i < stepDefs.length - 1 && <span style={{ opacity: 0.3, margin: "0 4px" }}>/</span>}
+                {i < stepDefs.length - 1 && <span aria-hidden="true" style={{ opacity: 0.5, margin: "0 4px" }}>/</span>}
               </div>
             );
           })}

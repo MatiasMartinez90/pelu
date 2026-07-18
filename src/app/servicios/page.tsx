@@ -4,36 +4,18 @@ import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { site } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
+import { getPublicServices } from "@/lib/booking-catalog";
 
-export const metadata: Metadata = {
-  title: `Servicios | ${site.name}`,
-  description: "Cortes, fade, barba, color y alisado. Carta de servicios NOX.",
-};
+export const metadata: Metadata = pageMetadata({ title: "Servicios", description: `Precios y duración de cortes, fade, barba, color y alisado en ${site.name}.`, path: "/servicios" });
+export const dynamic = "force-dynamic";
 
 const ars = new Intl.NumberFormat("es-AR");
 const money = (n: number) => `$${ars.format(n)}`;
+const duration = (minutes: number) => minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h${minutes % 60 ? ` ${minutes % 60} min` : ""}`;
 
-type Svc = {
-  name: string;
-  desc: string;
-  price: number;
-  duration: string;
-  badge?: string;
-};
-
-const services: Svc[] = [
-  { name: "Corte Masculino", desc: "Corte personalizado con estilo.", price: 15000, duration: "30 min" },
-  { name: "Corte y Barba", desc: "Corte de pelo + arreglo de barba. El pack completo.", price: 18000, duration: "30 min", badge: "Más pedido" },
-  { name: "Barba", desc: "Recorte y perfilado de barba.", price: 13000, duration: "30 min" },
-  { name: "Corte Masculino con Bruno", desc: "Corte personalizado con nuestro master barber.", price: 20000, duration: "30 min" },
-  { name: "Corte y Barba con Bruno", desc: "Corte de pelo + arreglo de barba con Bruno.", price: 23000, duration: "30 min", badge: "Premium" },
-  { name: "Barba con Bruno", desc: "Arreglo de barba con nuestro master barber.", price: 15000, duration: "30 min" },
-  { name: "Corte Mujer", desc: "Corte femenino personalizado. Estilo y técnica profesional.", price: 15000, duration: "30 min" },
-  { name: "Color", desc: "El valor varía según el trabajo a realizar. Consultá por WhatsApp.", price: 70000, duration: "2 hs", badge: "Exclusivo" },
-  { name: "Alisado Orgánico (sin formol)", desc: "Look liso y natural. El valor varía según largo y volumen del cabello.", price: 165000, duration: "3 hs 30 min", badge: "Exclusivo" },
-];
-
-export default function ServiciosPage() {
+export default async function ServiciosPage() {
+  const services = await getPublicServices().catch(() => []);
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <EditorialNav active="servicios" />
@@ -54,27 +36,28 @@ export default function ServiciosPage() {
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.14)" }}>
           {services.map((s) => (
             <Link
-              key={s.name}
-              href="/agendar"
+              key={s.slug}
+              href={`/servicios/${s.slug}`}
               className="svc-row"
               style={{ padding: "30px 12px", borderBottom: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                  <h3 style={{ fontFamily: SERIF, fontSize: "clamp(24px,3vw,34px)", fontWeight: 600, lineHeight: 1 }}>{s.name}</h3>
+                  <h2 style={{ fontFamily: SERIF, fontSize: "clamp(24px,3vw,34px)", fontWeight: 600, lineHeight: 1 }}>{s.name}</h2>
                   {s.badge && (
                     <span style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", border: "1px solid rgba(255,255,255,0.4)", padding: "4px 9px" }}>{s.badge}</span>
                   )}
                 </div>
-                <p style={{ marginTop: 10, color: "rgba(255,255,255,0.55)", fontSize: 15, maxWidth: 560, lineHeight: 1.5 }}>{s.desc}</p>
-                <div style={{ marginTop: 12, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.42)" }}>Duración · {s.duration}</div>
+                <p style={{ marginTop: 10, color: "rgba(255,255,255,0.55)", fontSize: 15, maxWidth: 560, lineHeight: 1.5 }}>{s.description}</p>
+                <div style={{ marginTop: 12, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)" }}>Duración · {duration(s.duration_min)}</div>
               </div>
               <div className="svc-right">
-                <div style={{ fontFamily: SERIF, fontSize: "clamp(28px,3.4vw,40px)", fontWeight: 600 }}>{money(s.price)}</div>
-                <span className="svc-go" style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "#fff" }}>Reservar →</span>
+                <div style={{ fontFamily: SERIF, fontSize: "clamp(28px,3.4vw,40px)", fontWeight: 600 }}>{s.variable_price ? "Desde " : ""}{money(s.price)}</div>
+                <span className="svc-go" style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "#fff" }}>Ver servicio →</span>
               </div>
             </Link>
           ))}
+          {services.length === 0 && <p role="status" style={{ padding: "32px 12px", opacity: 0.7 }}>No pudimos cargar los servicios. Probá nuevamente en unos minutos.</p>}
         </div>
 
         <div className="cta-box" style={{ marginTop: 72 }}>
