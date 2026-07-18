@@ -16,7 +16,7 @@ from ...db.pool import get_pool
 from ...db.repositories import catalog
 from ...services import availability_service, booking_service
 from .. import events
-from .booking import _fmt_dt
+from .booking import _fmt_dt, _resolve_requested_date
 
 _CONFIRM_WORD = (
     r"(?:sí|si|confirmo|confirmado|confirmar|dale|ok|okay|de acuerdo"
@@ -28,6 +28,10 @@ _CONFIRMATION = re.compile(
     r"(?:[,\s]+(?:por favor|gracias))?[.!¡]*\s*$",
     re.IGNORECASE,
 )
+
+
+def _contact_channel(contact_ref: str) -> str:
+    return "telegram" if contact_ref.startswith("telegram:") else "whatsapp"
 
 
 def _latest_user_text(state: dict) -> str:
@@ -82,7 +86,7 @@ async def prepare_booking(
     if not await catalog.barber_offers_service(pool, b["id"], s["id"]):
         return f"{b['name']} no ofrece {s['name']}."
     try:
-        day = date_type.fromisoformat(date)
+        day = _resolve_requested_date(date, state)
     except ValueError:
         return "Fecha inválida: usá YYYY-MM-DD."
     slots = await availability_service.get_slots(pool, b, s, day)
@@ -94,16 +98,17 @@ async def prepare_booking(
         {
             "barber": barber,
             "service": service,
-            "date": date,
+            "date": day.isoformat(),
             "time": time,
             "customer_name": customer_name,
         },
     )
     return (
-        f"Acción {action_id} preparada: {s['name']} con {b['name']} el {date} a las "
-        f"{time}, a nombre de {customer_name}, precio ${s['price']:,}. "
-        "Pedile al cliente que confirme explícitamente. No ejecutes confirm_pending_action "
-        "en este mismo turno."
+        f"Acción {action_id} preparada, todavía NO reservada: {s['name']} con "
+        f"{b['name']} el {day.isoformat()} a las {time}, a nombre de {customer_name}, "
+        f"precio ${s['price']:,}. Pedile al cliente que confirme explícitamente "
+        "dentro de 30 minutos. No digas que el turno ya está reservado y no ejecutes "
+        "confirm_pending_action en este mismo turno."
     ).replace(",", ".")
 
 
@@ -188,7 +193,12 @@ async def confirm_pending_action(state: Annotated[dict, InjectedState]) -> str:
         state["phone"],
     )
     if action is None:
-        return "No hay una acción pendiente vigente para confirmar."
+        return (
+            "La pre-reserva venció o ya no existe. Explicale al cliente que el turno "
+            "NO quedó reservado y volvé a consultar disponibilidad antes de preparar "
+            "otra confirmación. No lo presentes como un error técnico ni lo derives a "
+            "WhatsApp."
+        )
     if str(action["prepared_turn_id"]) == str(state["turn_id"]):
         return "La acción debe confirmarse en un mensaje posterior del cliente."
 
@@ -206,7 +216,7 @@ async def confirm_pending_action(state: Annotated[dict, InjectedState]) -> str:
                 hhmm=payload["time"],
                 phone=state["phone"],
                 customer_name=payload["customer_name"],
-                channel="whatsapp",
+                channel=_contact_channel(state["phone"]),
                 idempotency_key=command_key,
             )
             result_text = (
@@ -221,7 +231,7 @@ async def confirm_pending_action(state: Annotated[dict, InjectedState]) -> str:
                 day=date_type.fromisoformat(payload["date"]),
                 hhmm=payload["time"],
                 phone=state["phone"],
-                channel="whatsapp",
+                channel=_contact_channel(state["phone"]),
                 command_key=command_key,
             )
             result_text = f"Listo, turno reprogramado para {_fmt_dt(result['starts_at'])} hs."
@@ -230,7 +240,7 @@ async def confirm_pending_action(state: Annotated[dict, InjectedState]) -> str:
             await booking_service.cancel_booking(
                 pool,
                 UUID(payload["booking_id"]),
-                reason="cancelado por WhatsApp",
+                reason=f"cancelado por {_contact_channel(state['phone'])}",
                 phone=state["phone"],
                 command_key=command_key,
             )
