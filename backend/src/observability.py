@@ -20,6 +20,11 @@ LOCK_CONTENTION = Counter(
 OUTBOX_PUBLISH = Counter(
     "nox_outbox_publish_total", "Transactional outbox publish outcomes", ("result",)
 )
+PAYMENT_OPERATIONS = Counter(
+    "nox_payment_operations_total",
+    "Payment preference, demo checkout and webhook outcomes",
+    ("operation", "result", "provider"),
+)
 
 WEB_VITAL_VALUE = Histogram(
     "nox_web_vital_value",

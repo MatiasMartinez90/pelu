@@ -70,17 +70,30 @@ La URL de retorno sólo mostrará `procesando`, `aprobado`, `pendiente` o `recha
 
 ## Evidencia del núcleo
 
+- PR #44 integrado en `dev`, squash `c9368dc`; checks `code-and-config` y `dependencies` aprobados.
+- Deploy `build-deploy` #29637646320 aprobado; backend digest `sha256:34ccff05e851f4d3add985b985e58d230b2a2e20d366c6c390d3bf41a6e73ef9`.
+- GitOps dev en revisión `613e1ed`; Argo CD `Synced/Healthy`. Las tres tablas `payment_*` se verificaron dentro del pod de API.
 - Las 13 migraciones se aplican desde cero en PostgreSQL 16 descartable.
 - Suite backend: `77 passed, 1 skipped`.
 - Ruff y `git diff --check`: sin errores.
 - Casos específicos: firma alterada/vencida, credenciales sólo server-side, total manipulado, intención y webhook duplicados, payload sanitizado, aprobación transaccional y mismatch de importe.
 
-La evidencia de PR, checks, digest, Argo CD y smoke de `dev` se añadirá al integrar cada entrega.
+La API agrega 86 pruebas aprobadas y 1 omitida en el entorno local limpio. La evidencia de su PR, digest, Argo CD y smoke de `dev` se añadirá al integrar y desplegar cada entrega.
+
+### API implementada
+
+- `POST /api/v1/payments/shop-orders/{order_id}/preference`: requiere `Idempotency-Key` y el token-capability del carrito que originó el pedido.
+- `GET /api/v1/payments/status/{token}`: estado público mínimo mediante referencia firmada; no expone email, teléfono ni identificadores internos.
+- `POST /api/v1/payments/demo/{token}`: acredita o rechaza sólo intenciones demo, exige JSON y aplica rate limit.
+- `POST /webhook/mercado-pago`: valida firma y timestamp antes de persistir; consulta el pago a la API y tolera duplicados/reintentos.
+- `python -m src.jobs.payment_reconciliation`: concilia pagos omitidos por webhook y expira reservas. En shop libera stock una sola vez; en turnos conserva la reserva y vuelve a pago local.
+
+El link de retorno también usa una referencia firmada. Los eventos fallidos pueden ser reclamados por un reintento del proveedor; los ya procesados no vuelven a ejecutar efectos.
 
 ## Referencias oficiales
 
 - [Crear una preferencia de Checkout Pro](https://www.mercadopago.com.ar/developers/es/reference/online-payments/checkout-pro/preferences/create-preference/post)
 - [Validación de firma y Webhooks](https://www.mercadopago.com.ar/developers/es/docs/checkout-bricks/additional-content/your-integrations/notifications/webhooks)
 - [Consultar un pago por ID](https://www.mercadopago.com.ar/developers/es/reference/online-payments/subscriptions/get-payment/get)
+- [Buscar pagos por referencia externa](https://www.mercadopago.com.ar/developers/es/reference/online-payments/checkout-pro/search-payments/get)
 - [Descripción general de Checkout Pro](https://www.mercadopago.com.ar/developers/es/docs/checkout-pro/overview)
-

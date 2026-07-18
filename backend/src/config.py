@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -121,6 +122,29 @@ class Settings(BaseSettings):
     environment: str = "development"
     trusted_proxy_cidrs: str = "127.0.0.1/32,::1/128"
     log_level: str = "INFO"
+
+    @model_validator(mode="after")
+    def validate_payments(self):
+        if self.payment_provider not in {"disabled", "demo", "mercado_pago"}:
+            raise ValueError("PAYMENT_PROVIDER inválido")
+        if self.payment_provider == "disabled":
+            return self
+        if not self.payment_public_url or not self.payment_webhook_url:
+            raise ValueError("PAYMENT_PUBLIC_URL y PAYMENT_WEBHOOK_URL son obligatorias")
+        if len(self.payment_link_secret) < 32:
+            raise ValueError("PAYMENT_LINK_SECRET debe tener al menos 32 caracteres")
+        if not 5 <= self.payment_preference_expiration_minutes <= 1440:
+            raise ValueError("PAYMENT_PREFERENCE_EXPIRATION_MINUTES fuera de rango")
+        if self.environment.lower() == "production" and (
+            not self.payment_public_url.startswith("https://")
+            or not self.payment_webhook_url.startswith("https://")
+        ):
+            raise ValueError("las URLs de pagos deben usar HTTPS")
+        if self.payment_provider == "mercado_pago" and (
+            not self.mercado_pago_access_token or len(self.mercado_pago_webhook_secret) < 16
+        ):
+            raise ValueError("credenciales de Mercado Pago incompletas")
+        return self
 
 
 @lru_cache

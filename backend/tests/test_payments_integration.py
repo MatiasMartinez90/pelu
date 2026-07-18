@@ -1,10 +1,14 @@
 import os
 from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock
+from urllib.parse import unquote
 
 import asyncpg
 import pytest
 
 from src.db.repositories import commerce, payments
+from src.config import Settings
+from src.services import payment_service
 
 
 pytestmark = pytest.mark.skipif(
@@ -204,6 +208,145 @@ async def test_payment_amount_mismatch_never_accredits_order():
         assert await pool.fetchval(
             "SELECT payment_status FROM shop_orders WHERE id = $1", order["id"]
         ) == "pending"
+    finally:
+        await _cleanup(pool)
+        await pool.close()
+
+
+@pytest.mark.asyncio
+async def test_expired_shop_payment_releases_reserved_stock_exactly_once():
+    pool = await asyncpg.create_pool(os.environ["TEST_DATABASE_URL"], min_size=1, max_size=3)
+    order = await _prepare(pool)
+    try:
+        intent, _ = await payments.create_intent(
+            pool,
+            installation_id="test",
+            purpose="shop_order",
+            target_id=order["id"],
+            provider="demo",
+            payer_email=None,
+            idempotency_key="payment-intent-expiry-0003",
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+        )
+        assert await pool.fetchval(
+            "SELECT qty FROM products WHERE sku = 'TEST-PAY-01'"
+        ) == 3
+        kwargs = dict(
+            external_reference=intent["external_reference"],
+            provider_payment_id=f"expired-{intent['id']}",
+            status="expired",
+            amount=21000,
+            currency="ARS",
+            provider_event_id=f"expiry:{intent['id']}",
+            actor="reconciliation",
+        )
+        await payments.apply_provider_payment(pool, **kwargs)
+        await payments.apply_provider_payment(pool, **kwargs)
+        assert await pool.fetchval(
+            "SELECT status FROM shop_orders WHERE id = $1", order["id"]
+        ) == "cancelled"
+        assert await pool.fetchval(
+            "SELECT qty FROM products WHERE sku = 'TEST-PAY-01'"
+        ) == 4
+        assert await pool.fetchval(
+            """SELECT count(*) FROM stock_movements
+               WHERE reason = 'pago online vencido'"""
+        ) == 1
+    finally:
+        await _cleanup(pool)
+        await pool.close()
+
+
+@pytest.mark.asyncio
+async def test_expired_appointment_payment_falls_back_to_store_without_cancelling():
+    pool = await asyncpg.create_pool(os.environ["TEST_DATABASE_URL"], min_size=1, max_size=3)
+    async with pool.acquire() as connection, connection.transaction():
+        customer_id = await connection.fetchval(
+            """INSERT INTO customers (phone, name, email, first_channel)
+               VALUES ('+5491100000999', 'Pago Turno', 'turno@example.com', 'admin')
+               RETURNING id"""
+        )
+        barber_id = await connection.fetchval(
+            "SELECT id FROM barbers WHERE active ORDER BY sort_order LIMIT 1"
+        )
+        service = await connection.fetchrow(
+            "SELECT id, price FROM services WHERE active ORDER BY sort_order LIMIT 1"
+        )
+        starts_at = datetime.now(timezone.utc) + timedelta(days=365)
+        appointment_id = await connection.fetchval(
+            """INSERT INTO appointments
+                   (customer_id, barber_id, service_id, starts_at, ends_at,
+                    price_at_booking, channel)
+               VALUES ($1,$2,$3,$4,$5,$6,'admin') RETURNING id""",
+            customer_id, barber_id, service["id"], starts_at,
+            starts_at + timedelta(minutes=30), service["price"],
+        )
+    try:
+        intent, _ = await payments.create_intent(
+            pool,
+            installation_id="test",
+            purpose="appointment",
+            target_id=appointment_id,
+            provider="demo",
+            payer_email="turno@example.com",
+            idempotency_key="appointment-payment-expiry-0004",
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+        )
+        await payments.apply_provider_payment(
+            pool,
+            external_reference=intent["external_reference"],
+            provider_payment_id=f"expired-{intent['id']}",
+            status="expired",
+            amount=service["price"],
+            currency="ARS",
+            provider_event_id=f"expiry:{intent['id']}",
+            actor="reconciliation",
+        )
+        state = await pool.fetchrow(
+            """SELECT status, payment_method, payment_status
+               FROM appointments WHERE id = $1""",
+            appointment_id,
+        )
+        assert dict(state) == {
+            "status": "active", "payment_method": "pay_at_store", "payment_status": "unpaid"
+        }
+    finally:
+        await pool.execute("DELETE FROM payment_events")
+        await pool.execute("DELETE FROM payment_status_history")
+        await pool.execute("DELETE FROM payment_intents")
+        await pool.execute("DELETE FROM appointments WHERE id = $1", appointment_id)
+        await pool.execute("DELETE FROM customers WHERE id = $1", customer_id)
+        await pool.close()
+
+
+@pytest.mark.asyncio
+async def test_demo_checkout_uses_the_same_signed_end_to_end_flow(monkeypatch):
+    pool = await asyncpg.create_pool(os.environ["TEST_DATABASE_URL"], min_size=1, max_size=3)
+    order = await _prepare(pool)
+    monkeypatch.setattr(payment_service, "get_pool", AsyncMock(return_value=pool))
+    settings = Settings(
+        installation_id="test",
+        payment_provider="demo",
+        payment_public_url="https://shop-dev.example.com",
+        payment_webhook_url="https://api-dev.example.com/webhook/mercado-pago",
+        payment_link_secret="payment-link-secret-with-more-than-32-chars",
+    )
+    try:
+        intent, created = await payment_service.create_preference(
+            purpose="shop_order",
+            target_id=order["id"],
+            idempotency_key="demo-checkout-end-to-end-0005",
+            settings=settings,
+        )
+        assert created is True
+        token = unquote(intent["checkout_url"].rsplit("/", 1)[-1])
+        status = await payment_service.settle_demo_payment(
+            token, "approved", settings=settings
+        )
+        assert status["status"] == "approved"
+        assert await pool.fetchval(
+            "SELECT status FROM shop_orders WHERE id = $1", order["id"]
+        ) == "confirmed"
     finally:
         await _cleanup(pool)
         await pool.close()
