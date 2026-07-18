@@ -1,6 +1,6 @@
 # Roadmap integral: mobile, SEO/GEO, shop, pagos, omnicanalidad y campañas
 
-**Estado:** roadmap maestro activo; Fases 0–2 listas en dev
+**Estado:** roadmap maestro activo; Fases 0–2 y 4–5 listas en dev; Fases 3 y 6 en progreso
 **Última actualización:** 2026-07-18
 **Alcance de este documento:** fuente de verdad de planificación, estado, criterios de aceptación y evidencias del roadmap integral.
 **Repositorio analizado:** `Pelu`  
@@ -50,7 +50,7 @@ Los estados permitidos son `pendiente`, `en curso`, `validando`, `listo en dev`,
 | 3 | Cloudflare y medios | Fase 4 parcial para tenancy; puede prototiparse antes | Medios publicados por tenant, formatos responsive, caché y fallback probados | En progreso | Contrato, manifiesto y pipeline listos en `feat/cloudflare-media-pipeline`; cutover R2 dev pendiente. Ver `docu/fase-3-cloudflare-medios.md` |
 | 4 | Boilerplate integral | Fase 0 | Marca, negocio, dominios, módulos, pagos, canales y agente configurables sin hardcodes de NOX | Listo en dev | PRs #37 y #38; GitOps #13; bootstrap idempotente, fixture Aurora, CI completo, migración 011 y smoke `dev` verificados. Ver `docu/fase-4-boilerplate-white-label.md` |
 | 5 | Shop independiente | Fases 3–4 | Subdominio propio, catálogo, detalle, búsqueda, carrito, checkout, retiro, stock y pedidos administrables | Listo en dev | PRs #40, #41 y #42; GitOps #14; CI, deploy, Argo, checkout/cancelación y reposición de stock verificados. Sin promoción fuera de dev. Ver `docu/fase-5-shop.md` |
-| 6 | Mercado Pago | Fase 5; modelo de pagos reutilizable | Turnos opcionales y shop total; webhooks auténticos/idempotentes; conciliación y auditoría | Pendiente | — |
+| 6 | Mercado Pago | Fase 5; modelo de pagos reutilizable | Turnos opcionales y shop total; webhooks auténticos/idempotentes; conciliación y auditoría | En progreso | Núcleo, adaptadores real/demo, migración 013 y pruebas en `feat/payments-domain-core`; detalle en `docu/fase-6-mercado-pago.md`. Activación real espera credenciales externas |
 | 7 | Instagram y multicanal | Fases 4 y 10 parcial | Instagram→Chatwoot→agente operativo, handoff y canal visible en toda la administración | Pendiente | — |
 | 8 | Identidad de clientes | Fase 4 | Gmail, teléfono+email OTP, vinculación segura, deduplicación y cambio de cuenta verificados | Pendiente | — |
 | 9 | Abandonos y automatizaciones | Fases 5, 7, 8 y consentimiento | Detección durable, cadencias, quiet hours, opt-out, límites y métricas por canal | Pendiente | — |
