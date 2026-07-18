@@ -51,12 +51,15 @@ Branch `feat/shop-standalone-experience`:
 
 ### 5.3 Operación y despliegue
 
-Pendiente:
+Branch `feat/shop-admin-operations`:
 
-- pedidos y edición de catálogo en admin;
-- E2E mobile/desktop y concurrencia de stock;
-- budgets de JS, imágenes, accesibilidad y performance del host shop;
-- GitOps y smokes reales en `shop-dev-nox.cloud-it.com.ar`.
+- pestaña Pedidos con filtro, detalle, retiro, pago, items y total;
+- flujo operativo `confirmed → ready → completed` y cancelación con motivo;
+- catálogo administrativo con categorías, ficha, imágenes, orden, destacado y publicación;
+- separación explícita entre la ficha comercial y los ajustes auditados de stock;
+- E2E de contratos del admin y viewport mobile/desktop.
+
+El host `shop-dev-nox.cloud-it.com.ar` usa el mismo artefacto versionado y se monta mediante el dominio configurado para la instalación. La separación pública de canonical, sitemap, robots, navegación y URLs no depende de valores NOX en el código.
 
 ## Invariantes
 
@@ -79,7 +82,7 @@ Pendiente:
 - checkout repetido devuelve el mismo pedido y descuenta stock una sola vez;
 - cancelación restaura stock una sola vez y deja movimiento en el ledger.
 
-Evidencia local del incremento 5.2:
+Evidencia del incremento 5.2:
 
 - lint, TypeScript y build de producción verdes;
 - budgets: 200.844 B JS gzip y 16.457 B CSS gzip, debajo de los límites;
@@ -87,8 +90,17 @@ Evidencia local del incremento 5.2:
 - 10/10 pruebas Shop relevantes: seis snapshots, accesibilidad mobile/desktop, checkout completo y SEO;
 - SEO del host: canonical, Product JSON-LD, moneda, robots y sitemap verificados;
 - servidor de performance con fixture aislado y smoke de home/robots/sitemap en 200.
+- PR [#41](https://github.com/MatiasMartinez90/pelu/pull/41), squash `1254447` hacia `dev`;
+- CI verde: seguridad/dependencias, Lighthouse mobile/desktop y regresión visual;
+- workflow de deploy `29635758406` exitoso;
+- smoke real 200 para catálogo, ficha, `robots.txt` y `sitemap.xml`;
+- BFF real: catálogo de seis productos y creación de carrito ARS con token opaco.
 
-La evidencia CI, PR, deploy y smoke se agrega al completar cada incremento.
+Evidencia local del incremento 5.3:
+
+- lint y TypeScript verdes;
+- E2E: transición de pedido, edición de ficha sin enviar `qty` y viewport mobile/desktop;
+- las pruebas PostgreSQL del core cubren checkout concurrente/idempotente, ledger y restauración única al cancelar.
 
 ## Rollback
 
