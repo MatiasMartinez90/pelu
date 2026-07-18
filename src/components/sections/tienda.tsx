@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { mediaAsset } from "@/lib/media-assets";
 
 const SERIF = "var(--font-serif)";
 
@@ -22,7 +23,7 @@ const products: Product[] = [
     name: "Texture Mash · Matte",
     finish: "Pomada · Efecto mate",
     price: 25000,
-    photo: "https://images.unsplash.com/photo-1619451334792-150fd785ee74?w=900&q=80&auto=format&fit=crop",
+    photo: mediaAsset("products.textureMashMatte"),
     cell: { gridColumn: "1 / 8", gridRow: "1 / 7", height: "100%" },
   },
   {
@@ -30,7 +31,7 @@ const products: Product[] = [
     name: "Texture Dust · Original",
     finish: "Polvo texturizador",
     price: 25000,
-    photo: "https://images.unsplash.com/photo-1621607512214-68297480165e?w=700&q=80&auto=format&fit=crop",
+    photo: mediaAsset("products.textureDustOriginal"),
     cell: { gridColumn: "8 / 13", gridRow: "1 / 5", height: "100%" },
   },
   {
@@ -38,7 +39,7 @@ const products: Product[] = [
     name: "Texture Mash · Brillante",
     finish: "Pomada · Acabado brillo",
     price: 25000,
-    photo: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=700&q=80&auto=format&fit=crop",
+    photo: mediaAsset("products.textureMashBrillante"),
     cell: { gridColumn: "8 / 13", gridRow: "5 / 11", height: "100%" },
   },
   {
@@ -46,7 +47,7 @@ const products: Product[] = [
     name: "Beard Oil · Cedro",
     finish: "Aceite de barba",
     price: 19000,
-    photo: "https://images.unsplash.com/photo-1617897903246-719242758050?w=700&q=80&auto=format&fit=crop",
+    photo: mediaAsset("products.beardOilCedro"),
     cell: { gridColumn: "1 / 4", gridRow: "7 / 11", height: "100%" },
   },
   {
@@ -54,7 +55,7 @@ const products: Product[] = [
     name: "Sea Salt Spray",
     finish: "Spray texturizante",
     price: 21000,
-    photo: "https://images.unsplash.com/photo-1585751119414-ef2636f8aede?w=700&q=80&auto=format&fit=crop",
+    photo: mediaAsset("products.seaSaltSpray"),
     cell: { gridColumn: "4 / 8", gridRow: "7 / 11", height: "100%" },
   },
 ];

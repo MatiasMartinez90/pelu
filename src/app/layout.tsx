@@ -6,6 +6,9 @@ import { WebVitals } from "@/components/web-vitals";
 import { StructuredData } from "@/components/structured-data";
 import { localBusinessJsonLd } from "@/lib/seo";
 import { publicIndexingEnabled } from "@/lib/site";
+import { mediaSource } from "@/lib/media";
+
+const rootSocialImage = mediaSource("/img/hero-poster.jpg");
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
@@ -38,9 +41,9 @@ export const metadata: Metadata = {
     siteName: site.name,
     locale: "es_AR",
     url: site.url,
-    images: [{ url: "/img/hero-poster.jpg", width: 640, height: 360, alt: `${site.name} — ${site.tagline}` }],
+    images: [{ url: rootSocialImage, width: 640, height: 360, alt: `${site.name} — ${site.tagline}` }],
   },
-  twitter: { card: "summary_large_image", images: ["/img/hero-poster.jpg"] },
+  twitter: { card: "summary_large_image", images: [rootSocialImage] },
   alternates: { canonical: "/" },
   robots: { index: publicIndexingEnabled, follow: publicIndexingEnabled },
   icons: {

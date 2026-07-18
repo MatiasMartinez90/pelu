@@ -7,3 +7,12 @@ Dockerfile
 .dockerignore
 README.md
 .DS_Store
+backend
+docs
+docu
+pending
+scripts
+tests
+test-results
+playwright-report
+.github

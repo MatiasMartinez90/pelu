@@ -5,6 +5,7 @@ on:
     paths:
       - "src/**"
       - "public/**"
+      - "config/media-assets.json"
       - "scripts/check-performance-budgets.mjs"
       - "package.json"
       - "package-lock.json"
@@ -28,6 +29,10 @@ jobs:
       - run: npm run build
         env:
           BACKEND_URL: https://api-nox.cloud-it.com.ar
+          NEXT_PUBLIC_MEDIA_PUBLIC_URL: https://media-dev-nox.cloud-it.com.ar
+          NEXT_PUBLIC_MEDIA_TRANSFORM_URL: https://media-dev-nox.cloud-it.com.ar
+          NEXT_PUBLIC_MEDIA_TENANT: nox
+      - run: npm run test:media
       - run: npm run perf:budgets
       - name: Lighthouse CI — mobile
         run: npm run perf:lighthouse:mobile

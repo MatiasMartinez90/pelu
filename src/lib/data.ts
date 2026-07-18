@@ -1,3 +1,5 @@
+import { mediaAsset } from "@/lib/media-assets";
+
 // Equipo (nombres ficticios). El "id" se usa para mapear servicios.
 export type Barber = {
   id: string;
@@ -14,8 +16,7 @@ export const barbers: Barber[] = [
     name: "Thiago",
     role: "BARBERO",
     bio: "Especialista en fades y cortes clásicos. Precisión en cada pasada.",
-    photo:
-      "https://images.unsplash.com/photo-1503443207922-dff7d543fd0e?w=600&q=80&auto=format&fit=crop",
+    photo: mediaAsset("team.thiago"),
     instagram: "thiago.barber",
   },
   {
@@ -23,8 +24,7 @@ export const barbers: Barber[] = [
     name: "Lautaro",
     role: "BARBERO",
     bio: "El rey de los diseños a navaja y los cortes modernos.",
-    photo:
-      "https://images.unsplash.com/photo-1493256338651-d82f7acb2b38?w=600&q=80&auto=format&fit=crop",
+    photo: mediaAsset("team.lautaro"),
     instagram: "lautaro.barber",
   },
   {
@@ -32,8 +32,7 @@ export const barbers: Barber[] = [
     name: "Bruno",
     role: "BARBERO",
     bio: "Master barber y fundador. Experiencia premium de punta a punta.",
-    photo:
-      "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=600&q=80&auto=format&fit=crop",
+    photo: mediaAsset("team.bruno"),
     instagram: "bruno.barber",
   },
   {
@@ -41,8 +40,7 @@ export const barbers: Barber[] = [
     name: "Nahuel",
     role: "BARBERO",
     bio: "Cortes prolijos y mucha buena onda. Tu corte de confianza.",
-    photo:
-      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&q=80&auto=format&fit=crop",
+    photo: mediaAsset("team.nahuel"),
     instagram: "nahuel.barber",
   },
   {
@@ -50,8 +48,7 @@ export const barbers: Barber[] = [
     name: "Ramiro",
     role: "BARBERO",
     bio: "Detallista al máximo. Terminaciones impecables a tijera.",
-    photo:
-      "https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=600&q=80&auto=format&fit=crop",
+    photo: mediaAsset("team.ramiro"),
     instagram: "ramiro.barber",
   },
   {
@@ -59,8 +56,7 @@ export const barbers: Barber[] = [
     name: "Camila",
     role: "ESTILISTA",
     bio: "Especialista en corte femenino, color y alisado profesional.",
-    photo:
-      "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=600&q=80&auto=format&fit=crop",
+    photo: mediaAsset("team.camila"),
     instagram: "camila.estilista",
   },
 ];
@@ -180,8 +176,7 @@ export const products: Product[] = [
       "Filtro UV",
       "Fácil de aplicar y remover",
     ],
-    photo:
-      "https://images.unsplash.com/photo-1626015449161-2e6c2f5dde7a?w=700&q=80&auto=format&fit=crop",
+    photo: mediaAsset("products.textureMashMatte"),
   },
   {
     name: "Texture Dust · Original",
@@ -193,8 +188,7 @@ export const products: Product[] = [
       "Acabado invisible",
       "Ideal para cabellos finos",
     ],
-    photo:
-      "https://images.unsplash.com/photo-1571875257727-256c39da42af?w=700&q=80&auto=format&fit=crop",
+    photo: mediaAsset("products.textureDustOriginal"),
   },
   {
     name: "Texture Mash · Brillante",
@@ -206,8 +200,7 @@ export const products: Product[] = [
       "Efecto húmedo natural",
       "No deja residuos",
     ],
-    photo:
-      "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=700&q=80&auto=format&fit=crop",
+    photo: mediaAsset("products.textureMashBrillante"),
   },
 ];
 
@@ -237,14 +230,14 @@ export const stats = [
 ];
 
 export const gallery: string[] = [
-  "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1521490683712-35a1cb235d1c?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1517832606299-7ae9b720a186?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1596728325488-58c87691e9af?w=800&q=80&auto=format&fit=crop",
+  mediaAsset("gallery.work01"),
+  mediaAsset("gallery.work02"),
+  mediaAsset("gallery.work03"),
+  mediaAsset("gallery.work04"),
+  mediaAsset("gallery.work05"),
+  mediaAsset("gallery.work06"),
+  mediaAsset("gallery.work07"),
+  mediaAsset("gallery.work08"),
 ];
 
 export type Faq = { q: string; a: string };

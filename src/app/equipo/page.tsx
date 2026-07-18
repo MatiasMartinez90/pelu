@@ -48,7 +48,7 @@ export default function EquipoPage() {
           {team.map((m) => (
             <Link key={m.name} href="/agendar" className="mbr">
               <div className="mbr__ph">
-                <Image src={m.photo} alt={m.name} fill unoptimized sizes="(max-width: 900px) 50vw, 25vw" />
+                <Image src={m.photo} alt={m.name} fill sizes="(max-width: 900px) 50vw, 25vw" />
                 <span className="mbr__ig">@{m.instagram}</span>
               </div>
               <div style={{ marginTop: 18, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
