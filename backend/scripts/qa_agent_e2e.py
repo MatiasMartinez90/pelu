@@ -23,6 +23,12 @@ Config por env:
     CHATWOOT_QA_CONTACT opcional: ID de un contacto existente en el inbox.
                         Es obligatorio para canales nativos como Telegram,
                         donde Chatwoot no permite crear contactos por API.
+    CHATWOOT_QA_CONVERSATION opcional: conversación existente usada por la
+                        prueba Telegram real (no crea contacto/conversación).
+    TELEGRAM_QA_WEBHOOK opcional: URL privada del webhook Telegram de Chatwoot.
+                        Si está presente, los mensajes entrantes se inyectan
+                        como updates Telegram reales en vez de usar la API de
+                        mensajes, que Chatwoot limita a inboxes Channel::Api.
     NOX_API_URL         default https://api-nox.cloud-it.com.ar
     QA_REPLY_TIMEOUT    default 90  (segundos de espera por respuesta del agente)
 """
@@ -50,6 +56,8 @@ POLL_INTERVAL = 3
 
 TOKEN = os.environ.get("CHATWOOT_QA_TOKEN", "")
 EXISTING_CONTACT_ID = int(os.environ.get("CHATWOOT_QA_CONTACT", "0"))
+EXISTING_CONVERSATION_ID = int(os.environ.get("CHATWOOT_QA_CONVERSATION", "0"))
+TELEGRAM_WEBHOOK = os.environ.get("TELEGRAM_QA_WEBHOOK", "")
 
 QA_BARBER = os.environ.get("QA_BARBER", "bruno")
 QA_SERVICE = os.environ.get("QA_SERVICE", "corte-masculino-bruno")
@@ -85,7 +93,17 @@ def nox(path: str) -> dict:
 
 class Conversation:
     def __init__(self) -> None:
-        if EXISTING_CONTACT_ID:
+        if EXISTING_CONVERSATION_ID:
+            conversation = cw("GET", f"/conversations/{EXISTING_CONVERSATION_ID}")
+            self.conv_id = EXISTING_CONVERSATION_ID
+            sender = conversation.get("meta", {}).get("sender", {})
+            self.contact_id = sender["id"]
+            contact = cw("GET", f"/contacts/{self.contact_id}")
+            payload = contact.get("payload", contact)
+            c = payload.get("contact", payload)
+            self.name = c.get("name") or f"Contacto {self.contact_id}"
+            self.phone = c.get("phone_number") or ""
+        elif EXISTING_CONTACT_ID:
             contact = cw("GET", f"/contacts/{EXISTING_CONTACT_ID}")
             payload = contact.get("payload", contact)
             c = payload.get("contact", payload)
@@ -113,13 +131,16 @@ class Conversation:
             ci = cw("POST", f"/contacts/{self.contact_id}/contact_inboxes",
                     {"inbox_id": INBOX})
             source_id = ci["source_id"]
-        conv = cw("POST", "/conversations", {
-            "source_id": source_id,
-            "inbox_id": INBOX,
-            "contact_id": self.contact_id,
-        })
-        self.conv_id = conv["id"]
-        self.last_seen_id = 0
+        if not EXISTING_CONVERSATION_ID:
+            conv = cw("POST", "/conversations", {
+                "source_id": source_id,
+                "inbox_id": INBOX,
+                "contact_id": self.contact_id,
+            })
+            self.conv_id = conv["id"]
+        messages = self._messages()
+        self.last_seen_id = max((m.get("id", 0) for m in messages), default=0)
+        self.telegram_user_id = source_id
         print(f"  contacto {self.contact_id} · conversación QA {self.conv_id}")
 
     def _messages(self) -> list[dict]:
@@ -127,6 +148,25 @@ class Conversation:
         return out.get("payload", [])
 
     def send(self, text: str) -> None:
+        if TELEGRAM_WEBHOOK:
+            now_ms = int(time.time() * 1000)
+            _req("POST", TELEGRAM_WEBHOOK, {}, {
+                "update_id": now_ms,
+                "message": {
+                    "message_id": now_ms,
+                    "date": int(time.time()),
+                    "chat": {"id": int(self.telegram_user_id), "type": "private"},
+                    "from": {
+                        "id": int(self.telegram_user_id),
+                        "is_bot": False,
+                        "first_name": "QA",
+                        "language_code": "es",
+                    },
+                    "text": text,
+                },
+            })
+            print(f"  → {text}")
+            return
         msg = cw("POST", f"/conversations/{self.conv_id}/messages", {
             "content": text,
             "message_type": "incoming",
