@@ -78,7 +78,20 @@ La URL de retorno sólo mostrará `procesando`, `aprobado`, `pendiente` o `recha
 - Ruff y `git diff --check`: sin errores.
 - Casos específicos: firma alterada/vencida, credenciales sólo server-side, total manipulado, intención y webhook duplicados, payload sanitizado, aprobación transaccional y mismatch de importe.
 
-La API agrega 86 pruebas aprobadas y 1 omitida en el entorno local limpio. La evidencia de su PR, digest, Argo CD y smoke de `dev` se añadirá al integrar y desplegar cada entrega.
+La API agrega 86 pruebas aprobadas y 1 omitida en el entorno local limpio.
+
+### Evidencia API y runtime dev
+
+- PR #45 integrado en `dev`, squash `1568eb1`; checks de dependencias, migraciones, pruebas, auditoría y Trivy aprobados.
+- Deploy `build-deploy` #29638102001 aprobado; backend digest `sha256:6e5b9799abd5d1345208985ada45069c2b3ca5ef29cb978ad672402878aff812`.
+- GitOps PRs #15 y #16; Argo CD en revisión `77dc376`, `Synced/Healthy`.
+- API arrancó con `PAYMENT_PROVIDER=demo`, URL pública del shop, expiración de 30 minutos y secreto sellado de 64 caracteres; no se expuso el valor.
+- CronJob `nox-payment-reconciliation` ejecutado correctamente: cero pendientes y cero fallos en su primera corrida.
+- Smoke HTTP real: el intento sobre un producto agotado devolvió `409` sin crear pedido; con `nox-sss`, stock `9 → 8`, intención `pending`, aprobación demo `approved` y pedido `confirmed/mercado_pago/approved` en PostgreSQL.
+- La orden de smoke `97b17664-a1dc-42d2-8921-dce0a1341e9a` se canceló con actor `phase6-smoke`; el stock volvió a `9`.
+- `GET` con token de estado inválido devuelve `404` sin filtrar configuración o datos internos.
+
+Producción y demo conservaron sus manifiestos y configuración sin cambios.
 
 ### API implementada
 
