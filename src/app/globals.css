@@ -318,6 +318,13 @@
 
 /* --- Hero --- */
 .nox-hero { position: relative; width: 100%; min-height: 100vh; min-height: 100svh; overflow: hidden; }
+/* Entrada tipo cortina: todo el hero (fondo + contenido) aparece en un solo
+   fade lento sobre el negro base, en vez de que cada pieza popee por separado. */
+@keyframes nox-hero-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.nox-hero-enter > * { animation: nox-hero-fade-in 1.6s ease both; }
+@media (prefers-reduced-motion: reduce) {
+  .nox-hero-enter > * { animation: none; }
+}
 .nox-hero-top {
   position: absolute; top: 0; left: 0; right: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between;

@@ -27,14 +27,14 @@ export function Hero({ brand = site.shortName, videoSrc = DEFAULT_VIDEO, videoWe
 
   return (
     <section
-      className="nox-hero"
+      className="nox-hero nox-hero-enter"
       style={{ background: "#0a0a0a", fontFamily: SANS, color: "#fff" }}
     >
       <Image
         src={posterUrl}
         alt=""
         fill
-        preload
+        priority
         sizes="100vw"
         aria-hidden="true"
         style={{
