@@ -2,7 +2,7 @@
 
 ## Estado
 
-En curso. Este documento registra el contrato base implementado en `refactor/white-label-installation-foundation`. La fase se cerrará cuando el bootstrap operativo, los overlays de infraestructura y una segunda instalación ficticia hayan sido probados de punta a punta en `dev`.
+Listo en `dev`. La base white-label entró mediante los [PR #37](https://github.com/MatiasMartinez90/pelu/pull/37) y [PR #38](https://github.com/MatiasMartinez90/pelu/pull/38); la configuración operativa explícita del ambiente quedó en el [PR GitOps #13](https://github.com/MatiasMartinez90/agents-hetzner-k3s/pull/13). El bootstrap, el overlay y una segunda instalación ficticia fueron validados sin promover artefactos a `main`, demo ni producción.
 
 Las Fases 1–14 se integran únicamente en `dev`. No se promueve este trabajo a `main`, `demo` ni producción sin autorización futura y explícita.
 
@@ -89,7 +89,7 @@ REDIS_PREFIX=nox-dev:
 QUEUE_NAME=nox_dev_messages
 QUEUE_RETRY_NAME=nox_dev_messages_retry
 QUEUE_DLQ_NAME=nox_dev_messages_dlq
-QUEUE_DLX_NAME=nox-dev.dlx
+QUEUE_DLX_NAME=nox.dlx
 ```
 
 También se declaran por ambiente los emisores/audiencias demo, hosts de auth, DB, RabbitMQ, Chatwoot, proveedores de canales, medios y observabilidad. Las credenciales se referencian desde Secrets y nunca desde este ejemplo.
@@ -129,15 +129,24 @@ Ante un cambio de configuración posterior se revisa primero el diff y recién e
 - backend Ruff;
 - backend `62 passed, 5 skipped` sin servicios externos;
 - PostgreSQL 16 descartable: 11 migraciones, fixture Aurora, segunda ejecución `unchanged`, conflicto cerrado y actualización explícita, `2/2` pruebas.
+- [PR #38](https://github.com/MatiasMartinez90/pelu/pull/38): `code-and-config`, dependencias, budgets y responsive en verde;
+- [build/deploy de `dev` #29](https://github.com/MatiasMartinez90/pelu/actions/runs/29633231870): frontend y backend construidos y publicados por digest;
+- [responsive post-merge](https://github.com/MatiasMartinez90/pelu/actions/runs/29633625524) ejecutado sobre el SHA desplegado;
+- GitOps `nox-dev` en revisión `8486798`, `Synced/Healthy`, con todos los deployments `1/1`;
+- migración 011 verificada en PostgreSQL de `dev`; la tabla existe y conserva cero filas porque el bootstrap operativo es manual;
+- API y worker conectados a RabbitMQ con `nox.dlx`; el worker consume `nox_dev_messages`;
+- home, turnero, equipo, manifest, iconos, health, ready y booking bootstrap respondieron correctamente en `dev`;
+- `robots.txt` bloquea el ambiente y el HTML contiene `noindex, nofollow`;
+- digests de demo y producción permanecieron sin cambios.
 
 El fixture `tests/fixtures/installation.aurora*.json` representa un salón llamado “Estudio Aurora”, con otra marca, paleta, dominio, canales, políticas, profesionales, servicios, horarios e inventario. Valida con los mismos schemas y demuestra que el bootstrap no depende de nombres o slugs NOX.
 
-## Pendiente para cerrar Fase 4
+## Resultado y pendientes externos
 
-- overlay/template GitOps por instalación y variables explícitas para `nox-dev`;
-- E2E/visual completo en dev y evidencia post-deploy;
-- cerrar el cutover de R2 de Fase 3 cuando estén disponibles los permisos Cloudflare.
+- El overlay de `nox-dev` declara installation, URL, ruta pública, tono, timezone, colas, DLX y prefijo Redis sin depender de defaults de código.
+- El fixture Aurora prueba que el mismo contrato y bootstrap soportan otra marca, dominio, catálogo y operación.
+- El cutover R2 sigue perteneciendo a la Fase 3 y requiere permisos externos de Cloudflare; no invalida el cierre arquitectónico de esta fase.
 
 ## Rollback
 
-Este incremento no agrega migraciones ni elimina datos. El rollback consiste en volver al digest anterior del frontend/backend. Los datos PostgreSQL existentes permanecen intactos. El bootstrap futuro incluirá preflight, transacción y modo `--dry-run` antes de modificar datos.
+La migración 011 sólo agrega la tabla de control `installation_bootstrap`; no modifica el catálogo existente ni ejecuta el seed automáticamente. El rollback aplicativo consiste en volver a los digests anteriores. La tabla puede permanecer vacía y compatible; una reversión destructiva de schema exige backup y una decisión operativa explícita. Todo bootstrap real conserva preflight, transacción, advisory lock y modo `--dry-run`.
