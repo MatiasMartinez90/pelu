@@ -1,10 +1,10 @@
 # Roadmap integral: mobile, SEO/GEO, shop, pagos, omnicanalidad y campañas
 
-**Estado:** roadmap maestro activo; Fase 0 en normalización
+**Estado:** roadmap maestro activo; Fase 0 completa; Fase 1 pendiente de reanudación
 **Última actualización:** 2026-07-18
 **Alcance de este documento:** fuente de verdad de planificación, estado, criterios de aceptación y evidencias del roadmap integral.
 **Repositorio analizado:** `Pelu`  
-**Branch de ejecución actual:** `docs/phase0-verification-evidence`, creada desde `dev`
+**Branch de ejecución actual:** `docs/complete-phase0`, creada desde `dev`
 
 ### Decisiones confirmadas el 2026-07-17
 
@@ -44,7 +44,7 @@ Los estados permitidos son `pendiente`, `en curso`, `validando`, `listo en dev`,
 
 | Fase | Entrega | Dependencias | Criterio de aceptación resumido | Estado | Evidencia |
 |---|---|---|---|---|---|
-| 0 | Normalización de ramas | Ninguna | `dev`, `main` y `demo` sin divergencias funcionales; #16–#18 presentes; Telegram, persistencia, fechas y moderación reprobados | Validando | PRs #16–#18, #21 y #22; CI y E2E dev detallados en 0.3; falta promoción final `dev → main → demo` |
+| 0 | Normalización de ramas | Ninguna | `dev`, `main` y `demo` sin divergencias funcionales; #16–#18 presentes; Telegram, persistencia, fechas y moderación reprobados | Completo | PRs #16–#18, #21–#23, #25 y #27; CI, GitOps, E2E y promoción detallados en 0.3 y 0.4 |
 | 1 | Mobile y responsive | Fase 0 | Home, turnero, shop, admin, barbero y cliente cubiertos por matriz responsive y pruebas visuales | Pendiente | — |
 | 2 | SEO y GEO | Fases 0–1 | sitemap/robots/canonical/metadata/schema/servicios/`llms.txt` válidos y consistentes | Pendiente | — |
 | 3 | Cloudflare y medios | Fase 4 parcial para tenancy; puede prototiparse antes | Medios publicados por tenant, formatos responsive, caché y fallback probados | Pendiente | — |
@@ -94,6 +94,19 @@ Cada fase agregará aquí o en su subsección: branch, PR, commits, migraciones,
 - Fechas relativas: test determinista cubre `mañana` desde `2026-07-17 → 2026-07-18` y el E2E mantuvo “mañana” sin sugerir un día contradictorio.
 - Moderación: “Quiero cortarme el pelo” continuó normalmente en el agente y pidió profesional/horario; no produjo el handoff falso observado antes del fix #16.
 - Producción y demo permanecieron sin cambios durante toda la validación dev y conservaron entre sí los mismos digests.
+
+### 0.4 Evidencias de promoción y cierre de Fase 0 — 2026-07-18
+
+- PR de promoción [#25](https://github.com/MatiasMartinez90/pelu/pull/25) hacia `main`: checks `dependencies` y `code-and-config` verdes; el pipeline de seguridad posterior al merge también terminó verde.
+- PR de sincronización [#27](https://github.com/MatiasMartinez90/pelu/pull/27) hacia `demo`: checks `dependencies` y `code-and-config` verdes.
+- Árbol Git idéntico en las tres ramas: `main`, `dev` y `demo` resolvían al tree `235a072d…` después de #27; los SHAs de commit difieren sólo por el flujo de PR/squash y la reconciliación de historia.
+- Pipeline productivo [run 29623301843](https://github.com/MatiasMartinez90/pelu/actions/runs/29623301843) verde; pipeline de seguridad [run 29623301863](https://github.com/MatiasMartinez90/pelu/actions/runs/29623301863) verde.
+- Revisión GitOps final de la promoción: `87bf127`; aplicaciones `nox`, `nox-backend` y `nox-demo` en `Synced/Healthy`.
+- Producción y demo declaran y ejecutan los mismos artefactos activos: frontend `sha256:3b913f…` y backend `sha256:8be42d…`. Los digests adicionales que Argo resume corresponden únicamente a Jobs históricos ya completados; Deployments y CronJobs activos coinciden exactamente.
+- Migración `010_telegram_booking_channel.sql` aplicada correctamente por el initContainer `migrate` tanto en producción como en demo.
+- Smokes posteriores al rollout: Home producción/demo `200`; Admin redirige al login propio esperado; APIs `/health` `200`; ambos catálogos devuelven 6 profesionales y 9 servicios.
+- Logs recientes de API/worker sin `ERROR`, `Traceback`, `Exception` ni `CRITICAL` durante el rollout verificado.
+- Las Fases 1–14 no fueron promovidas. Permanecen pendientes y deberán integrarse exclusivamente en `dev` hasta una nueva autorización explícita.
 
 ## 1. Objetivo
 
