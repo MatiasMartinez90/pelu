@@ -1,0 +1,30 @@
+{
+  "$schema": "../../config/installation.seed.schema.json",
+  "schemaVersion": 1,
+  "professionals": [
+    { "slug": "sofia", "name": "Sofía", "role": "ESTILISTA", "photoUrl": null, "bio": "Especialista en corte y asesoría de imagen.", "instagram": "", "sortOrder": 1, "services": ["corte-personalizado", "tratamiento-capilar"] },
+    { "slug": "mara", "name": "Mara", "role": "ESTILISTA", "photoUrl": null, "bio": "Colorista y especialista en técnicas de iluminación.", "instagram": "", "sortOrder": 2, "services": ["color-creativo", "tratamiento-capilar"] }
+  ],
+  "services": [
+    { "slug": "corte-personalizado", "name": "Corte personalizado", "description": "Consulta, lavado, corte y finalización.", "price": 28000, "durationMinutes": 60, "sortOrder": 1 },
+    { "slug": "color-creativo", "name": "Color creativo", "description": "Servicio de color sujeto a diagnóstico previo.", "price": 65000, "durationMinutes": 180, "variablePrice": true, "sortOrder": 2 },
+    { "slug": "tratamiento-capilar", "name": "Tratamiento capilar", "description": "Cuidado intensivo según las necesidades del cabello.", "price": 22000, "durationMinutes": 45, "sortOrder": 3 }
+  ],
+  "schedules": [
+    { "dayOfWeek": 2, "opensAt": "09:00", "closesAt": "19:00" },
+    { "dayOfWeek": 3, "opensAt": "09:00", "closesAt": "19:00" },
+    { "dayOfWeek": 4, "opensAt": "09:00", "closesAt": "19:00" },
+    { "dayOfWeek": 5, "opensAt": "09:00", "closesAt": "19:00" },
+    { "dayOfWeek": 6, "opensAt": "09:00", "closesAt": "17:00" }
+  ],
+  "settings": {
+    "agenda_open": true,
+    "booking_channels": { "web": true, "whatsapp": false, "telegram": false },
+    "slot_granularity_min": 30,
+    "min_lead_minutes": 120,
+    "max_days_ahead": 45
+  },
+  "inventory": [
+    { "sku": "AUR-TRAT-01", "name": "Máscara nutritiva", "quantity": 8, "minimumQuantity": 2, "price": 18000 }
+  ]
+}

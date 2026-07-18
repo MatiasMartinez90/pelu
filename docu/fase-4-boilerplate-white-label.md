@@ -47,7 +47,15 @@ No se guardan tokens, contraseñas, IDs privados ni credenciales en este archivo
 | Credenciales e IDs de proveedores | secretos/variables del ambiente | nunca deben entrar al bundle ni al repositorio |
 | Imágenes publicadas | manifiesto de medios + R2 por instalación | versionado, aislamiento y caché |
 
-El bootstrap pendiente de esta misma fase sincronizará de forma idempotente los defaults versionados hacia PostgreSQL. Después del alta, el admin conserva el control operativo.
+El paquete operativo vive en `config/installation.seed.json`, validado por `config/installation.seed.schema.json`. Define profesionales, servicios, relaciones, horarios, settings iniciales e inventario sin mezclarlos con migraciones genéricas. Después del alta, el admin conserva el control operativo.
+
+`backend/scripts/bootstrap_installation.py` aplica ambos contratos dentro de una transacción y toma un advisory lock. La migración `011_installation_bootstrap.sql` registra el SHA-256 canónico del paquete:
+
+- primera ejecución: crea/sincroniza los defaults de la instalación;
+- mismo hash: devuelve `unchanged` y no escribe;
+- hash diferente: falla cerrado;
+- `--dry-run`: informa si crearía o actualizaría;
+- `--apply-update`: única forma de aceptar explícitamente un cambio posterior.
 
 ## Cambios de la base
 
@@ -99,6 +107,17 @@ También se declaran por ambiente los emisores/audiencias demo, hosts de auth, D
 9. Verificar aislamiento negativo contra DB, Redis, RabbitMQ, bucket, auth y canales de otra instalación.
 10. Ejecutar smoke, reserva completa, login por rol, agente, accesibilidad, performance y rollback.
 
+Ejemplo desde la raíz del repositorio, apuntando siempre a la base aislada del cliente:
+
+```bash
+export PYTHONPATH=backend
+export DATABASE_URL='postgresql://...'
+backend/.venv/bin/python backend/scripts/bootstrap_installation.py --dry-run
+backend/.venv/bin/python backend/scripts/bootstrap_installation.py
+```
+
+Ante un cambio de configuración posterior se revisa primero el diff y recién entonces se usa `--apply-update`. El bootstrap no forma parte del arranque rutinario de los pods.
+
 ## Validación de este incremento
 
 - `npm run config:validate`;
@@ -108,14 +127,14 @@ También se declaran por ambiente los emisores/audiencias demo, hosts de auth, D
 - `npx tsc --noEmit`;
 - `npm run build`;
 - backend Ruff;
-- backend `61 passed, 4 skipped`.
+- backend `62 passed, 5 skipped` sin servicios externos;
+- PostgreSQL 16 descartable: 11 migraciones, fixture Aurora, segunda ejecución `unchanged`, conflicto cerrado y actualización explícita, `2/2` pruebas.
+
+El fixture `tests/fixtures/installation.aurora*.json` representa un salón llamado “Estudio Aurora”, con otra marca, paleta, dominio, canales, políticas, profesionales, servicios, horarios e inventario. Valida con los mismos schemas y demuestra que el bootstrap no depende de nombres o slugs NOX.
 
 ## Pendiente para cerrar Fase 4
 
-- paquete de datos iniciales sin secretos y bootstrap PostgreSQL idempotente;
-- prueba automatizada con una segunda instalación ficticia que no contenga NOX;
 - overlay/template GitOps por instalación y variables explícitas para `nox-dev`;
-- prueba del bootstrap sobre una base vacía y segunda ejecución sin duplicados;
 - E2E/visual completo en dev y evidencia post-deploy;
 - cerrar el cutover de R2 de Fase 3 cuando estén disponibles los permisos Cloudflare.
 
