@@ -51,7 +51,7 @@ Las imágenes remotas existentes se identifican como material Unsplash y conserv
 - `npm run media:provision -- --apply`: crea/verifica sólo el bucket indicado, adjunta el custom domain, exige TLS 1.2 y deshabilita `r2.dev`.
 - `npm run media:publish -- --apply`: valida manifiesto, host remoto, magic bytes/MIME y tamaño; calcula SHA-256; publica con cache inmutable; omite objetos idénticos y verifica cada upload mediante `HEAD`.
 - Sin `--apply`, ambos comandos son read-only y sirven para validar el plan/manifiesto.
-- `.github/workflows/media-dev.yml` sólo se ejecuta manualmente desde la branch `dev`, usa el environment `development` y no imprime secretos.
+- `.github/workflows/media-dev.yml` sólo se ejecuta manualmente desde la branch `dev`, usa el environment `development` y no imprime secretos. Expone etapas separadas `provision`, `publish` y `all`: así el bucket puede crearse antes de emitir la credencial S3 restringida a ese bucket.
 
 Secretos de GitHub requeridos:
 
@@ -82,10 +82,10 @@ No se deben reutilizar tokens DNS existentes ni conceder acceso a buckets produc
 
 ## Cutover dev y criterios de cierre
 
-1. Crear los cinco secretos/variables de alcance dev indicados.
-2. Mergear el PR de contrato a `dev` con checks verdes.
-3. Ejecutar `publish-dev-media` desde `dev`.
-4. Esperar ownership y TLS `active` del custom domain.
+1. Crear `CLOUDFLARE_R2_ADMIN_TOKEN` y ejecutar `publish-dev-media` con etapa `provision`.
+2. Esperar ownership y TLS `active` del custom domain.
+3. Emitir `R2_DEV_ACCESS_KEY_ID`/`R2_DEV_SECRET_ACCESS_KEY` con Object Read & Write restringido a `nox-dev-media`.
+4. Ejecutar el workflow con etapa `publish`.
 5. Validar originales: HTTP 200, MIME correcto, ETag y cache inmutable.
 6. Activar las tres variables `MEDIA_*_DEV` y desplegar un nuevo digest frontend.
 7. Ejecutar E2E responsive/accessibility, smoke de todas las rutas y Lighthouse mobile/desktop.
