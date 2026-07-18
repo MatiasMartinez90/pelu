@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import time
 from dataclasses import dataclass
+from uuid import UUID
 
 
 class InvalidSignature(ValueError):
@@ -41,6 +42,17 @@ def verify_public_reference(token: str, secret: str) -> str:
     if not reference or len(reference) > 300:
         raise InvalidSignature("link de pago inválido")
     return reference
+
+
+def sign_appointment_capability(appointment_id: UUID, secret: str) -> str:
+    return sign_public_reference(f"appointment:{appointment_id}", secret)
+
+
+def verify_appointment_capability(token: str, appointment_id: UUID, secret: str) -> None:
+    reference = verify_public_reference(token, secret)
+    expected = f"appointment:{appointment_id}"
+    if not hmac.compare_digest(reference, expected):
+        raise InvalidSignature("turno inexistente")
 
 
 @dataclass(frozen=True)
@@ -85,4 +97,3 @@ def validate_mercado_pago_signature(
     if not signatures or not any(hmac.compare_digest(value, expected) for value in signatures):
         raise InvalidSignature("firma de webhook inválida")
     return MercadoPagoSignature(timestamp_ms=timestamp_ms, manifest=manifest)
-

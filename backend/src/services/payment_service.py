@@ -127,6 +127,26 @@ async def create_preference(
     return intent, created
 
 
+async def create_appointment_preference(
+    appointment_id: UUID,
+    *,
+    idempotency_key: str,
+    payer_email: str | None = None,
+    settings: Settings | None = None,
+    provider: PaymentProvider | None = None,
+) -> tuple[dict, bool]:
+    """Conserva un único link cobrable y permite renovarlo al vencer."""
+    await payments.expire_stale_appointment_intent(await get_pool(), appointment_id)
+    return await create_preference(
+        purpose="appointment",
+        target_id=appointment_id,
+        idempotency_key=idempotency_key,
+        payer_email=payer_email,
+        settings=settings,
+        provider=provider,
+    )
+
+
 async def public_status(token: str, *, settings: Settings | None = None) -> dict:
     settings = settings or get_settings()
     reference = verify_public_reference(token, settings.payment_link_secret)

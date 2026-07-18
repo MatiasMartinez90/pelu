@@ -29,6 +29,8 @@ def test_mutating_tools_are_not_exposed_without_two_turn_confirmation():
         "prepare_reschedule",
         "prepare_cancel",
         "confirm_pending_action",
+        "create_booking_payment_link",
+        "choose_booking_pay_at_store",
     }.issubset(names)
 
 

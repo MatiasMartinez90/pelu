@@ -68,18 +68,19 @@ export function PaymentResult({ token }: { token: string }) {
   if (!token) {
     return <section className="shop-confirmation"><h1>Link de pago inválido</h1><a className="shop-button" href={site.onlineStoreUrl}>Volver al shop</a></section>;
   }
+  const isAppointment = payment?.purpose === "appointment";
   return (
     <section className="shop-confirmation" aria-live="polite" aria-busy={!payment && !error}>
       <span aria-hidden="true">{payment?.status === "approved" ? "✓" : payment && terminal.has(payment.status) ? "!" : "…"}</span>
       {orderNumber && <p className="shop-eyebrow">Pedido #{String(orderNumber).padStart(6, "0")}</p>}
       <h1>{payment ? title(payment.status) : error ? "No pudimos verificar el pago" : "Consultando el pago"}</h1>
       {error && <p className="shop-alert" role="alert">{error}</p>}
-      {payment?.status === "approved" && <p>Tu pedido quedó confirmado. Te avisaremos cuando esté listo para retirar.</p>}
+      {payment?.status === "approved" && <p>{isAppointment ? "Tu turno sigue confirmado y ya figura abonado." : "Tu pedido quedó confirmado. Te avisaremos cuando esté listo para retirar."}</p>}
       {payment && ["created", "pending"].includes(payment.status) && <p>Puede demorar unos instantes. Esta pantalla se actualiza automáticamente.</p>}
-      {payment && ["rejected", "cancelled", "expired"].includes(payment.status) && <p>No se acreditó ningún pago. Volvé al shop para intentarlo nuevamente.</p>}
+      {payment && ["rejected", "cancelled", "expired"].includes(payment.status) && <p>{isAppointment ? "No se acreditó ningún pago. Tu turno continúa confirmado y podés abonar en el local." : "No se acreditó ningún pago. Volvé al shop para intentarlo nuevamente."}</p>}
       {payment?.status === "refunded" && <p>El proveedor informó que el importe fue devuelto.</p>}
       {payment && <dl><div><dt>Total</dt><dd>{new Intl.NumberFormat("es-AR", { style: "currency", currency: payment.currency, maximumFractionDigits: 0 }).format(payment.amount)}</dd></div><div><dt>Estado</dt><dd>{payment.status}</dd></div></dl>}
-      <a className="shop-button" href={site.onlineStoreUrl}>Volver al shop</a>
+      <a className="shop-button" href={isAppointment ? `${site.url}/${site.bookingPath.replace(/^\//, "")}` : site.onlineStoreUrl}>{isAppointment ? "Volver al sitio" : "Volver al shop"}</a>
     </section>
   );
 }

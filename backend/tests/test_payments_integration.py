@@ -1,3 +1,4 @@
+import asyncio
 import os
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock
@@ -311,6 +312,97 @@ async def test_expired_appointment_payment_falls_back_to_store_without_cancellin
         assert dict(state) == {
             "status": "active", "payment_method": "pay_at_store", "payment_status": "unpaid"
         }
+    finally:
+        await pool.execute("DELETE FROM payment_events")
+        await pool.execute("DELETE FROM payment_status_history")
+        await pool.execute("DELETE FROM payment_intents")
+        await pool.execute("DELETE FROM appointments WHERE id = $1", appointment_id)
+        await pool.execute("DELETE FROM customers WHERE id = $1", customer_id)
+        await pool.close()
+
+
+@pytest.mark.asyncio
+async def test_appointment_allows_one_active_link_and_safe_store_fallback():
+    pool = await asyncpg.create_pool(os.environ["TEST_DATABASE_URL"], min_size=1, max_size=4)
+    async with pool.acquire() as connection, connection.transaction():
+        customer_id = await connection.fetchval(
+            """INSERT INTO customers (phone, name, email, first_channel)
+               VALUES ('telegram:payment-test', 'Pago Agente', NULL, 'telegram')
+               RETURNING id"""
+        )
+        barber_id = await connection.fetchval(
+            "SELECT id FROM barbers WHERE active ORDER BY sort_order LIMIT 1"
+        )
+        service = await connection.fetchrow(
+            "SELECT id, price FROM services WHERE active ORDER BY sort_order LIMIT 1"
+        )
+        starts_at = datetime.now(timezone.utc) + timedelta(days=366)
+        appointment_id = await connection.fetchval(
+            """INSERT INTO appointments
+                   (customer_id, barber_id, service_id, starts_at, ends_at,
+                    price_at_booking, channel)
+               VALUES ($1,$2,$3,$4,$5,$6,'telegram') RETURNING id""",
+            customer_id, barber_id, service["id"], starts_at,
+            starts_at + timedelta(minutes=30), service["price"],
+        )
+    try:
+        common = dict(
+            pool=pool,
+            installation_id="test",
+            purpose="appointment",
+            target_id=appointment_id,
+            provider="demo",
+            payer_email=None,
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+        )
+        first, second = await asyncio.gather(
+            payments.create_intent(idempotency_key="appointment-race-key-one", **common),
+            payments.create_intent(idempotency_key="appointment-race-key-two", **common),
+        )
+        assert first[0]["id"] == second[0]["id"]
+        assert sorted([first[1], second[1]]) == [False, True]
+        assert await pool.fetchval(
+            """SELECT count(*) FROM payment_intents
+               WHERE appointment_id = $1 AND status IN ('created', 'pending')""",
+            appointment_id,
+        ) == 1
+
+        await payments.cancel_appointment_payment_to_store(
+            pool, appointment_id, "telegram:payment-test", actor="test_customer_choice"
+        )
+        state = await pool.fetchrow(
+            """SELECT status, payment_method, payment_status
+               FROM appointments WHERE id = $1""",
+            appointment_id,
+        )
+        assert dict(state) == {
+            "status": "active", "payment_method": "pay_at_store", "payment_status": "unpaid"
+        }
+        replacement, created = await payments.create_intent(
+            idempotency_key="appointment-replacement-key", **common
+        )
+        assert created is True
+        assert replacement["id"] != first[0]["id"]
+        await payments.attach_preference(
+            pool,
+            replacement["id"],
+            provider_preference_id="appointment-expiring-preference",
+            checkout_url="https://example.com/appointment-checkout",
+            sandbox=True,
+        )
+        await pool.execute(
+            "UPDATE payment_intents SET expires_at = now() - interval '1 minute' WHERE id = $1",
+            replacement["id"],
+        )
+        assert await payments.expire_stale_appointment_intent(pool, appointment_id) is True
+        renewed, renewed_created = await payments.create_intent(
+            idempotency_key="appointment-renewed-key", **common
+        )
+        assert renewed_created is True
+        assert renewed["id"] != replacement["id"]
+        assert await pool.fetchval(
+            "SELECT status FROM payment_intents WHERE id = $1", replacement["id"]
+        ) == "expired"
     finally:
         await pool.execute("DELETE FROM payment_events")
         await pool.execute("DELETE FROM payment_status_history")

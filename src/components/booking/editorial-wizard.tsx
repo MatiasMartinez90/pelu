@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Barber, BookingCatalog, Service } from "@/lib/booking-types";
+import { paymentApi } from "@/lib/shop-client";
+import type { PaymentPreference } from "@/lib/shop-types";
 import { money, site } from "@/lib/site";
 
 const SERIF = "var(--font-serif)";
@@ -18,6 +20,7 @@ type Booking = {
   service: string;
   starts_at: string;
   price: number;
+  payment_token: string | null;
 };
 
 const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -67,6 +70,8 @@ export function EditorialWizard({
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<Booking | null>(null);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
   const loadError = initialLoadError;
   const availabilityController = useRef<AbortController | null>(null);
 
@@ -179,6 +184,30 @@ export function EditorialWizard({
     }
   }
 
+  async function payBookingOnline() {
+    if (!confirmed?.payment_token || paymentBusy) return;
+    setPaymentBusy(true);
+    setPaymentError("");
+    try {
+      const preference = await paymentApi<PaymentPreference>(
+        `appointments/${confirmed.id}/preference`,
+        {
+          method: "POST",
+          headers: { "idempotency-key": crypto.randomUUID() },
+          body: JSON.stringify({ capability_token: confirmed.payment_token }),
+        },
+      );
+      sessionStorage.setItem(
+        "nox:booking-payment-return",
+        JSON.stringify({ statusToken: preference.status_token }),
+      );
+      window.location.assign(preference.checkout_url);
+    } catch (cause) {
+      setPaymentError(cause instanceof Error ? cause.message : "No pudimos generar el link de pago.");
+      setPaymentBusy(false);
+    }
+  }
+
   // ── Pantalla de éxito ──
   if (confirmed) {
     const d = new Date(confirmed.starts_at);
@@ -202,9 +231,19 @@ export function EditorialWizard({
             ))}
           </div>
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
-            {site.payments} · {site.address}, {site.city}.
+            Tu turno ya está confirmado. Podés pagar ahora o hacerlo en el local.
+            <br />{site.address}, {site.city}.
             <br />{site.policies.cancellationNotes}
           </p>
+          {confirmed.payment_token && (
+            <div style={{ marginTop: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+              <button className="nox-btn" type="button" onClick={() => void payBookingOnline()} disabled={paymentBusy} style={{ padding: "14px 32px" }}>
+                {paymentBusy ? "Generando link…" : "Pagar ahora con Mercado Pago"}
+              </button>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.62)" }}>O pagá en el local el día del turno.</span>
+              {paymentError && <p role="alert" style={{ margin: 0, color: "#ffb3b3", fontSize: 14 }}>{paymentError}</p>}
+            </div>
+          )}
           <Link href="/" className="nox-btn" style={{ display: "inline-block", marginTop: 24, padding: "14px 32px" }}>Volver al inicio</Link>
         </div>
       </div>
@@ -467,7 +506,7 @@ export function EditorialWizard({
                   <button onClick={confirm} disabled={submitting} style={{ marginTop: 6, width: "100%", background: formValid && !submitting ? "#fff" : "rgba(255,255,255,0.12)", color: formValid && !submitting ? "#0a0a0a" : "rgba(255,255,255,0.4)", border: "none", padding: 16, fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700, cursor: formValid && !submitting ? "pointer" : "not-allowed", fontFamily: SANS }}>
                     {submitting ? "Reservando…" : "Confirmar turno"}
                   </button>
-                  <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Al confirmar, tu turno queda reservado. El pago se realiza en el local.</p>
+                  <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Al confirmar, tu turno queda reservado. Después elegís si pagás online o en el local.</p>
                 </div>
               </div>
             </div>
