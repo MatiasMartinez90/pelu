@@ -20,6 +20,15 @@ Config por env:
                         svc/chatwoot-web 3900:3000 y CHATWOOT_URL=http://127.0.0.1:3900)
     CHATWOOT_ACCOUNT    default 2   (Cloud-IT / NOX prod)
     CHATWOOT_INBOX      default 1   (inbox "Peluquería", Channel::Api)
+    CHATWOOT_QA_CONTACT opcional: ID de un contacto existente en el inbox.
+                        Es obligatorio para canales nativos como Telegram,
+                        donde Chatwoot no permite crear contactos por API.
+    CHATWOOT_QA_CONVERSATION opcional: conversación existente usada por la
+                        prueba Telegram real (no crea contacto/conversación).
+    TELEGRAM_QA_WEBHOOK opcional: URL privada del webhook Telegram de Chatwoot.
+                        Si está presente, los mensajes entrantes se inyectan
+                        como updates Telegram reales en vez de usar la API de
+                        mensajes, que Chatwoot limita a inboxes Channel::Api.
     NOX_API_URL         default https://api-nox.cloud-it.com.ar
     QA_REPLY_TIMEOUT    default 90  (segundos de espera por respuesta del agente)
 """
@@ -29,7 +38,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 import time
 import unicodedata
@@ -37,7 +45,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 CHATWOOT_URL = os.environ.get("CHATWOOT_URL", "https://chatwoot2.cloud-it.com.ar").rstrip("/")
 ACCOUNT = int(os.environ.get("CHATWOOT_ACCOUNT", "2"))
@@ -47,10 +56,14 @@ REPLY_TIMEOUT = int(os.environ.get("QA_REPLY_TIMEOUT", "90"))
 POLL_INTERVAL = 3
 
 TOKEN = os.environ.get("CHATWOOT_QA_TOKEN", "")
+EXISTING_CONTACT_ID = int(os.environ.get("CHATWOOT_QA_CONTACT", "0"))
+EXISTING_CONVERSATION_ID = int(os.environ.get("CHATWOOT_QA_CONVERSATION", "0"))
+TELEGRAM_WEBHOOK = os.environ.get("TELEGRAM_QA_WEBHOOK", "")
 
 QA_BARBER = os.environ.get("QA_BARBER", "bruno")
 QA_SERVICE = os.environ.get("QA_SERVICE", "corte-masculino-bruno")
 QA_SERVICE_NAME = os.environ.get("QA_SERVICE_NAME", "corte masculino")
+QA_TIMEZONE = os.environ.get("QA_TIMEZONE", "America/Argentina/Buenos_Aires")
 
 
 # ---------- HTTP helpers (stdlib only, sin deps) ----------
@@ -66,7 +79,8 @@ def _req(method: str, url: str, headers: dict, body: dict | None = None) -> dict
             return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as e:
         detail = e.read().decode(errors="replace")[:300]
-        raise RuntimeError(f"{method} {url} -> {e.code}: {detail}") from None
+        safe_url = "<telegram-webhook>" if os.environ.get("TELEGRAM_QA_WEBHOOK") == url else url
+        raise RuntimeError(f"{method} {safe_url} -> {e.code}: {detail}") from None
 
 
 def cw(method: str, path: str, body: dict | None = None) -> dict:
@@ -82,18 +96,36 @@ def nox(path: str) -> dict:
 
 class Conversation:
     def __init__(self) -> None:
-        suffix = uuid.uuid4().hex[:8]
-        self.name = f"QA Agente {suffix}"
-        # Teléfono sintético argentino inexistente pero con formato válido.
-        self.phone = "+54911" + str(int(time.time()))[-8:]
-        contact = cw("POST", "/contacts", {
-            "inbox_id": INBOX,
-            "name": self.name,
-            "phone_number": self.phone,
-        })
-        payload = contact.get("payload", contact)
-        c = payload.get("contact", payload)
-        self.contact_id = c["id"]
+        if EXISTING_CONVERSATION_ID:
+            conversation = cw("GET", f"/conversations/{EXISTING_CONVERSATION_ID}")
+            self.conv_id = EXISTING_CONVERSATION_ID
+            sender = conversation.get("meta", {}).get("sender", {})
+            self.contact_id = sender["id"]
+            contact = cw("GET", f"/contacts/{self.contact_id}")
+            payload = contact.get("payload", contact)
+            c = payload.get("contact", payload)
+            self.name = c.get("name") or f"Contacto {self.contact_id}"
+            self.phone = c.get("phone_number") or ""
+        elif EXISTING_CONTACT_ID:
+            contact = cw("GET", f"/contacts/{EXISTING_CONTACT_ID}")
+            payload = contact.get("payload", contact)
+            c = payload.get("contact", payload)
+            self.contact_id = EXISTING_CONTACT_ID
+            self.name = c.get("name") or f"Contacto {self.contact_id}"
+            self.phone = c.get("phone_number") or ""
+        else:
+            suffix = uuid.uuid4().hex[:8]
+            self.name = f"QA Agente {suffix}"
+            # Teléfono sintético argentino inexistente pero con formato válido.
+            self.phone = "+54911" + str(int(time.time()))[-8:]
+            contact = cw("POST", "/contacts", {
+                "inbox_id": INBOX,
+                "name": self.name,
+                "phone_number": self.phone,
+            })
+            payload = contact.get("payload", contact)
+            c = payload.get("contact", payload)
+            self.contact_id = c["id"]
         source_id = None
         for ci in c.get("contact_inboxes", []):
             if ci.get("inbox", {}).get("id") == INBOX:
@@ -102,20 +134,42 @@ class Conversation:
             ci = cw("POST", f"/contacts/{self.contact_id}/contact_inboxes",
                     {"inbox_id": INBOX})
             source_id = ci["source_id"]
-        conv = cw("POST", "/conversations", {
-            "source_id": source_id,
-            "inbox_id": INBOX,
-            "contact_id": self.contact_id,
-        })
-        self.conv_id = conv["id"]
-        self.last_seen_id = 0
-        print(f"  contacto {self.contact_id} ({self.phone}) · conversación {self.conv_id}")
+        if not EXISTING_CONVERSATION_ID:
+            conv = cw("POST", "/conversations", {
+                "source_id": source_id,
+                "inbox_id": INBOX,
+                "contact_id": self.contact_id,
+            })
+            self.conv_id = conv["id"]
+        messages = self._messages()
+        self.last_seen_id = max((m.get("id", 0) for m in messages), default=0)
+        self.telegram_user_id = source_id
+        print(f"  contacto {self.contact_id} · conversación QA {self.conv_id}")
 
     def _messages(self) -> list[dict]:
         out = cw("GET", f"/conversations/{self.conv_id}/messages")
         return out.get("payload", [])
 
     def send(self, text: str) -> None:
+        if TELEGRAM_WEBHOOK:
+            now_ms = int(time.time() * 1000)
+            _req("POST", TELEGRAM_WEBHOOK, {}, {
+                "update_id": now_ms,
+                "message": {
+                    "message_id": now_ms,
+                    "date": int(time.time()),
+                    "chat": {"id": int(self.telegram_user_id), "type": "private"},
+                    "from": {
+                        "id": int(self.telegram_user_id),
+                        "is_bot": False,
+                        "first_name": "QA",
+                        "language_code": "es",
+                    },
+                    "text": text,
+                },
+            })
+            print(f"  → {text}")
+            return
         msg = cw("POST", f"/conversations/{self.conv_id}/messages", {
             "content": text,
             "message_type": "incoming",
@@ -216,6 +270,43 @@ def scenario_catalogo(conv: Conversation) -> Result:
         r.fail("respuesta no menciona servicios ni precios del catálogo")
     else:
         r.notes.append(f"menciona: {mentioned or 'genérico con precios'}")
+    return r
+
+
+def scenario_fecha_relativa(conv: Conversation) -> Result:
+    r = Result("fecha relativa")
+    expected = datetime.now(ZoneInfo(QA_TIMEZONE)).date() + timedelta(days=1)
+    reply = conv.ask(
+        f"Quiero reservar un {QA_SERVICE_NAME} con {QA_BARBER} mañana a las 15:00."
+    )
+    if reply is None:
+        r.fail("sin respuesta al pedido con 'mañana'")
+        return r
+    expected_day = SPANISH_DOW[expected.weekday()]
+    expected_numeric = f"{expected.day}/{expected.month}"
+    conflicting_days = [day for day in SPANISH_DOW if day != expected_day and contains_any(reply, day)]
+    if contains_any(reply, expected_day, expected_numeric):
+        r.notes.append(f"mañana resuelto como {expected_day} {expected_numeric}")
+    elif contains_any(reply, "mañana") and not conflicting_days:
+        r.notes.append(
+            f"la respuesta conserva mañana ({expected_day} {expected_numeric}) sin fecha contradictoria"
+        )
+    else:
+        r.fail(
+            f"la respuesta no ubica 'mañana' en {expected_day} {expected_numeric}: {reply[:160]}"
+        )
+    return r
+
+
+def scenario_moderacion_peluqueria(conv: Conversation) -> Result:
+    r = Result("moderación de peluquería")
+    reply = conv.ask("Quiero cortarme el pelo")
+    if reply is None:
+        r.fail("sin respuesta a una intención válida de peluquería")
+    elif contains_any(reply, "no puedo seguir", "derivar al equipo", "contenido inapropiado"):
+        r.fail("falso positivo de moderación/handoff ante una intención válida")
+    else:
+        r.notes.append("la intención de corte continuó en el agente")
     return r
 
 
@@ -358,7 +449,17 @@ def scenario_handoff(_: Conversation) -> Result:
     return r
 
 
-SCENARIOS = ["catalogo", "reserva", "idempotencia", "reprogramacion", "cancelacion", "injection", "handoff"]
+SCENARIOS = [
+    "catalogo",
+    "fecha_relativa",
+    "moderacion_peluqueria",
+    "reserva",
+    "idempotencia",
+    "reprogramacion",
+    "cancelacion",
+    "injection",
+    "handoff",
+]
 
 
 def main() -> int:
@@ -386,6 +487,8 @@ def main() -> int:
     results: list[Result] = []
     runners = {
         "catalogo": lambda: scenario_catalogo(conv),
+        "fecha_relativa": lambda: scenario_fecha_relativa(conv),
+        "moderacion_peluqueria": lambda: scenario_moderacion_peluqueria(conv),
         "reserva": lambda: scenario_reserva(conv, state),
         "idempotencia": lambda: scenario_idempotencia(conv, state),
         "reprogramacion": lambda: scenario_reprogramacion(conv, state),
