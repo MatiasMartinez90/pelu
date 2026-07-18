@@ -1,13 +1,13 @@
 import Link from "next/link";
+import { site } from "@/lib/site";
 
 export const SERIF = "var(--font-serif)";
 export const SANS = "var(--font-sans)";
 
-const items = [
+const baseItems = [
   { href: "/servicios", label: "Servicios", key: "servicios" },
   { href: "/equipo", label: "Equipo", key: "equipo" },
   { href: "/galeria", label: "Galería", key: "galeria" },
-  { href: "/#tienda", label: "Tienda", key: "tienda" },
 ];
 
 export function EditorialNav({ active }: { active?: string }) {
@@ -23,10 +23,10 @@ export function EditorialNav({ active }: { active?: string }) {
           color: "#fff",
         }}
       >
-        NOX
+        {site.shortName}
       </Link>
       <nav className="enav-links">
-        {items.map((it) => (
+        {[...baseItems, ...(site.shop.enabled ? [{ href: site.onlineStoreUrl, label: "Tienda", key: "tienda" }] : [])].map((it) => (
           <Link
             key={it.key}
             href={it.href}
@@ -36,13 +36,22 @@ export function EditorialNav({ active }: { active?: string }) {
             {it.label}
           </Link>
         ))}
-        <Link href="/login" className="nox-link" style={{ opacity: 0.7 }}>
-          Ingresar
-        </Link>
-        <Link href="/agendar" prefetch className="nox-btn">
-          Agendar Turno
-        </Link>
+        {site.features.customerPortal && (
+          <Link href="/login" className="nox-link" style={{ opacity: 0.7 }}>
+            Ingresar
+          </Link>
+        )}
+        {installationBookingLink()}
       </nav>
     </header>
+  );
+}
+
+function installationBookingLink() {
+  if (!site.bookingEnabled) return null;
+  return (
+    <Link href={site.bookingPath} prefetch className="nox-btn">
+      {site.copy.bookingCta}
+    </Link>
   );
 }

@@ -10,14 +10,18 @@ setea customers.email, habilitando el match de sus turnos hechos por WhatsApp.
 import logging
 import re
 
+from ..config import get_settings
 from ..db.pool import get_pool
 from ..integrations.chatwoot import ChatwootClient
 from ..integrations.redis_client import get_redis, key
 
 logger = logging.getLogger(__name__)
 
-PREFIX = "NOX-LINK-"
 TOKEN_TTL = 900  # 15 min
+
+
+def prefix() -> str:
+    return get_settings().link_code_prefix.upper()
 
 
 async def issue_token(email: str) -> str:
@@ -36,10 +40,13 @@ async def try_claim_whatsapp(content: str, phone: str, conversation_id: int | No
     True = era un claim (no hay que pasarlo al agente). False = mensaje normal.
     """
     text = (content or "").strip()
-    if not text.upper().startswith(PREFIX):
+    code_prefix = prefix()
+    if not text.upper().startswith(code_prefix):
         return False
 
-    token = text[len(PREFIX):].strip().split()[0].lower() if len(text) > len(PREFIX) else ""
+    token = (
+        text[len(code_prefix) :].strip().split()[0].lower() if len(text) > len(code_prefix) else ""
+    )
     r = await get_redis()
     # GETDEL evita que dos entregas concurrentes reclamen el mismo código.
     email = await r.getdel(key(f"link:{token}")) if token else None
@@ -64,7 +71,8 @@ async def try_claim_whatsapp(content: str, phone: str, conversation_id: int | No
                 digits,
             )
             reply = (
-                "✅ ¡Listo! Vinculé este WhatsApp a tu cuenta NOX. Ya podés ver tus turnos en Mi Cuenta."
+                f"✅ ¡Listo! Vinculé este WhatsApp a tu cuenta {get_settings().agent_name}. "
+                "Ya podés ver tus turnos en Mi Cuenta."
                 if updated
                 else "Tu cuenta quedó lista. Si tenías turnos con otro número o email, escribinos y lo revisamos."
             )

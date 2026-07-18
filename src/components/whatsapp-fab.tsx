@@ -1,6 +1,8 @@
 import { site, waLink } from "@/lib/site";
 
 export function WhatsappFab() {
+  if (!site.channels.whatsapp.enabled) return null;
+
   return (
     <a
       href={waLink(`Hola ${site.name}! Tengo una consulta.`)}

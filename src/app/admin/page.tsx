@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { signIn, signOut } from "next-auth/react";
 import Link from "next/link";
+import { money, site } from "@/lib/site";
 
 const SERIF = "var(--font-serif)";
 const SANS = "var(--font-sans)";
-const ars = new Intl.NumberFormat("es-AR");
-const money = (n: number) => `$${ars.format(Math.round(n))}`;
 const CARD = { border: "1px solid rgba(255,255,255,0.14)" } as const;
 
 // En prod va por el BFF (inyecta el token Keycloak server-side).
@@ -58,8 +57,8 @@ const DOW = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "s
 const dateKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const parseKey = (k: string) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
 const initials = (n: string) => n.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("es-AR");
+const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString(site.locale, { hour: "2-digit", minute: "2-digit" });
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(site.locale);
 
 function Dot({ color, size = 7 }: { color: string; size?: number }) {
   return <span style={{ width: size, height: size, borderRadius: "50%", background: color, display: "inline-block" }} />;
@@ -148,7 +147,7 @@ export default function AdminPage() {
     <div className="adm-shell" style={{ background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <aside className="adm-side">
         <div className="adm-brand">
-          <span style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 26 }}>NOX</span>
+          <span style={{ fontFamily: SERIF, fontWeight: 700, fontSize: 26 }}>{site.shortName}</span>
           <span style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", opacity: 0.5 }}>Admin</span>
         </div>
         <nav className="adm-nav">
@@ -651,7 +650,7 @@ function IA() {
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.dot, marginTop: 5, flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14 }}>{meta.label}{f.phone ? ` · ${f.phone}` : ""}{f.conversation_id ? ` · conv ${f.conversation_id}` : ""}</div>
-                  <div style={{ fontSize: 11, opacity: 0.45, marginTop: 3 }}>{new Date(f.created_at).toLocaleString("es-AR")}</div>
+                  <div style={{ fontSize: 11, opacity: 0.45, marginTop: 3 }}>{new Date(f.created_at).toLocaleString(site.locale)}</div>
                 </div>
               </div>
             );
@@ -789,9 +788,9 @@ function Conversaciones() {
                   const isAgent = msg.from === "agent";
                   return (
                     <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: isClient ? "flex-start" : "flex-end", maxWidth: "74%", alignSelf: isClient ? "flex-start" : "flex-end" }}>
-                      <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: isClient ? "rgba(255,255,255,0.5)" : isAgent ? "#7ee0a8" : "#7cc6ff", marginBottom: 4 }}>{isClient ? active.name : isAgent ? "Equipo" : "Bot NOX"}</div>
+                      <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: isClient ? "rgba(255,255,255,0.5)" : isAgent ? "#7ee0a8" : "#7cc6ff", marginBottom: 4 }}>{isClient ? active.name : isAgent ? "Equipo" : `Bot ${site.shortName}`}</div>
                       <div style={{ background: isClient ? "#161616" : isAgent ? "#25422f" : "#1d2c3a", border: `1px solid ${isClient ? "rgba(255,255,255,0.1)" : isAgent ? "rgba(126,224,168,0.3)" : "rgba(124,198,255,0.3)"}`, padding: "11px 14px", fontSize: 14, lineHeight: 1.45 }}>{msg.content}</div>
-                      <div style={{ fontSize: 10, opacity: 0.4, marginTop: 4 }}>{new Date(msg.created_at * 1000).toLocaleString("es-AR")}</div>
+                      <div style={{ fontSize: 10, opacity: 0.4, marginTop: 4 }}>{new Date(msg.created_at * 1000).toLocaleString(site.locale)}</div>
                     </div>
                   );
                 })}

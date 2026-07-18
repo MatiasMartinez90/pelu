@@ -2,7 +2,9 @@ from datetime import time
 
 import pytest
 
+from src.agent.graph import _agent_error_reply, _booking_url, _budget_reply
 from src.agent.system_prompt import build_system_prompt
+from src.config import get_settings
 from src.agent.tools import booking
 from src.db.repositories import site_context
 
@@ -57,6 +59,22 @@ def test_system_prompt_uses_database_context_instead_of_fixed_business_data():
     assert "Alex" in prompt
     assert "martes: 09:00-18:00" in prompt
     assert "Av. Cabildo 2200" not in prompt
+
+
+def test_agent_copy_and_booking_url_come_from_installation_settings(monkeypatch):
+    monkeypatch.setenv("AGENT_TONE", "formal y directo")
+    monkeypatch.setenv("PUBLIC_SITE_URL", "https://cliente.example/")
+    monkeypatch.setenv("PUBLIC_BOOKING_PATH", "/reservas")
+    get_settings.cache_clear()
+    try:
+        prompt = build_system_prompt("Contexto dinámico")
+        assert "Tono formal y directo" in prompt
+        assert _booking_url() == "https://cliente.example/reservas"
+        assert "https://cliente.example/reservas" in _budget_reply()
+        assert "https://cliente.example/reservas" in _agent_error_reply()
+        assert "nox.cloud-it.com.ar" not in prompt + _budget_reply() + _agent_error_reply()
+    finally:
+        get_settings.cache_clear()
 
 
 class AvailabilityPool:

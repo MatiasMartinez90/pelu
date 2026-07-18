@@ -5,7 +5,7 @@ on:
     paths:
       - "src/**"
       - "public/**"
-      - "config/media-assets.json"
+      - "config/**"
       - "scripts/check-performance-budgets.mjs"
       - "package.json"
       - "package-lock.json"

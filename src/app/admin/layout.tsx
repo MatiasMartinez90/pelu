@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { site } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Administración | NOX",
+  title: `Administración | ${site.shortName}`,
   robots: { index: false, follow: false },
 };
 

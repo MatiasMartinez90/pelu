@@ -41,7 +41,7 @@ async function mockPrivateApis(page: Page) {
     return route.fulfill({ json: [{ id: "a1", starts_at: future, ends_at: future, status: "active", price_at_booking: 15000, channel: "telegram", customer: "Cliente Demo", service: "Corte masculino" }] });
   });
   await page.route("**/api/me/**", async (route) => route.fulfill({ json: {
-    email: "demo-cliente@nox.local", name: "Cliente Demo",
+    email: "cliente@nox.demo.local", name: "Cliente Demo",
     upcoming: [{ id: "b1", starts_at: future, ends_at: future, status: "active", price_at_booking: 15000, channel: "web", barber: "Lautaro", service: "Corte masculino" }],
     history: [{ id: "b0", starts_at: past, ends_at: past, status: "completed", price_at_booking: 15000, channel: "whatsapp", barber: "Lautaro", service: "Corte masculino" }],
   } }));

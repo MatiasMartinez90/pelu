@@ -1,4 +1,4 @@
-"""FastAPI app de NOX. Solo API + webhook: el consumer corre en el deployment worker."""
+"""API pública y privada; el consumer del agente corre en su propio deployment."""
 
 import asyncio
 import logging
@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
         logger.exception("RabbitMQ no disponible al arrancar; el webhook reintentará")
     stop_dispatcher = asyncio.Event()
     dispatcher = asyncio.create_task(dispatch_outbox(stop_dispatcher))
-    logger.info("nox-api up")
+    logger.info("api up (installation=%s)", get_settings().installation_id)
     yield
     stop_dispatcher.set()
     await dispatcher
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
 settings = get_settings()
 is_production = settings.environment.lower() == "production"
 app = FastAPI(
-    title="NOX Backend",
+    title=settings.service_name,
     version="0.1.0",
     lifespan=lifespan,
     docs_url=None if is_production else "/docs",

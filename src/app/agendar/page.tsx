@@ -4,15 +4,18 @@ import { EditorialWizard } from "@/components/booking/editorial-wizard";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { getBookingCatalog } from "@/lib/booking-catalog";
 import { pageMetadata } from "@/lib/seo";
+import { site } from "@/lib/site";
+import { notFound } from "next/navigation";
 
-export const metadata: Metadata = pageMetadata({ title: "Agendá tu turno", description: "Reservá tu turno online en NOX Barber: elegí profesional, servicio, fecha y horario disponible.", path: "/agendar" });
+export const metadata: Metadata = pageMetadata({ title: "Agendá tu turno", description: `Reservá tu turno online en ${site.name}: elegí profesional, servicio, fecha y horario disponible.`, path: site.bookingPath });
 
 export default async function AgendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ servicio?: string }>;
+  searchParams: Promise<{ servicio?: string; barbero?: string }>;
 }) {
-  const { servicio } = await searchParams;
+  if (!site.bookingEnabled) notFound();
+  const { servicio, barbero } = await searchParams;
   const catalog = await getBookingCatalog().catch(() => ({
     barbers: [],
     services_by_barber: {},
@@ -22,6 +25,7 @@ export default async function AgendarPage({
       <EditorialNav />
       <EditorialWizard
         preselectServiceId={servicio}
+        preselectBarberId={barbero}
         initialCatalog={catalog}
         initialLoadError={catalog.barbers.length === 0}
       />

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { HeroVideo } from "@/components/sections/hero-video";
 import { mediaSource } from "@/lib/media";
+import { site } from "@/lib/site";
 
 const SANS = "var(--font-sans)";
 
@@ -18,8 +19,8 @@ type HeroProps = {
   poster?: string;
 };
 
-export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFAULT_VIDEO_WEBM, poster = DEFAULT_POSTER }: HeroProps) {
-  const marquee = ("✶  " + brand + "  ·  BARBERÍA PREMIUM  ·  BUENOS AIRES  ").repeat(3);
+export function Hero({ brand = site.shortName, videoSrc = DEFAULT_VIDEO, videoWebm = DEFAULT_VIDEO_WEBM, poster = DEFAULT_POSTER }: HeroProps) {
+  const marquee = (`✶  ${brand}  ·  ${site.tagline.toUpperCase()}  ·  ${site.city.toUpperCase()}  `).repeat(3);
   const posterUrl = mediaSource(poster);
   const videoUrl = mediaSource(videoSrc);
   const videoWebmUrl = mediaSource(videoWebm);
@@ -48,9 +49,11 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFA
 
       {/* Top utility bar */}
       <header className="nox-hero-top">
-        <span style={{ opacity: 0.85 }}>Buenos Aires · Est. 2014</span>
+        <span style={{ opacity: 0.85 }}>{site.city} · Est. {site.establishedYear}</span>
         <nav style={{ display: "flex", alignItems: "center", gap: 26 }}>
-          <a href="https://instagram.com/noxbarber" className="nox-link" style={{ color: "#fff", opacity: 0.85 }}>Instagram</a>
+          {site.channels.instagram.enabled && (
+            <a href={site.instagramUrl} className="nox-link" style={{ color: "#fff", opacity: 0.85 }}>Instagram</a>
+          )}
           <span className="nox-hero-lang" style={{ opacity: 0.45 }}>ES / EN</span>
           <span style={{ display: "flex", flexDirection: "column", gap: 4, width: 24 }}>
             <span style={{ height: 1.5, background: "#fff", width: "100%" }} />
@@ -62,7 +65,7 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFA
       {/* Main editorial overlay */}
       <div className="nox-hero-main">
         <h1 className="nox-hero-brand">{brand}</h1>
-        <div style={{ marginTop: 16, marginBottom: 32, fontSize: 12, letterSpacing: "0.42em", textTransform: "uppercase", opacity: 0.82, paddingLeft: 4 }}>Barbería Premium</div>
+        <div style={{ marginTop: 16, marginBottom: 32, fontSize: 12, letterSpacing: "0.42em", textTransform: "uppercase", opacity: 0.82, paddingLeft: 4 }}>{site.tagline}</div>
 
         <nav style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 11, fontSize: 15, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 500 }}>
           <Link href="/servicios" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Servicios</Link>
@@ -70,11 +73,11 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFA
           <Link href="/equipo" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Equipo</Link>
           <Link href="/galeria" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Galería</Link>
           <div style={{ height: 14 }} />
-          <Link href="/agendar" prefetch className="nox-cta">Agendar Turno</Link>
-          <a href="#tienda" className="nox-cta">Tienda</a>
+          {site.bookingEnabled && <Link href={site.bookingPath} prefetch className="nox-cta">{site.copy.bookingCta}</Link>}
+          {site.shop.enabled && <a href={site.onlineStoreUrl} className="nox-cta">Tienda</a>}
           <div style={{ height: 14 }} />
           <div style={{ height: 14 }} />
-          <Link href="/login" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Ingresar</Link>
+          {(site.features.customerPortal || site.features.barberPortal) && <Link href="/login" className="nox-link" style={{ color: "#fff", opacity: 0.92 }}>Ingresar</Link>}
           <div style={{ height: 14 }} />
           <Link href="/nosotros" className="nox-link" style={{ color: "#fff", opacity: 0.78, fontSize: 14 }}>Nosotros</Link>
           <Link href="/faq" className="nox-link" style={{ color: "#fff", opacity: 0.78, fontSize: 14 }}>Preguntas Frecuentes</Link>
@@ -83,7 +86,7 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFA
       </div>
 
       {/* Right vertical caption */}
-      <div className="nox-hero-vert" style={{ position: "absolute", right: 30, top: "50%", transform: "translateY(-50%) rotate(180deg)", writingMode: "vertical-rl", zIndex: 10, fontSize: 11, letterSpacing: "0.34em", textTransform: "uppercase", opacity: 0.6 }}>Cortes · Fade · Barba · Color</div>
+      <div className="nox-hero-vert" style={{ position: "absolute", right: 30, top: "50%", transform: "translateY(-50%) rotate(180deg)", writingMode: "vertical-rl", zIndex: 10, fontSize: 11, letterSpacing: "0.34em", textTransform: "uppercase", opacity: 0.6 }}>{site.content.heroHighlights.join(" · ")}</div>
 
       {/* Bottom marquee */}
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 15, overflow: "hidden", borderTop: "1px solid rgba(255,255,255,0.16)", padding: "16px 0", backdropFilter: "blur(2px)" }}>

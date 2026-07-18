@@ -4,14 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Barber, BookingCatalog, Service } from "@/lib/booking-types";
+import { money, site } from "@/lib/site";
 
 const SERIF = "var(--font-serif)";
 const SANS = "var(--font-sans)";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "/api/booking";
 
-const ars = new Intl.NumberFormat("es-AR");
-const money = (n: number) => `$${ars.format(n)}`;
 
 type Booking = {
   id: string;
@@ -43,17 +42,20 @@ async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
 
 export function EditorialWizard({
   preselectServiceId,
+  preselectBarberId,
   initialCatalog,
   initialLoadError = false,
 }: {
   preselectServiceId?: string;
+  preselectBarberId?: string;
   initialCatalog: BookingCatalog;
   initialLoadError?: boolean;
 }) {
-  const [step, setStep] = useState(0);
+  const selectedBarber = initialCatalog.barbers.find((barber) => barber.slug === preselectBarberId);
+  const [step, setStep] = useState(selectedBarber ? 1 : 0);
   const [barbers] = useState<Barber[]>(initialCatalog.barbers);
-  const [services, setServices] = useState<Service[]>([]);
-  const [barberSlug, setBarberSlug] = useState<string | null>(null);
+  const [services, setServices] = useState<Service[]>(selectedBarber ? initialCatalog.services_by_barber[selectedBarber.slug] ?? [] : []);
+  const [barberSlug, setBarberSlug] = useState<string | null>(selectedBarber?.slug ?? null);
   const [serviceSlug, setServiceSlug] = useState<string | null>(null);
   const [dateTs, setDateTs] = useState<number | null>(null);
   const [slots, setSlots] = useState<string[]>([]);
@@ -189,7 +191,7 @@ export function EditorialWizard({
             {[
               ["Servicio", confirmed.service],
               ["Profesional", confirmed.barber],
-              ["Fecha", `${DOW[d.getDay()]} ${d.toLocaleDateString("es-AR")} · ${d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} hs`],
+              ["Fecha", `${DOW[d.getDay()]} ${d.toLocaleDateString(site.locale)} · ${d.toLocaleTimeString(site.locale, { hour: "2-digit", minute: "2-digit" })} hs`],
               ["Precio", money(confirmed.price)],
               ["A nombre de", name],
             ].map(([l, v]) => (
@@ -200,8 +202,8 @@ export function EditorialWizard({
             ))}
           </div>
           <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
-            El pago se realiza en el local · Av. Cabildo 2200, CABA.
-            <br />Para cancelar o reprogramar escribinos por WhatsApp.
+            {site.payments} · {site.address}, {site.city}.
+            <br />{site.policies.cancellationNotes}
           </p>
           <Link href="/" className="nox-btn" style={{ display: "inline-block", marginTop: 24, padding: "14px 32px" }}>Volver al inicio</Link>
         </div>
@@ -214,7 +216,7 @@ export function EditorialWizard({
       <div style={{ maxWidth: 1120, margin: "0 auto" }}>
         <header style={{ textAlign: "center" }}>
           <div style={{ fontSize: 12, letterSpacing: "0.4em", textTransform: "uppercase", opacity: 0.7 }}>
-            <Link href="/" className="nox-link" style={{ opacity: 0.7 }}>NOX</Link> · Reserva Online
+            <Link href="/" className="nox-link" style={{ opacity: 0.7 }}>{site.shortName}</Link> · Reserva Online
           </div>
           <h1 style={{ marginTop: 14, fontFamily: SERIF, fontWeight: 700, fontSize: "clamp(44px,6vw,76px)", lineHeight: 0.95, letterSpacing: "0.01em" }}>
             Agendá tu turno

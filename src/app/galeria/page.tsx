@@ -34,7 +34,7 @@ export default function GaleriaPage() {
           Galería
         </h1>
         <p style={{ marginTop: 24, maxWidth: 560, fontSize: 16, lineHeight: 1.6, opacity: 0.7 }}>
-          Una selección de cortes, fades y diseños hechos en el local. Pasá el mouse para ver cada pieza en color.
+          {site.content.galleryIntro}
         </p>
       </section>
 
@@ -44,7 +44,7 @@ export default function GaleriaPage() {
             <div key={src} className="gcell" style={{ aspectRatio: ars[i % ars.length] }}>
               <Image
                 src={src}
-                alt="Trabajo NOX"
+                alt={`Trabajo de ${site.name}`}
                 width={800}
                 height={1000}
                 loading="lazy"

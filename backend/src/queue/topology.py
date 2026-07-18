@@ -9,12 +9,12 @@ import aio_pika
 
 from ..config import get_settings
 
-DLX_NAME = "nox.dlx"
-
 
 async def declare_topology(channel: aio_pika.abc.AbstractChannel) -> aio_pika.abc.AbstractQueue:
     s = get_settings()
-    dlx = await channel.declare_exchange(DLX_NAME, aio_pika.ExchangeType.DIRECT, durable=True)
+    dlx = await channel.declare_exchange(
+        s.queue_dlx_name, aio_pika.ExchangeType.DIRECT, durable=True
+    )
     dlq = await channel.declare_queue(s.queue_dlq_name, durable=True)
     await dlq.bind(dlx, routing_key=s.queue_name)
 
@@ -33,7 +33,7 @@ async def declare_topology(channel: aio_pika.abc.AbstractChannel) -> aio_pika.ab
         arguments={
             "x-queue-type": "quorum",
             "x-delivery-limit": s.queue_delivery_limit,
-            "x-dead-letter-exchange": DLX_NAME,
+            "x-dead-letter-exchange": s.queue_dlx_name,
         },
     )
     return queue

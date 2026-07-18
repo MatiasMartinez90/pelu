@@ -24,11 +24,11 @@ function safePath(path: string) {
 export function createMediaConfig(env: MediaEnvironment) {
   const publicOrigin = (env.NEXT_PUBLIC_MEDIA_PUBLIC_URL ?? "").replace(/\/$/, "");
   const transformOrigin = (env.NEXT_PUBLIC_MEDIA_TRANSFORM_URL ?? publicOrigin).replace(/\/$/, "");
-  const sanitizedTenant = (env.NEXT_PUBLIC_MEDIA_TENANT ?? "nox")
+  const sanitizedTenant = (env.NEXT_PUBLIC_MEDIA_TENANT ?? "installation")
     .replace(/[^a-z0-9-]/gi, "")
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
-  const tenant = sanitizedTenant || "nox";
+  const tenant = sanitizedTenant || "installation";
 
   function source(src: string) {
     if (!publicOrigin || /^https?:\/\//i.test(src) || src.startsWith("data:")) return src;

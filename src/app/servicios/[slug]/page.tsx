@@ -43,8 +43,8 @@ export default async function ServicePage({ params }: Props) {
     offers: {
       "@type": "Offer",
       price: service.price,
-      priceCurrency: "ARS",
-      url: absoluteUrl(`/agendar?servicio=${service.slug}`),
+      priceCurrency: site.currency,
+      url: absoluteUrl(`${site.bookingPath}?servicio=${service.slug}`),
     },
   };
   const breadcrumbJsonLd = {
@@ -66,14 +66,14 @@ export default async function ServicePage({ params }: Props) {
         <nav aria-label="Migas de pan" style={{ fontSize: 13, opacity: 0.72 }}>
           <Link href="/">Inicio</Link> <span aria-hidden="true">/</span> <Link href="/servicios">Servicios</Link>
         </nav>
-        <p style={{ marginTop: 48, fontSize: 12, letterSpacing: "0.35em", textTransform: "uppercase", opacity: 0.72 }}>{service.badge ?? "Servicio NOX"}</p>
+        <p style={{ marginTop: 48, fontSize: 12, letterSpacing: "0.35em", textTransform: "uppercase", opacity: 0.72 }}>{service.badge ?? `Servicio ${site.shortName}`}</p>
         <h1 style={{ marginTop: 16, fontFamily: SERIF, fontSize: "clamp(48px,8vw,100px)", lineHeight: 0.94 }}>{service.name}</h1>
         <p style={{ marginTop: 28, maxWidth: 680, fontSize: "clamp(18px,2vw,24px)", lineHeight: 1.55, opacity: 0.82 }}>{service.description}</p>
         <dl style={{ display: "flex", flexWrap: "wrap", gap: "28px 56px", marginTop: 40, paddingTop: 28, borderTop: "1px solid rgba(255,255,255,.18)" }}>
           <div><dt style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", opacity: 0.72 }}>Duración</dt><dd style={{ marginTop: 8, fontSize: 20 }}>{service.duration_min} minutos</dd></div>
           <div><dt style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".18em", opacity: 0.72 }}>Precio</dt><dd style={{ marginTop: 8, fontSize: 20 }}>{service.variable_price ? "Desde " : ""}{money(service.price)}</dd></div>
         </dl>
-        <Link href={`/agendar?servicio=${service.slug}`} className="nox-btn" style={{ display: "inline-block", marginTop: 44, padding: "16px 32px" }}>Reservar este servicio</Link>
+        {site.bookingEnabled && <Link href={`${site.bookingPath}?servicio=${service.slug}`} className="nox-btn" style={{ display: "inline-block", marginTop: 44, padding: "16px 32px" }}>Reservar este servicio</Link>}
       </main>
       <Footer />
       <WhatsappFab />

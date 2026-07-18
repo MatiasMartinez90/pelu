@@ -1,4 +1,4 @@
-"""Settings del backend NOX. Sin secrets en defaults: todo lo sensible viene por env."""
+"""Settings de una instalación aislada. Todo secreto y valor de ambiente viene por env."""
 
 from functools import lru_cache
 
@@ -7,6 +7,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    installation_id: str = "local"
+    service_name: str = "Appointments Platform"
 
     # OpenAI
     openai_api_key: str = ""
@@ -17,19 +20,20 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://nox:nox@localhost:5432/nox"
     checkpoint_database_url: str = ""  # si vacío, usa database_url (dev local)
 
-    # Redis (compartido, prefijo nox:)
+    # Redis compartido; cada instalación debe recibir un prefijo exclusivo.
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_password: str = ""
-    redis_prefix: str = "nox:"
+    redis_prefix: str = "app:"
     redis_connect_timeout_seconds: float = 3.0
     redis_socket_timeout_seconds: float = 5.0
 
     # RabbitMQ
     rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
-    queue_name: str = "nox_messages"
-    queue_dlq_name: str = "nox_messages_dlq"
-    queue_retry_name: str = "nox_messages_retry"
+    queue_name: str = "app_messages"
+    queue_dlq_name: str = "app_messages_dlq"
+    queue_retry_name: str = "app_messages_retry"
+    queue_dlx_name: str = "app.dlx"
     queue_delivery_limit: int = 3
     queue_retry_base_seconds: int = 2
 
@@ -43,7 +47,7 @@ class Settings(BaseSettings):
     webhook_allow_legacy_token: bool = False
     webhook_max_skew_seconds: int = 300
     webhook_max_body_bytes: int = 262_144
-    webhook_signer_target_url: str = "http://nox-api.nox.svc.cluster.local/webhook/chatwoot"
+    webhook_signer_target_url: str = "http://api:8000/webhook/chatwoot"
 
     # WhatsApp Cloud API (typing indicator + re-contacto por template)
     whatsapp_phone_number_id: str = ""
@@ -68,11 +72,15 @@ class Settings(BaseSettings):
     # en producción DEMO_MODE queda false y los tokens HS256 se rechazan.
     demo_mode: bool = False
     demo_auth_secret: str = ""
-    demo_auth_issuer: str = "nox-demo"
-    demo_auth_audience: str = "nox-demo-api"
+    demo_auth_issuer: str = "demo"
+    demo_auth_audience: str = "demo-api"
 
     # Comportamiento del agente
-    agent_name: str = "NOX"
+    agent_name: str = "Asistente"
+    agent_tone: str = "argentino informal y cálido"
+    public_site_url: str = ""
+    public_booking_path: str = "/agendar"
+    link_code_prefix: str = "LINK-"
     timezone: str = "America/Argentina/Buenos_Aires"
     debounce_seconds: float = 4.0
     min_typing_seconds: float = 3.0
@@ -94,7 +102,7 @@ class Settings(BaseSettings):
     store_event_phone_plaintext: bool = False
 
     # API
-    cors_origins: str = "https://nox.cloud-it.com.ar,http://localhost:3000"
+    cors_origins: str = "http://localhost:3000"
     cors_origin_regex: str = r"^http://localhost:\d+$"  # dev; vaciar para desactivar
     environment: str = "development"
     trusted_proxy_cidrs: str = "127.0.0.1/32,::1/128"

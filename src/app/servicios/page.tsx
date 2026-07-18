@@ -3,15 +3,13 @@ import Link from "next/link";
 import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
-import { site } from "@/lib/site";
+import { money, site } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
 import { getPublicServices } from "@/lib/booking-catalog";
 
-export const metadata: Metadata = pageMetadata({ title: "Servicios", description: `Precios y duración de cortes, fade, barba, color y alisado en ${site.name}.`, path: "/servicios" });
+export const metadata: Metadata = pageMetadata({ title: "Servicios", description: `${site.content.servicesIntro} ${site.name}.`, path: "/servicios" });
 export const dynamic = "force-dynamic";
 
-const ars = new Intl.NumberFormat("es-AR");
-const money = (n: number) => `$${ars.format(n)}`;
 const duration = (minutes: number) => minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h${minutes % 60 ? ` ${minutes % 60} min` : ""}`;
 
 export default async function ServiciosPage() {
@@ -28,7 +26,7 @@ export default async function ServiciosPage() {
           Servicios
         </h1>
         <p style={{ marginTop: 24, maxWidth: 560, fontSize: 16, lineHeight: 1.6, opacity: 0.7 }}>
-          Cortes, fade, barba, color y alisado. Todos los servicios incluyen lavado y peinado. El pago se realiza en el local.
+          {site.content.servicesIntro} {site.payments}
         </p>
       </section>
 
@@ -60,13 +58,13 @@ export default async function ServiciosPage() {
           {services.length === 0 && <p role="status" style={{ padding: "32px 12px", opacity: 0.7 }}>No pudimos cargar los servicios. Probá nuevamente en unos minutos.</p>}
         </div>
 
-        <div className="cta-box" style={{ marginTop: 72 }}>
+        {site.bookingEnabled && <div className="cta-box" style={{ marginTop: 72 }}>
           <div>
             <h2 style={{ fontFamily: SERIF, fontSize: "clamp(32px,4.5vw,52px)", fontWeight: 600, lineHeight: 1 }}>¿Listo para tu próximo corte?</h2>
             <p style={{ marginTop: 12, opacity: 0.65, fontSize: 15 }}>Elegí tu profesional, servicio y horario en segundos.</p>
           </div>
-          <Link href="/agendar" className="nox-btn" style={{ fontSize: 13, padding: "16px 32px" }}>Agendar Turno</Link>
-        </div>
+          <Link href={site.bookingPath} className="nox-btn" style={{ fontSize: 13, padding: "16px 32px" }}>{site.copy.bookingCta}</Link>
+        </div>}
       </section>
 
       <Footer />

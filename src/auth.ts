@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
 import Credentials from "next-auth/providers/credentials";
+import { installation } from "@/lib/installation";
 
 // Allowlist de emails con rol admin garantizado (fallback si Keycloak aún no asigna roles).
 // Coma-separado en ADMIN_EMAILS.
@@ -20,10 +21,11 @@ if (demoRequested && demoAuthSecret.length < 32) {
 }
 
 const demoEnabled = demoRequested && demoAuthSecret.length >= 32;
+const installationId = process.env.INSTALLATION_ID ?? installation.tenant;
 const demoUsers: Record<Role, { name: string; email: string }> = {
-  admin: { name: "Administrador Demo", email: "demo-admin@nox.local" },
-  barbero: { name: "Barbero Demo", email: "demo-barbero@nox.local" },
-  cliente: { name: "Cliente Demo", email: "demo-cliente@nox.local" },
+  admin: { name: "Administrador Demo", email: `admin@${installationId}.demo.local` },
+  barbero: { name: "Profesional Demo", email: `profesional@${installationId}.demo.local` },
+  cliente: { name: "Cliente Demo", email: `cliente@${installationId}.demo.local` },
 };
 
 function isRole(value: unknown): value is Role {
@@ -45,8 +47,8 @@ async function createDemoAccessToken(role: Role): Promise<{ token: string; expir
   const user = demoUsers[role];
   const header = base64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const payload = base64url(JSON.stringify({
-    iss: process.env.DEMO_AUTH_ISSUER ?? "nox-demo",
-    aud: process.env.DEMO_AUTH_AUDIENCE ?? "nox-demo-api",
+    iss: process.env.DEMO_AUTH_ISSUER ?? `${installationId}-demo`,
+    aud: process.env.DEMO_AUTH_AUDIENCE ?? `${installationId}-demo-api`,
     sub: `demo-${role}`,
     iat: now,
     exp: expiresAt,
@@ -54,7 +56,7 @@ async function createDemoAccessToken(role: Role): Promise<{ token: string; expir
     email_verified: true,
     name: user.name,
     demo_role: role,
-    demo_barber_slug: role === "barbero" ? "thiago" : undefined,
+    demo_barber_slug: role === "barbero" ? installation.demo.defaultBarberSlug : undefined,
   }));
   const unsigned = `${header}.${payload}`;
   const key = await crypto.subtle.importKey(

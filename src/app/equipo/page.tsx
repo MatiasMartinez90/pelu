@@ -6,27 +6,14 @@ import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { site } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
+import { getBookingCatalog } from "@/lib/booking-catalog";
 
 export const metadata: Metadata = pageMetadata({ title: "Equipo", description: `Conocé a los profesionales de ${site.name}: especialistas en cortes, fades, barba, color y estilo.`, path: "/equipo" });
 
-type Member = {
-  name: string;
-  role: string;
-  bio: string;
-  instagram: string;
-  photo: string;
-};
+export const dynamic = "force-dynamic";
 
-const team: Member[] = [
-  { name: "Thiago", role: "Barbero", bio: "Especialista en fades y cortes clásicos. Precisión en cada pasada.", instagram: "thiago.barber", photo: "/media/team/thiago.v1.webp" },
-  { name: "Lautaro", role: "Barbero", bio: "El rey de los diseños a navaja y los cortes modernos.", instagram: "lautaro.barber", photo: "/media/team/lautaro.v1.webp" },
-  { name: "Bruno", role: "Master Barber", bio: "Fundador. Experiencia premium de punta a punta.", instagram: "bruno.barber", photo: "/media/team/bruno.v1.webp" },
-  { name: "Nahuel", role: "Barbero", bio: "Cortes prolijos y mucha buena onda. Tu corte de confianza.", instagram: "nahuel.barber", photo: "/media/team/nahuel.v1.webp" },
-  { name: "Ramiro", role: "Barbero", bio: "Detallista al máximo. Terminaciones impecables a tijera.", instagram: "ramiro.barber", photo: "/media/team/ramiro.v1.webp" },
-  { name: "Camila", role: "Estilista", bio: "Especialista en corte femenino, color y alisado profesional.", instagram: "camila.estilista", photo: "/media/team/camila.v1.webp" },
-];
-
-export default function EquipoPage() {
+export default async function EquipoPage() {
+  const team = await getBookingCatalog().then((catalog) => catalog.barbers).catch(() => []);
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: SANS }}>
       <EditorialNav active="equipo" />
@@ -39,25 +26,32 @@ export default function EquipoPage() {
           El Equipo
         </h1>
         <p style={{ marginTop: 24, maxWidth: 560, fontSize: 16, lineHeight: 1.6, opacity: 0.7 }}>
-          Seis profesionales, un mismo estándar: precisión, detalle y experiencia premium de punta a punta.
+          {site.content.teamIntro}
         </p>
       </section>
 
       <section className="px-fluid" style={{ maxWidth: 1180, margin: "0 auto", paddingBottom: "clamp(72px,10vw,120px)" }}>
         <div className="grid-team">
-          {team.map((m) => (
-            <Link key={m.name} href="/agendar" className="mbr">
+          {team.map((member) => (
+            <Link key={member.slug} href={site.bookingEnabled ? `${site.bookingPath}?barbero=${member.slug}` : "/contacto"} className="mbr">
               <div className="mbr__ph">
-                <Image src={m.photo} alt={m.name} fill sizes="(max-width: 900px) 50vw, 25vw" />
-                <span className="mbr__ig">@{m.instagram}</span>
+                {member.photo_url ? (
+                  <Image src={member.photo_url} alt={member.name} fill sizes="(max-width: 900px) 50vw, 25vw" />
+                ) : (
+                  <div aria-hidden="true" style={{ display: "grid", placeItems: "center", width: "100%", height: "100%", fontFamily: SERIF, fontSize: 64, background: "#171717" }}>
+                    {member.name.slice(0, 1)}
+                  </div>
+                )}
+                {member.instagram && <span className="mbr__ig">@{member.instagram}</span>}
               </div>
               <div style={{ marginTop: 18, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-                <h3 style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 600, lineHeight: 1 }}>{m.name}</h3>
-                <span style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.55 }}>{m.role}</span>
+                <h3 style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 600, lineHeight: 1 }}>{member.name}</h3>
+                <span style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.55 }}>{member.role}</span>
               </div>
-              <p style={{ marginTop: 10, color: "rgba(255,255,255,0.55)", fontSize: 14, lineHeight: 1.55, maxWidth: 320 }}>{m.bio}</p>
+              {member.bio && <p style={{ marginTop: 10, color: "rgba(255,255,255,0.55)", fontSize: 14, lineHeight: 1.55, maxWidth: 320 }}>{member.bio}</p>}
             </Link>
           ))}
+          {team.length === 0 && <p role="status" style={{ padding: "32px 0", opacity: 0.7 }}>No pudimos cargar el equipo. Probá nuevamente en unos minutos.</p>}
         </div>
       </section>
 

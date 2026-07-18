@@ -2,30 +2,18 @@ import type { Metadata } from "next";
 import { EditorialNav, SERIF, SANS } from "@/components/editorial/nav";
 import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
-import { site } from "@/lib/site";
+import { site, waLink } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({ title: "Cómo llegar", description: `Dirección, horarios y contacto de ${site.name} en ${site.neighborhood}, ${site.city}.`, path: "/contacto" });
 
-const ADDR = `${site.streetAddress}, ${site.postalCode} CABA`;
-const WA = `https://wa.me/${site.whatsapp}`;
-const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ADDR)}`;
-// Google Maps rechaza el embed sin API key (X-Frame-Options). OpenStreetMap sí es
-// frameable sin key. Coords aprox de Av. Cabildo 2200, Belgrano CABA.
-const LAT = site.latitude;
-const LON = site.longitude;
-const mapEmbed = `https://www.openstreetmap.org/export/embed.html?bbox=${LON - 0.004}%2C${LAT - 0.003}%2C${LON + 0.004}%2C${LAT + 0.003}&layer=mapnik&marker=${LAT}%2C${LON}`;
+const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(site.mapsQuery)}`;
 
 const info = [
-  { label: "Dirección", value: site.streetAddress, sub: `${site.neighborhood}, CABA` },
-  { label: "Cómo llegar", value: "Subte D · Estación Ministro Carranza", sub: "Colectivos: 15, 29, 60, 152" },
-  { label: "Teléfono / WhatsApp", value: site.phoneDisplay, sub: "" },
+  { label: "Dirección", value: site.streetAddress, sub: `${site.neighborhood}, ${site.city}` },
+  { label: "Cómo llegar", value: site.directions, sub: "" },
+  { label: "Teléfono", value: site.phoneDisplay, sub: "" },
   { label: "Email", value: site.email, sub: "" },
-];
-const hours = [
-  { days: "Lunes a Viernes", time: "10:00 – 21:00", color: "#fff" },
-  { days: "Sábados", time: "11:00 – 20:00", color: "#fff" },
-  { days: "Domingos", time: "Cerrado", color: "rgba(255,255,255,0.4)" },
 ];
 
 export default function ContactoPage() {
@@ -49,21 +37,21 @@ export default function ContactoPage() {
           ))}
           <div style={{ padding: "26px 28px", display: "flex", gap: 12, flexWrap: "wrap" }}>
             <a href={mapsUrl} target="_blank" rel="noreferrer" className="nox-btn" style={{ padding: "13px 22px" }}>Abrir en Maps</a>
-            <a href={WA} target="_blank" rel="noreferrer" className="nox-link" style={{ border: "1px solid rgba(255,255,255,0.3)", padding: "13px 22px", fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>WhatsApp</a>
+            {site.channels.whatsapp.enabled && <a href={waLink()} target="_blank" rel="noreferrer" className="nox-link" style={{ border: "1px solid rgba(255,255,255,0.3)", padding: "13px 22px", fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>WhatsApp</a>}
           </div>
         </div>
 
         <div style={{ border: "1px solid rgba(255,255,255,0.14)", overflow: "hidden", minHeight: 440, position: "relative" }}>
-          <iframe src={mapEmbed} title="Ubicación" style={{ width: "100%", height: "100%", minHeight: 440, border: 0, filter: "grayscale(1) contrast(1.05)" }} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+          <iframe src={site.mapsEmbed} title="Ubicación" style={{ width: "100%", height: "100%", minHeight: 440, border: 0, filter: "grayscale(1) contrast(1.05)" }} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
         </div>
       </section>
 
       <section className="px-fluid" style={{ maxWidth: 1180, margin: "0 auto", paddingTop: 20, paddingBottom: "clamp(72px,10vw,120px)" }}>
         <div className="grid-3cells" style={{ border: "1px solid rgba(255,255,255,0.14)" }}>
-          {hours.map((h) => (
-            <div key={h.days} className="cell-line" style={{ padding: "32px 28px" }}>
-              <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.5 }}>{h.days}</div>
-              <div style={{ marginTop: 10, fontFamily: SERIF, fontSize: 26, fontWeight: 600, color: h.color }}>{h.time}</div>
+          {site.hours.map((hours) => (
+            <div key={hours.day} className="cell-line" style={{ padding: "32px 28px" }}>
+              <div style={{ fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: 0.5 }}>{hours.day}</div>
+              <div style={{ marginTop: 10, fontFamily: SERIF, fontSize: 26, fontWeight: 600, color: hours.time.toLowerCase() === "cerrado" ? "rgba(255,255,255,0.4)" : "#fff" }}>{hours.time}</div>
             </div>
           ))}
         </div>
