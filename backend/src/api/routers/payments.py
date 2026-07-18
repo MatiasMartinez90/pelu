@@ -88,6 +88,26 @@ async def payment_status(token: str):
         raise _payment_error(error) from None
 
 
+@router.post("/shop-orders/{order_id}/pay-at-store", status_code=204)
+async def pay_at_store(
+    order_id: UUID,
+    body: ShopPaymentPreferenceIn,
+    request: Request,
+):
+    if await rate_limit_exceeded(f"payment-create:{get_client_ip(request)}"):
+        raise HTTPException(429, "Demasiados intentos de pago")
+    try:
+        await payments.cancel_shop_payment_to_store(
+            await get_pool(), order_id, body.cart_token
+        )
+    except payments.PaymentError as error:
+        raise _payment_error(error) from None
+    PAYMENT_OPERATIONS.labels(
+        operation="payment_choice", result="pay_at_store", provider="internal"
+    ).inc()
+    return Response(status_code=204)
+
+
 @router.post("/demo/{token}", response_model=PaymentStatusOut)
 async def settle_demo(token: str, body: DemoPaymentActionIn, request: Request):
     if request.headers.get("content-type", "").split(";", 1)[0] != "application/json":

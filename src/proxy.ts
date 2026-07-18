@@ -27,5 +27,11 @@ export function proxy(request: NextRequest, event: NextFetchEvent) {
 // Auth protege los portales y el mismo proxy monta el shop en su host.
 // Assets, medios y APIs conservan sus rutas originales.
 export const config = {
-  matcher: ["/sitemap.xml", "/robots.txt", "/((?!api|_next/static|_next/image|media|.*\\..*).*)"],
+  matcher: [
+    "/pago/:path*",
+    "/pago-demo/:path*",
+    "/sitemap.xml",
+    "/robots.txt",
+    "/((?!api|_next/static|_next/image|media|.*\\..*).*)",
+  ],
 };

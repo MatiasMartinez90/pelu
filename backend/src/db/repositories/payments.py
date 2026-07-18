@@ -224,6 +224,59 @@ async def shop_order_belongs_to_cart(
     ))
 
 
+async def cancel_shop_payment_to_store(
+    pool: asyncpg.Pool, order_id: UUID, cart_token: str
+) -> None:
+    """Cancela la intención online sin liberar stock y vuelve al cobro local."""
+    if len(cart_token) < 32 or len(cart_token) > 128:
+        raise PaymentNotFound("pedido inexistente")
+    async with pool.acquire() as connection, connection.transaction():
+        order = await connection.fetchrow(
+            """SELECT o.* FROM shop_orders o
+               JOIN shopping_carts c ON c.id = o.cart_id
+               WHERE o.id = $1 AND c.token_hash = $2
+               FOR UPDATE OF o""",
+            order_id, _sha256(cart_token),
+        )
+        if order is None:
+            raise PaymentNotFound("pedido inexistente")
+        if order["status"] in {"completed", "cancelled"}:
+            raise PaymentConflict("el pedido ya está cerrado")
+        intent = await connection.fetchrow(
+            """SELECT * FROM payment_intents
+               WHERE shop_order_id = $1 ORDER BY created_at DESC LIMIT 1 FOR UPDATE""",
+            order_id,
+        )
+        if intent and intent["status"] in {"approved", "refunded"}:
+            raise PaymentConflict("el pago ya fue acreditado")
+        if intent and intent["status"] != "cancelled":
+            await connection.execute(
+                """UPDATE payment_intents SET status = 'cancelled', updated_at = now()
+                   WHERE id = $1""",
+                intent["id"],
+            )
+            await connection.execute(
+                """INSERT INTO payment_status_history
+                       (payment_intent_id, from_status, to_status, actor)
+                   VALUES ($1,$2,'cancelled','public_capability')""",
+                intent["id"], intent["status"],
+            )
+        new_status = "confirmed" if order["status"] == "pending" else order["status"]
+        await connection.execute(
+            """UPDATE shop_orders SET status = $2, payment_method = 'pay_at_store',
+                      payment_status = 'unpaid', updated_at = now()
+               WHERE id = $1""",
+            order_id, new_status,
+        )
+        if new_status != order["status"]:
+            await connection.execute(
+                """INSERT INTO shop_order_status_history
+                       (order_id, from_status, to_status, note, actor)
+                   VALUES ($1,$2,$3,'Cliente eligió pagar en el local','payments')""",
+                order_id, order["status"], new_status,
+            )
+
+
 def sanitized_provider_payload(payload: dict) -> dict:
     allowed = {
         "id", "status", "status_detail", "external_reference", "transaction_amount",
