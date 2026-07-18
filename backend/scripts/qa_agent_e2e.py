@@ -77,7 +77,8 @@ def _req(method: str, url: str, headers: dict, body: dict | None = None) -> dict
             return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as e:
         detail = e.read().decode(errors="replace")[:300]
-        raise RuntimeError(f"{method} {url} -> {e.code}: {detail}") from None
+        safe_url = "<telegram-webhook>" if os.environ.get("TELEGRAM_QA_WEBHOOK") == url else url
+        raise RuntimeError(f"{method} {safe_url} -> {e.code}: {detail}") from None
 
 
 def cw(method: str, path: str, body: dict | None = None) -> dict:
