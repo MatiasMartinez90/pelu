@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -7,9 +7,15 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from src.agent.graph import _turn_usage
 from src.agent import events
-from src.agent.guardrails import is_prompt_injection, pseudonymous_user_id, validate_output
+from src.agent.guardrails import (
+    filter_moderation_categories,
+    is_prompt_injection,
+    pseudonymous_user_id,
+    validate_output,
+)
 from src.agent.tools import ALL_TOOLS
 from src.agent.tools import actions
+from src.agent.tools import booking
 from src.config import get_settings
 from src.integrations import chatwoot, redis_client
 from src.queue import producer as queue_producer
@@ -32,10 +38,81 @@ def test_prompt_injection_detection_is_narrow_and_case_insensitive():
     assert not is_prompt_injection("Ignorá el turno anterior, quiero el viernes")
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "quiero cortarme el pelo",
+        "Necesito un corte de cabello y arreglarme la barba",
+        "¿Puedo recortar el flequillo mañana?",
+    ],
+)
+def test_moderation_allows_explicit_grooming_false_positives(message):
+    categories = ["self_harm", "self_harm_intent", "self-harm/intent", "self-harm"]
+    assert filter_moderation_categories(message, categories) == []
+
+
+@pytest.mark.parametrize(
+    ("message", "categories"),
+    [
+        ("quiero cortarme", ["self_harm"]),
+        ("quiero cortarme las venas", ["self_harm", "self_harm_intent"]),
+        ("quiero cortarme el pelo y después matarme", ["self_harm_intent"]),
+        ("quiero cortarme el pelo", ["violence"]),
+    ],
+)
+def test_moderation_keeps_ambiguous_dangerous_or_other_flags(message, categories):
+    assert filter_moderation_categories(message, categories) == categories
+
+
 def test_confirmation_does_not_accept_changes_mixed_with_yes():
     assert actions._CONFIRMATION.match("sí")
     assert actions._CONFIRMATION.match("dale por favor")
     assert not actions._CONFIRMATION.match("sí, pero cambialo para el sábado")
+
+
+def test_contact_channel_is_derived_from_stable_contact_ref():
+    assert actions._contact_channel("telegram:889507955") == "telegram"
+    assert actions._contact_channel("+5491112345678") == "whatsapp"
+
+
+@pytest.mark.parametrize(
+    ("message", "candidate", "expected"),
+    [
+        ("quiero mañana a las 15", "2026-07-17", date(2026, 7, 18)),
+        ("puede ser pasado mañana", "2026-07-17", date(2026, 7, 19)),
+        ("quiero el sábado", "2026-07-17", date(2026, 7, 18)),
+        ("quiero hoy", "2026-07-18", date(2026, 7, 17)),
+        ("quiero el 20", "2026-07-20", date(2026, 7, 20)),
+    ],
+)
+def test_relative_dates_are_resolved_deterministically(message, candidate, expected):
+    state = {"messages": [HumanMessage(content=message)]}
+    assert booking._resolve_requested_date(
+        candidate, state, today=date(2026, 7, 17)
+    ) == expected
+
+
+@pytest.mark.asyncio
+async def test_expired_confirmation_requires_rechecking_availability(monkeypatch):
+    class Pool:
+        async def fetchrow(self, query, *args):
+            return None
+
+    async def pool():
+        return Pool()
+
+    monkeypatch.setattr(actions, "get_pool", pool)
+    result = await actions.confirm_pending_action.coroutine(
+        state={
+            "conversation_id": 1,
+            "phone": "telegram:889507955",
+            "turn_id": str(uuid4()),
+            "messages": [HumanMessage(content="confirmo!")],
+        }
+    )
+    assert "NO quedó reservado" in result
+    assert "consultar disponibilidad" in result
+    assert "error técnico" in result
 
 
 @pytest.mark.asyncio

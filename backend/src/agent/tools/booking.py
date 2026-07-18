@@ -1,31 +1,90 @@
 """Tools de turnos. Usan los mismos services que la API REST: el anti
 doble-booking es el exclusion constraint de la DB, no lógica en memoria."""
 
-from datetime import date as date_type
+import re
+import unicodedata
+from datetime import date as date_type, datetime, timedelta
 from typing import Annotated
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from langchain_core.tools import tool
 from langgraph.prebuilt import InjectedState
 
+from ...config import get_settings
 from ...db.pool import get_pool
 from ...db.repositories import catalog
 from ...services import availability_service, booking_service
 from .. import events
 
 
+_WEEKDAYS = {
+    "lunes": 0,
+    "martes": 1,
+    "miercoles": 2,
+    "jueves": 3,
+    "viernes": 4,
+    "sabado": 5,
+    "domingo": 6,
+}
+
+
+def _latest_user_text(state: dict | None) -> str:
+    for message in reversed((state or {}).get("messages", [])):
+        if getattr(message, "type", None) == "human":
+            return str(message.content)
+        if isinstance(message, dict) and message.get("role") == "user":
+            return str(message.get("content", ""))
+    return ""
+
+
+def _plain_text(value: str) -> str:
+    return "".join(
+        char
+        for char in unicodedata.normalize("NFKD", value.casefold())
+        if not unicodedata.combining(char)
+    )
+
+
+def _resolve_requested_date(
+    candidate: str,
+    state: dict | None,
+    *,
+    today: date_type | None = None,
+) -> date_type:
+    """Resolve relative Spanish dates independently from the LLM's ISO guess."""
+    text = _plain_text(_latest_user_text(state))
+    reference = today or datetime.now(ZoneInfo(get_settings().timezone)).date()
+
+    if re.search(r"\bpasado\s+manana\b", text):
+        return reference + timedelta(days=2)
+    if re.search(r"\bmanana\b", text):
+        return reference + timedelta(days=1)
+    if re.search(r"\bhoy\b", text):
+        return reference
+
+    weekday = re.search(r"\b(" + "|".join(_WEEKDAYS) + r")\b", text)
+    if weekday:
+        delta = (_WEEKDAYS[weekday.group(1)] - reference.weekday()) % 7
+        return reference + timedelta(days=delta)
+
+    return date_type.fromisoformat(candidate)
+
+
 def _fmt_dt(dt) -> str:
     dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
-    from zoneinfo import ZoneInfo
-
-    from ...config import get_settings
 
     local = dt.astimezone(ZoneInfo(get_settings().timezone))
     return f"{dias[local.weekday()]} {local.strftime('%d/%m %H:%M')}"
 
 
 @tool
-async def check_availability(barber: str, service: str, date: str) -> str:
+async def check_availability(
+    barber: str,
+    service: str,
+    date: str,
+    state: Annotated[dict | None, InjectedState] = None,
+) -> str:
     """Horarios disponibles de un profesional para un servicio en una fecha.
     barber y service son slugs obtenidos dinámicamente con get_barbers/get_services;
     date es YYYY-MM-DD."""
@@ -43,13 +102,13 @@ async def check_availability(barber: str, service: str, date: str) -> str:
     if not await catalog.barber_offers_service(pool, b["id"], s["id"]):
         return f"{b['name']} no ofrece {s['name']}. Usá get_services con su slug."
     try:
-        day = date_type.fromisoformat(date)
+        day = _resolve_requested_date(date, state)
     except ValueError:
         return "Fecha inválida: usá formato YYYY-MM-DD."
     slots = await availability_service.get_slots(pool, b, s, day)
     if not slots:
-        return f"{b['name']} no tiene horarios libres el {date} para {s['name']}."
-    return f"Horarios de {b['name']} el {date}: {', '.join(slots)}"
+        return f"{b['name']} no tiene horarios libres el {day.isoformat()} para {s['name']}."
+    return f"Horarios de {b['name']} el {day.isoformat()}: {', '.join(slots)}"
 
 
 @tool
