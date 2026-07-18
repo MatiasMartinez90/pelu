@@ -25,6 +25,6 @@
     "max_days_ahead": 45
   },
   "inventory": [
-    { "sku": "AUR-TRAT-01", "name": "Máscara nutritiva", "quantity": 8, "minimumQuantity": 2, "price": 18000 }
+    { "sku": "AUR-TRAT-01", "slug": "mascara-nutritiva", "name": "Máscara nutritiva", "description": "Tratamiento cosmético para el cuidado del cabello.", "shortDescription": "Cuidado nutritivo para el cabello.", "categorySlug": "tratamientos", "categoryName": "Tratamientos", "imageUrl": null, "featured": true, "sortOrder": 1, "quantity": 8, "minimumQuantity": 2, "price": 18000 }
   ]
 }

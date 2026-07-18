@@ -36,8 +36,8 @@
     "max_days_ahead": 30
   },
   "inventory": [
-    { "sku": "NOX-TMM", "name": "Texture Mash · Matte", "quantity": 18, "minimumQuantity": 6, "price": 25000 },
-    { "sku": "NOX-TDO", "name": "Texture Dust · Original", "quantity": 4, "minimumQuantity": 6, "price": 25000 },
-    { "sku": "NOX-TMB", "name": "Texture Mash · Brillante", "quantity": 11, "minimumQuantity": 6, "price": 25000 }
+    { "sku": "NOX-TMM", "slug": "texture-mash-matte", "name": "Texture Mash · Matte", "description": "Pomada de fijación flexible y terminación mate para peinados definidos.", "shortDescription": "Pomada de terminación mate.", "categorySlug": "styling", "categoryName": "Styling", "imageUrl": "/media/products/demo/texture-mash-matte.v1.webp", "featured": true, "sortOrder": 1, "quantity": 18, "minimumQuantity": 6, "price": 25000 },
+    { "sku": "NOX-TDO", "slug": "texture-dust-original", "name": "Texture Dust · Original", "description": "Polvo texturizador para sumar volumen y control con acabado natural.", "shortDescription": "Polvo texturizador de acabado natural.", "categorySlug": "styling", "categoryName": "Styling", "imageUrl": "/media/products/demo/texture-dust-original.v1.webp", "featured": true, "sortOrder": 2, "quantity": 4, "minimumQuantity": 6, "price": 25000 },
+    { "sku": "NOX-TMB", "slug": "texture-mash-brillante", "name": "Texture Mash · Brillante", "description": "Pomada de fijación controlada y terminación brillante.", "shortDescription": "Pomada de terminación brillante.", "categorySlug": "styling", "categoryName": "Styling", "imageUrl": "/media/products/demo/texture-mash-brillante.v1.webp", "sortOrder": 3, "quantity": 11, "minimumQuantity": 6, "price": 25000 }
   ]
 }

@@ -19,11 +19,13 @@ from .routers import (
     admin_agenda,
     admin_conversations,
     admin_dashboard,
+    admin_orders,
     admin_settings,
     admin_stock,
     barber,
     me,
     public,
+    shop,
     webhook,
 )
 
@@ -67,7 +69,7 @@ app.add_middleware(
     allow_origin_regex=None if is_production else (settings.cors_origin_regex or None),
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
@@ -107,11 +109,13 @@ async def timeout_middleware(request: Request, call_next):
 
 
 app.include_router(public.router)
+app.include_router(shop.router)
 app.include_router(me.router)
 app.include_router(barber.router)
 app.include_router(admin_dashboard.router)
 app.include_router(admin_agenda.router)
 app.include_router(admin_stock.router)
+app.include_router(admin_orders.router)
 app.include_router(admin_settings.router)
 app.include_router(admin_conversations.router)
 app.include_router(webhook.router)
