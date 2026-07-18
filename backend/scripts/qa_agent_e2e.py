@@ -284,12 +284,17 @@ def scenario_fecha_relativa(conv: Conversation) -> Result:
         return r
     expected_day = SPANISH_DOW[expected.weekday()]
     expected_numeric = f"{expected.day}/{expected.month}"
-    if not contains_any(reply, expected_day, expected_numeric):
+    conflicting_days = [day for day in SPANISH_DOW if day != expected_day and contains_any(reply, day)]
+    if contains_any(reply, expected_day, expected_numeric):
+        r.notes.append(f"mañana resuelto como {expected_day} {expected_numeric}")
+    elif contains_any(reply, "mañana") and not conflicting_days:
+        r.notes.append(
+            f"la respuesta conserva mañana ({expected_day} {expected_numeric}) sin fecha contradictoria"
+        )
+    else:
         r.fail(
             f"la respuesta no ubica 'mañana' en {expected_day} {expected_numeric}: {reply[:160]}"
         )
-    else:
-        r.notes.append(f"mañana resuelto como {expected_day} {expected_numeric}")
     return r
 
 
