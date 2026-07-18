@@ -1,10 +1,10 @@
 # Roadmap integral: mobile, SEO/GEO, shop, pagos, omnicanalidad y campañas
 
-**Estado:** roadmap maestro activo; Fases 0–1 listas en dev; Fase 2 en validación
+**Estado:** roadmap maestro activo; Fases 0–2 listas en dev
 **Última actualización:** 2026-07-18
 **Alcance de este documento:** fuente de verdad de planificación, estado, criterios de aceptación y evidencias del roadmap integral.
 **Repositorio analizado:** `Pelu`  
-**Branch de ejecución actual:** `feat/seo-geo-foundations`, creada desde `dev`
+**Branch de ejecución actual:** `docs/close-phase-2`, creada desde `dev`
 
 ### Decisiones confirmadas el 2026-07-17
 
@@ -46,7 +46,7 @@ Los estados permitidos son `pendiente`, `en curso`, `validando`, `listo en dev`,
 |---|---|---|---|---|---|
 | 0 | Normalización de ramas | Ninguna | `dev`, `main` y `demo` sin divergencias funcionales; #16–#18 presentes; Telegram, persistencia, fechas y moderación reprobados | Completo | PRs #16–#18, #21–#23, #25 y #27; CI, GitOps, E2E y promoción detallados en 0.3 y 0.4 |
 | 1 | Mobile y responsive | Fase 0 | Home, turnero, shop, admin, barbero y cliente cubiertos por matriz responsive y pruebas visuales | Listo en dev | PR #32, squash `b683af5`, 78/78 pruebas, deploy dev saludable; detalle en `docu/fase-1-responsive.md`; shop se suma en Fase 5 |
-| 2 | SEO y GEO | Fases 0–1 | sitemap/robots/canonical/metadata/schema/servicios/`llms.txt` válidos y consistentes | Validando | Implementación y evidencia local en `docu/fase-2-seo-geo.md`; PR/deploy pendientes |
+| 2 | SEO y GEO | Fases 0–1 | sitemap/robots/canonical/metadata/schema/servicios/`llms.txt` válidos y consistentes | Listo en dev | PR #33, squash `b0be56c`; GitOps #12/`6a4465e`; 108 E2E y smoke completo en `docu/fase-2-seo-geo.md` |
 | 3 | Cloudflare y medios | Fase 4 parcial para tenancy; puede prototiparse antes | Medios publicados por tenant, formatos responsive, caché y fallback probados | Pendiente | — |
 | 4 | Boilerplate integral | Fase 0 | Marca, negocio, dominios, módulos, pagos, canales y agente configurables sin hardcodes de NOX | Pendiente | — |
 | 5 | Shop independiente | Fases 3–4 | Subdominio propio, catálogo, detalle, búsqueda, carrito, checkout, retiro, stock y pedidos administrables | Pendiente | — |

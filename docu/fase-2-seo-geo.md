@@ -1,6 +1,6 @@
 # Fase 2 — SEO, GEO y accesibilidad
 
-**Estado:** en validación sobre `feat/seo-geo-foundations`  
+**Estado:** listo en `dev`
 **Destino:** exclusivamente `dev`; no promover a `main` ni `demo` sin autorización explícita.  
 **Fecha:** 2026-07-18
 
@@ -43,13 +43,33 @@ Evidencia local hasta el momento:
 - Seguridad de dependencias: `npm audit --omit=dev` y `pip-audit` sin vulnerabilidades conocidas.
 - GitOps RUM: PR de infraestructura [#12](https://github.com/MatiasMartinez90/agents-hetzner-k3s/pull/12), squash `6cf2745`; Argo `nox-dev` Synced/Healthy, ServiceMonitor y dashboard presentes.
 
-## Observabilidad pendiente de cierre
+## Evidencia de integración y despliegue
 
-Para marcar la fase `lista en dev` todavía deben completarse:
+- Aplicación: PR [#33](https://github.com/MatiasMartinez90/pelu/pull/33), squash `b0be56c2aa9c119d762bbe8954a090586cebbe71`, mergeado exclusivamente a `dev`.
+- Checks finales del PR: `code-and-config`, `dependencies`, `budgets` y `responsive` verdes. El primer intento responsive reveló una carrera del iframe externo de OpenStreetMap; el shim CSP quedó acotado al origen local y la repetición completa pasó.
+- Deploy: GitHub Actions [run 29627813319](https://github.com/MatiasMartinez90/pelu/actions/runs/29627813319), frontend y backend exitosos.
+- Frontend dev: `ghcr.io/matiasmartinez90/nox-barber@sha256:d81968e29bf66d457b1348927304378947722de82e82d590554d6a8e04087acd`.
+- Backend dev: `ghcr.io/matiasmartinez90/nox-backend@sha256:4fd50e2bae6d6b71bf5695a404af98d78b230880d73de54094bdfb9ef04d5a66`.
+- GitOps: revisión `6a4465e`; Argo `nox-dev` `Synced/Healthy`; web, API, worker y signer Ready, cero reinicios.
+- Infra RUM: PR GitOps [#12](https://github.com/MatiasMartinez90/agents-hetzner-k3s/pull/12); ServiceMonitor `nox-api` y ConfigMap `grafana-dashboard-nox-dev-rum` presentes.
 
-1. PR de aplicación hacia `dev`, checks verdes, merge y despliegue.
-2. Smoke real de canonical/noindex, schemas, catálogo, RUM/Prometheus y estado de Argo CD.
+Smoke real sobre `https://dev-nox.cloud-it.com.ar`:
+
+- home HTTP 200 en 0,11 s, canonical de dev, `noindex,nofollow` y `HairSalon` presentes;
+- `robots.txt` bloquea `/` y `sitemap.xml` no publica URLs mientras el ambiente sea no indexable;
+- `llms.txt` usa hostname de dev y presenta datos/horarios coherentes;
+- `/servicios` devuelve el catálogo real y `/servicios/corte-masculino` expone canonical y schema `Service`;
+- API `/health` HTTP 200 en 0,06 s;
+- POST RUM a `/api/vitals` HTTP 204, recepción backend HTTP 204 y serie `nox_web_vital_reports_total` visible en Prometheus con `namespace=nox-dev`, `device=mobile` y `path=/servicios/:slug`;
+- target Prometheus `nox-api` con `up=1`.
+
+Control de alcance después del despliegue:
+
+- `dev`: `b0be56c`;
+- `main`: `bab817a`, sin cambios;
+- `demo`: `76811bf`, sin cambios;
+- producción y demo conservan el mismo digest frontend `sha256:3b913f…`.
 
 ## Criterio de cierre
 
-La fase se marcará lista únicamente cuando las verificaciones anteriores tengan enlaces, commit, digest y evidencia del ambiente `dev`. Producción y demo permanecen sin cambios.
+La fase cumple el criterio autorizado de `lista en dev`: código, pruebas, checks, GitOps, despliegue y smoke tienen evidencia. Producción y demo permanecen sin cambios y no se iniciará promoción sin autorización explícita.
