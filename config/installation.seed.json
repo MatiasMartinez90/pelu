@@ -1,0 +1,43 @@
+{
+  "$schema": "./installation.seed.schema.json",
+  "schemaVersion": 1,
+  "professionals": [
+    { "slug": "thiago", "name": "Thiago", "role": "BARBERO", "photoUrl": "/media/team/thiago.v1.webp", "bio": "Especialista en fades y cortes clásicos. Precisión en cada pasada.", "instagram": "thiago.barber", "sortOrder": 1, "services": ["corte-masculino", "barba"] },
+    { "slug": "lautaro", "name": "Lautaro", "role": "BARBERO", "photoUrl": "/media/team/lautaro.v1.webp", "bio": "Diseños a navaja y cortes modernos.", "instagram": "lautaro.barber", "sortOrder": 2, "services": ["corte-masculino", "corte-barba", "barba"] },
+    { "slug": "bruno", "name": "Bruno", "role": "BARBERO", "photoUrl": "/media/team/bruno.v1.webp", "bio": "Master barber y fundador.", "instagram": "bruno.barber", "sortOrder": 3, "services": ["corte-masculino-bruno", "corte-barba-bruno", "barba-bruno"] },
+    { "slug": "nahuel", "name": "Nahuel", "role": "BARBERO", "photoUrl": "/media/team/nahuel.v1.webp", "bio": "Cortes prolijos y atención personalizada.", "instagram": "nahuel.barber", "sortOrder": 4, "services": ["corte-masculino", "corte-barba", "barba"] },
+    { "slug": "ramiro", "name": "Ramiro", "role": "BARBERO", "photoUrl": "/media/team/ramiro.v1.webp", "bio": "Terminaciones detalladas a tijera.", "instagram": "ramiro.barber", "sortOrder": 5, "services": ["corte-masculino", "corte-barba", "barba"] },
+    { "slug": "camila", "name": "Camila", "role": "ESTILISTA", "photoUrl": "/media/team/camila.v1.webp", "bio": "Especialista en corte, color y alisado profesional.", "instagram": "camila.estilista", "sortOrder": 6, "services": ["corte-masculino", "corte-barba", "barba", "corte-mujer", "color", "alisado"] }
+  ],
+  "services": [
+    { "slug": "corte-masculino", "name": "Corte Masculino", "description": "Corte personalizado con estilo.", "price": 15000, "durationMinutes": 30, "sortOrder": 1 },
+    { "slug": "corte-barba", "name": "Corte y Barba", "description": "Corte de pelo y arreglo de barba.", "price": 18000, "durationMinutes": 30, "badge": "Más pedido", "sortOrder": 2 },
+    { "slug": "barba", "name": "Barba", "description": "Recorte y perfilado de barba.", "price": 13000, "durationMinutes": 30, "sortOrder": 3 },
+    { "slug": "corte-masculino-bruno", "name": "Corte Masculino con Bruno", "description": "Corte personalizado con master barber.", "price": 20000, "durationMinutes": 30, "sortOrder": 4 },
+    { "slug": "corte-barba-bruno", "name": "Corte y Barba con Bruno", "description": "Corte y arreglo de barba con master barber.", "price": 23000, "durationMinutes": 30, "badge": "Premium", "sortOrder": 5 },
+    { "slug": "barba-bruno", "name": "Barba con Bruno", "description": "Arreglo de barba con master barber.", "price": 15000, "durationMinutes": 30, "sortOrder": 6 },
+    { "slug": "corte-mujer", "name": "Corte Mujer", "description": "Corte femenino personalizado.", "price": 15000, "durationMinutes": 30, "sortOrder": 7 },
+    { "slug": "color", "name": "Color", "description": "El valor varía según el trabajo a realizar.", "price": 70000, "durationMinutes": 120, "badge": "Exclusivo", "variablePrice": true, "sortOrder": 8 },
+    { "slug": "alisado", "name": "Alisado Orgánico", "description": "Valor según largo y volumen.", "price": 165000, "durationMinutes": 210, "badge": "Exclusivo", "variablePrice": true, "sortOrder": 9 }
+  ],
+  "schedules": [
+    { "dayOfWeek": 1, "opensAt": "10:00", "closesAt": "21:00" },
+    { "dayOfWeek": 2, "opensAt": "10:00", "closesAt": "21:00" },
+    { "dayOfWeek": 3, "opensAt": "10:00", "closesAt": "21:00" },
+    { "dayOfWeek": 4, "opensAt": "10:00", "closesAt": "21:00" },
+    { "dayOfWeek": 5, "opensAt": "10:00", "closesAt": "21:00" },
+    { "dayOfWeek": 6, "opensAt": "11:00", "closesAt": "20:00" }
+  ],
+  "settings": {
+    "agenda_open": true,
+    "booking_channels": { "web": true, "whatsapp": true, "telegram": true },
+    "slot_granularity_min": 30,
+    "min_lead_minutes": 60,
+    "max_days_ahead": 30
+  },
+  "inventory": [
+    { "sku": "NOX-TMM", "name": "Texture Mash · Matte", "quantity": 18, "minimumQuantity": 6, "price": 25000 },
+    { "sku": "NOX-TDO", "name": "Texture Dust · Original", "quantity": 4, "minimumQuantity": 6, "price": 25000 },
+    { "sku": "NOX-TMB", "name": "Texture Mash · Brillante", "quantity": 11, "minimumQuantity": 6, "price": 25000 }
+  ]
+}

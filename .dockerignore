@@ -11,7 +11,8 @@ backend
 docs
 docu
 pending
-scripts
+scripts/*
+!scripts/validate-installation.mjs
 tests
 test-results
 playwright-report

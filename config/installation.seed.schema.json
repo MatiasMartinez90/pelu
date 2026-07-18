@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platform.local/schemas/installation-seed-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "professionals", "services", "schedules", "settings", "inventory"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "professionals": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["slug", "name", "role", "photoUrl", "bio", "instagram", "sortOrder", "services"],
+        "properties": {
+          "slug": { "$ref": "#/$defs/slug" },
+          "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+          "role": { "type": "string", "enum": ["BARBERO", "ESTILISTA"] },
+          "photoUrl": { "type": ["string", "null"], "maxLength": 500 },
+          "bio": { "type": "string", "maxLength": 500 },
+          "instagram": { "type": "string", "maxLength": 100 },
+          "email": { "type": ["string", "null"], "format": "email" },
+          "sortOrder": { "type": "integer", "minimum": 0, "maximum": 10000 },
+          "services": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/slug" } }
+        }
+      }
+    },
+    "services": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["slug", "name", "description", "price", "durationMinutes", "sortOrder"],
+        "properties": {
+          "slug": { "$ref": "#/$defs/slug" },
+          "name": { "type": "string", "minLength": 2, "maxLength": 120 },
+          "description": { "type": "string", "maxLength": 1000 },
+          "price": { "type": "integer", "minimum": 0, "maximum": 100000000 },
+          "durationMinutes": { "type": "integer", "minimum": 5, "maximum": 1440 },
+          "badge": { "type": ["string", "null"], "maxLength": 80 },
+          "variablePrice": { "type": "boolean", "default": false },
+          "sortOrder": { "type": "integer", "minimum": 0, "maximum": 10000 }
+        }
+      }
+    },
+    "schedules": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["dayOfWeek", "opensAt", "closesAt"],
+        "properties": {
+          "professional": { "type": ["string", "null"], "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "dayOfWeek": { "type": "integer", "minimum": 0, "maximum": 6 },
+          "opensAt": { "$ref": "#/$defs/time" },
+          "closesAt": { "$ref": "#/$defs/time" }
+        }
+      }
+    },
+    "settings": {
+      "type": "object", "additionalProperties": false,
+      "required": ["agenda_open", "booking_channels", "slot_granularity_min", "min_lead_minutes", "max_days_ahead"],
+      "properties": {
+        "agenda_open": { "type": "boolean" },
+        "booking_channels": { "type": "object", "additionalProperties": { "type": "boolean" }, "minProperties": 1 },
+        "slot_granularity_min": { "type": "integer", "minimum": 5, "maximum": 240 },
+        "min_lead_minutes": { "type": "integer", "minimum": 0, "maximum": 10080 },
+        "max_days_ahead": { "type": "integer", "minimum": 1, "maximum": 730 }
+      }
+    },
+    "inventory": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["sku", "name", "quantity", "minimumQuantity", "price"],
+        "properties": {
+          "sku": { "type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{1,63}$" },
+          "name": { "type": "string", "minLength": 2, "maxLength": 160 },
+          "quantity": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "minimumQuantity": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "price": { "type": "integer", "minimum": 0, "maximum": 100000000 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$" },
+    "time": { "type": "string", "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$" }
+  }
+}

@@ -20,6 +20,7 @@ RUN python -m pip install --no-cache-dir --upgrade pip==26.1.2 \
 # mantiene cacheable la capa costosa de instalación.
 COPY src/ src/
 COPY db/ db/
+COPY scripts/ scripts/
 
 RUN useradd --create-home --shell /bin/bash appuser
 USER appuser

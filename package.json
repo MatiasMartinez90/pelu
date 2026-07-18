@@ -13,6 +13,7 @@
     "test:media": "tsx --test tests/unit/media.test.ts",
     "test:installation": "tsx --test tests/unit/installation.test.ts",
     "config:validate": "node scripts/validate-installation.mjs",
+    "config:validate:fixture": "node scripts/validate-installation.mjs tests/fixtures/installation.aurora.json tests/fixtures/installation.aurora.seed.json",
     "media:provision": "node scripts/provision-cloudflare-r2.mjs",
     "media:publish": "node scripts/publish-media.mjs",
     "perf:budgets": "node scripts/check-performance-budgets.mjs",

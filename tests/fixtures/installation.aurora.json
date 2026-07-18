@@ -1,0 +1,73 @@
+{
+  "$schema": "../../config/installation.schema.json",
+  "schemaVersion": 1,
+  "tenant": "aurora",
+  "businessType": "beauty_salon",
+  "localization": {
+    "language": "es", "locale": "es-AR", "timezone": "America/Argentina/Buenos_Aires",
+    "countryCode": "AR", "countryName": "Argentina",
+    "currency": { "code": "ARS", "symbol": "$", "fractionDigits": 0 }
+  },
+  "brand": {
+    "name": "Estudio Aurora", "shortName": "AURORA", "establishedYear": 2021,
+    "tagline": "Belleza consciente",
+    "description": "Estudio Aurora ofrece servicios personalizados de estilismo, color y cuidado integral con reserva online.",
+    "theme": { "primary": "#d46a92", "background": "#fff9f5", "foreground": "#24151d", "card": "#f6e8ed" }
+  },
+  "seo": { "keywords": ["salón de belleza", "color", "estilismo", "reserva online"], "priceRange": "$$" },
+  "domains": { "site": "https://aurora.example.test", "shop": "https://shop.aurora.example.test" },
+  "contact": { "phoneDisplay": "+54 11 4000-2000", "email": "hola@aurora.example.test" },
+  "location": {
+    "city": "Buenos Aires", "region": "Ciudad Autónoma de Buenos Aires",
+    "address": "Avenida del Libertador 1000, Buenos Aires", "streetAddress": "Avenida del Libertador 1000",
+    "postalCode": "C1001", "neighborhood": "Retiro", "latitude": -34.5901, "longitude": -58.3816,
+    "mapsQuery": "Avenida del Libertador 1000, Buenos Aires", "directions": "A dos cuadras de la estación Retiro.",
+    "mapsEmbed": "https://www.openstreetmap.org/export/embed.html?bbox=-58.39%2C-34.60%2C-58.37%2C-34.58"
+  },
+  "hours": [
+    { "day": "Martes a Viernes", "time": "09:00 – 19:00" },
+    { "day": "Sábados", "time": "09:00 – 17:00" },
+    { "day": "Domingos y Lunes", "time": "Cerrado" }
+  ],
+  "openingHours": [
+    { "days": ["Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "09:00", "closes": "19:00" },
+    { "days": ["Saturday"], "opens": "09:00", "closes": "17:00" }
+  ],
+  "payments": {
+    "methods": ["cash", "card", "bank_transfer"], "display": "Efectivo, tarjeta y transferencia en el local.",
+    "allowPayAtStore": true, "allowOnline": false
+  },
+  "booking": { "enabled": true, "path": "/reservar", "slotGranularityMinutes": 30, "minimumLeadMinutes": 120, "maximumDaysAhead": 45 },
+  "policies": {
+    "cancellationNoticeMinutes": 240, "cancellationNotes": "Los cambios no tienen costo con aviso previo.",
+    "arrivalRecommendation": "Llegá 10 minutos antes de tu cita."
+  },
+  "channels": {
+    "whatsapp": { "enabled": false, "address": "" },
+    "instagram": { "enabled": true, "address": "estudioaurora", "url": "https://instagram.com/estudioaurora" },
+    "telegram": { "enabled": false, "address": "" },
+    "email": { "enabled": true, "address": "hola@aurora.example.test" }
+  },
+  "shop": { "enabled": false, "url": "https://shop.aurora.example.test", "pickupOnly": true },
+  "agent": { "enabled": true, "name": "Alba", "tone": "sereno, claro y amable", "scope": ["appointments", "business_information"] },
+  "demo": { "defaultBarberSlug": "sofia" },
+  "features": { "customerPortal": true, "barberPortal": true, "newsletter": false, "campaigns": false, "onlinePayments": false },
+  "content": {
+    "heroHighlights": ["Corte", "Color", "Tratamientos"],
+    "servicesIntro": "Servicios personalizados con duración y precios siempre actualizados.",
+    "teamIntro": "Conocé a las profesionales del estudio y elegí tu próxima cita.",
+    "galleryIntro": "Una selección de trabajos recientes de nuestro equipo.",
+    "about": {
+      "lead": "Creamos un espacio tranquilo para cuidar tu estilo y tu tiempo.",
+      "body": ["Cada servicio comienza con una consulta y una propuesta pensada para vos."],
+      "values": [
+        { "title": "Escucha", "text": "Entendemos lo que buscás antes de comenzar." },
+        { "title": "Cuidado", "text": "Elegimos técnicas y productos responsables." }
+      ]
+    }
+  },
+  "copy": {
+    "bookingCta": "Reservar cita", "demoBanner": "ENTORNO DE DEMOSTRACIÓN",
+    "newsletterTitle": "Recibí novedades del estudio."
+  }
+}
