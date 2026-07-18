@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { absoluteUrl, publicIndexingEnabled, site } from "@/lib/site";
+import { mediaSource } from "@/lib/media";
+
+const socialImage = mediaSource("/img/hero-poster.jpg");
+const socialImageUrl = /^https?:\/\//.test(socialImage) ? socialImage : absoluteUrl(socialImage);
 
 type PageMetadata = {
   title: string;
@@ -22,9 +26,9 @@ export function pageMetadata({ title, description, path, noIndex = false }: Page
       title: `${title} | ${site.name}`,
       description,
       url: absoluteUrl(path),
-      images: [{ url: absoluteUrl("/img/hero-poster.jpg"), width: 640, height: 360, alt: `${site.name} — ${site.tagline}` }],
+      images: [{ url: socialImageUrl, width: 640, height: 360, alt: `${site.name} — ${site.tagline}` }],
     },
-    twitter: { card: "summary_large_image", title: `${title} | ${site.name}`, description, images: [absoluteUrl("/img/hero-poster.jpg")] },
+    twitter: { card: "summary_large_image", title: `${title} | ${site.name}`, description, images: [socialImageUrl] },
   };
 }
 
@@ -37,7 +41,7 @@ export const localBusinessJsonLd = {
   description: site.description,
   telephone: site.phoneDisplay,
   email: site.email,
-  image: absoluteUrl("/img/hero-poster.jpg"),
+  image: socialImageUrl,
   priceRange: "$$",
   currenciesAccepted: "ARS",
   paymentAccepted: "Efectivo, transferencia",

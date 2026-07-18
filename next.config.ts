@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
 
+const configuredMediaUrls = [
+  process.env.NEXT_PUBLIC_MEDIA_PUBLIC_URL,
+  process.env.NEXT_PUBLIC_MEDIA_TRANSFORM_URL,
+].filter((value): value is string => Boolean(value));
+const configuredMediaOrigins = [...new Set(configuredMediaUrls.map((value) => new URL(value).origin))];
+const configuredMediaHosts = [...new Set(configuredMediaUrls.map((value) => new URL(value).hostname))];
+
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -18,8 +25,8 @@ const securityHeaders = [
       "form-action 'self' https://auth.cloud-it.com.ar",
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://images.unsplash.com",
-      "media-src 'self'",
+      `img-src 'self' data: https://images.unsplash.com ${configuredMediaOrigins.join(" ")}`.trim(),
+      `media-src 'self' ${configuredMediaOrigins.join(" ")}`.trim(),
       "font-src 'self' data:",
       "connect-src 'self' https://api-nox.cloud-it.com.ar https://auth.cloud-it.com.ar",
       "upgrade-insecure-requests",
@@ -34,7 +41,13 @@ const nextConfig: NextConfig = {
   // render-blocking que Lighthouse móvil midió en ~307 ms.
   experimental: { inlineCss: true },
   images: {
-    remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
+    ...(configuredMediaUrls.length > 0
+      ? { loader: "custom" as const, loaderFile: "./src/lib/image-loader.ts" }
+      : {}),
+    remotePatterns: [
+      { protocol: "https", hostname: "images.unsplash.com" },
+      ...configuredMediaHosts.map((hostname) => ({ protocol: "https" as const, hostname })),
+    ],
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 86400,
   },

@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import Image from "next/image";
 import { stats } from "@/lib/data";
 import { site } from "@/lib/site";
+import { mediaAsset } from "@/lib/media-assets";
 
 const points = [
   "Barberos profesionales con años de oficio",
@@ -16,7 +17,7 @@ export function About() {
       <div className="container-px mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
         <div className="relative aspect-[4/5]">
           <Image
-            src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=900&q=80&auto=format&fit=crop"
+            src={mediaAsset("about.barbershop")}
             alt="Barbero trabajando"
             fill
             sizes="(max-width: 1024px) 100vw, 50vw"

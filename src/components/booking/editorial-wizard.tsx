@@ -420,7 +420,7 @@ export function EditorialWizard({
                 <h3 style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600 }}>Resumen del turno</h3>
                 <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 14, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                    {barber.photo_url && <Image src={barber.photo_url} alt="" width={48} height={48} sizes="48px" unoptimized={barber.photo_url.startsWith("/media/")} style={{ width: 48, height: 48, objectFit: "cover", filter: "grayscale(1)" }} />}
+                    {barber.photo_url && <Image src={barber.photo_url} alt="" width={48} height={48} sizes="48px" style={{ width: 48, height: 48, objectFit: "cover", filter: "grayscale(1)" }} />}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>Profesional</div>
                       <div style={{ fontWeight: 600, fontSize: 16, marginTop: 2 }}>{barber.name}</div>

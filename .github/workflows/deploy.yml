@@ -30,10 +30,12 @@ jobs:
             front:
               - "src/**"
               - "public/**"
+              - "config/media-assets.json"
               - "package.json"
               - "package-lock.json"
               - "next.config.ts"
               - "Dockerfile"
+              - ".dockerignore"
             backend:
               - "backend/**"
 
@@ -72,6 +74,9 @@ jobs:
           build-args: |
             SITE_URL=${{ github.ref_name == 'dev' && 'https://dev-nox.cloud-it.com.ar' || 'https://nox.cloud-it.com.ar' }}
             SITE_INDEXABLE=${{ github.ref_name == 'main' && 'true' || 'false' }}
+            NEXT_PUBLIC_MEDIA_PUBLIC_URL=${{ github.ref_name == 'dev' && vars.MEDIA_PUBLIC_URL_DEV || vars.MEDIA_PUBLIC_URL_PROD }}
+            NEXT_PUBLIC_MEDIA_TRANSFORM_URL=${{ github.ref_name == 'dev' && vars.MEDIA_TRANSFORM_URL_DEV || vars.MEDIA_TRANSFORM_URL_PROD }}
+            NEXT_PUBLIC_MEDIA_TENANT=${{ github.ref_name == 'dev' && vars.MEDIA_TENANT_DEV || vars.MEDIA_TENANT_PROD }}
 
       - name: Actualizar manifest en repo GitOps
         env:

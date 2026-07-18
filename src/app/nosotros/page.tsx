@@ -6,6 +6,7 @@ import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { site } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
+import { mediaAsset } from "@/lib/media-assets";
 
 export const metadata: Metadata = pageMetadata({ title: "Nosotros", description: `La historia, el oficio y los valores detrás de ${site.name} en ${site.city}.`, path: "/nosotros" });
 
@@ -28,7 +29,7 @@ export default function NosotrosPage() {
 
       <section style={{ position: "relative", minHeight: "64vh", display: "flex", alignItems: "flex-end", overflow: "hidden" }}>
         <Image
-          src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1600&q=85&auto=format&fit=crop"
+          src={mediaAsset("about.barbershop")}
           alt=""
           fill
           priority

@@ -5,18 +5,19 @@ import { Footer } from "@/components/sections/footer";
 import { WhatsappFab } from "@/components/whatsapp-fab";
 import { site } from "@/lib/site";
 import { pageMetadata } from "@/lib/seo";
+import { mediaAsset } from "@/lib/media-assets";
 
 export const metadata: Metadata = pageMetadata({ title: "Galería", description: `Cortes, fades, barba y diseños realizados por el equipo de ${site.name}.`, path: "/galeria" });
 
 const urls = [
-  "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1521490683712-35a1cb235d1c?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1517832606299-7ae9b720a186?w=800&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1596728325488-58c87691e9af?w=800&q=80&auto=format&fit=crop",
+  mediaAsset("gallery.work01"),
+  mediaAsset("gallery.work02"),
+  mediaAsset("gallery.work03"),
+  mediaAsset("gallery.work04"),
+  mediaAsset("gallery.work05"),
+  mediaAsset("gallery.work06"),
+  mediaAsset("gallery.work07"),
+  mediaAsset("gallery.work08"),
 ];
 const ars = ["3 / 4", "1 / 1", "4 / 5", "3 / 4", "1 / 1", "5 / 6", "4 / 5", "3 / 4"];
 

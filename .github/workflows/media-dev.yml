@@ -1,0 +1,43 @@
+name: publish-dev-media
+
+on:
+  workflow_dispatch:
+    inputs:
+      provision:
+        description: "Crear/verificar bucket y dominio antes de publicar"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.ref_name == 'dev'
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Provisionar R2 dev
+        if: inputs.provision
+        run: npm run media:provision -- --apply
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_R2_ADMIN_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+          R2_BUCKET: nox-dev-media
+          MEDIA_DOMAIN: media-dev-nox.cloud-it.com.ar
+      - name: Publicar y verificar assets
+        run: npm run media:publish -- --apply
+        env:
+          R2_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_DEV_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_DEV_SECRET_ACCESS_KEY }}
+          R2_BUCKET: nox-dev-media
+          MEDIA_TENANT: nox

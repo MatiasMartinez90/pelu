@@ -15,7 +15,8 @@ test.describe("WCAG 2.2 A/AA", () => {
 
   for (const route of routes) {
     test(`${route} no tiene violaciones serias o críticas`, async ({ page }) => {
-      await page.goto(route, { waitUntil: "networkidle" });
+      await page.goto(route, { waitUntil: "domcontentloaded" });
+      await expect(page.locator("body")).toBeVisible();
       const result = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();

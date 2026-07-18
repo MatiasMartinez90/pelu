@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { HeroVideo } from "@/components/sections/hero-video";
+import { mediaSource } from "@/lib/media";
 
 const SANS = "var(--font-sans)";
 
@@ -19,6 +20,9 @@ type HeroProps = {
 
 export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFAULT_VIDEO_WEBM, poster = DEFAULT_POSTER }: HeroProps) {
   const marquee = ("✶  " + brand + "  ·  BARBERÍA PREMIUM  ·  BUENOS AIRES  ").repeat(3);
+  const posterUrl = mediaSource(poster);
+  const videoUrl = mediaSource(videoSrc);
+  const videoWebmUrl = mediaSource(videoWebm);
 
   return (
     <section
@@ -26,7 +30,7 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFA
       style={{ background: "#0a0a0a", fontFamily: SANS, color: "#fff" }}
     >
       <Image
-        src={poster}
+        src={posterUrl}
         alt=""
         fill
         preload
@@ -37,7 +41,7 @@ export function Hero({ brand = "NOX", videoSrc = DEFAULT_VIDEO, videoWebm = DEFA
           objectPosition: "55% 26%",
         }}
       />
-      <HeroVideo mp4={videoSrc} webm={videoWebm} poster={poster} />
+      <HeroVideo mp4={videoUrl} webm={videoWebmUrl} poster={posterUrl} />
 
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(95deg, rgba(8,8,8,0.82) 0%, rgba(8,8,8,0.5) 34%, rgba(8,8,8,0.12) 56%, rgba(8,8,8,0) 72%)" }} />
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0) 22%, rgba(8,8,8,0) 62%, rgba(8,8,8,0.7) 100%)" }} />
