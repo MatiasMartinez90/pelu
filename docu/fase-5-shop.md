@@ -101,6 +101,7 @@ Evidencia local del incremento 5.3:
 - lint y TypeScript verdes;
 - E2E: transición de pedido, edición de ficha sin enviar `qty` y viewport mobile/desktop;
 - las pruebas PostgreSQL del core cubren checkout concurrente/idempotente, ledger y restauración única al cancelar.
+- Lighthouse reproduce 350 ms de latencia del catálogo para cubrir el streaming; CLS del shop fue 0 en 3/3 corridas tras estabilizar el footer durante `loading`.
 
 ## Rollback
 
