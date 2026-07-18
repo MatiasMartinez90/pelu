@@ -5,10 +5,12 @@ import json
 from datetime import date as date_type
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
+from ...config import get_settings
 from ...db.pool import get_pool
 from ...db.repositories import catalog, site_context
 from ...integrations.redis_client import rate_limit_exceeded
 from ...observability import record_web_vital
+from ...payments.security import sign_appointment_capability
 from ...services import availability_service, booking_service
 from ..client_ip import get_client_ip
 from ..schemas import (
@@ -125,6 +127,10 @@ async def create_booking(body: BookingIn, request: Request):
     except booking_service.BookingError as e:
         raise HTTPException(422, {"code": "BOOKING_ERROR", "message": str(e)}) from None
 
+    settings = get_settings()
+    payment_token = None
+    if settings.payment_provider != "disabled" and len(settings.payment_link_secret) >= 32:
+        payment_token = sign_appointment_capability(result["id"], settings.payment_link_secret)
     return BookingOut(
         id=result["id"],
         barber=result["barber"],
@@ -134,4 +140,5 @@ async def create_booking(body: BookingIn, request: Request):
         status=result["status"],
         price=result["price_at_booking"],
         channel=result["channel"],
+        payment_token=payment_token,
     )

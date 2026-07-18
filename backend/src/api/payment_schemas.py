@@ -9,6 +9,10 @@ class ShopPaymentPreferenceIn(BaseModel):
     cart_token: str = Field(min_length=32, max_length=128)
 
 
+class AppointmentPaymentPreferenceIn(BaseModel):
+    capability_token: str = Field(min_length=40, max_length=1000)
+
+
 class PaymentPreferenceOut(BaseModel):
     checkout_url: str
     status_token: str
@@ -30,4 +34,3 @@ class PaymentStatusOut(BaseModel):
 
 class DemoPaymentActionIn(BaseModel):
     outcome: Literal["approved", "rejected"]
-

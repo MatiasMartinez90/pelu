@@ -20,6 +20,7 @@ const products = [
 ];
 const carts = new Map();
 const orders = new Map();
+const appointments = new Map();
 const payments = new Map();
 const shopDelayMs = Math.max(0, Number(process.env.SHOP_FIXTURE_DELAY_MS ?? 0));
 
@@ -54,6 +55,31 @@ createServer(async (request, response) => {
   if (url.pathname === "/api/v1/booking-bootstrap") {
     response.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
     return response.end(JSON.stringify(catalog));
+  }
+  if (url.pathname === "/api/v1/availability" && request.method === "GET") {
+    return json(response, 200, {
+      date: url.searchParams.get("date"),
+      barber: url.searchParams.get("barber"),
+      service: url.searchParams.get("service"),
+      slots: ["15:00", "15:30"],
+    });
+  }
+  if (url.pathname === "/api/v1/bookings" && request.method === "POST") {
+    const payload = await body(request);
+    const id = randomUUID();
+    const appointment = {
+      id,
+      barber: "Lautaro",
+      service: "Corte Masculino",
+      starts_at: `${payload.date}T15:00:00-03:00`,
+      ends_at: `${payload.date}T15:30:00-03:00`,
+      status: "active",
+      price: 15000,
+      channel: "web",
+      payment_token: `appointment.${id.replaceAll("-", "")}.capability-signed-token`,
+    };
+    appointments.set(id, appointment);
+    return json(response, 201, appointment);
   }
   if (url.pathname === "/api/v1/shop/categories" && request.method === "GET") {
     await shopDelay();
@@ -112,6 +138,15 @@ createServer(async (request, response) => {
     if (!record || record.cartToken !== payload.cart_token) return json(response, 404, { detail: "pedido inexistente" });
     const token = `demo.${preferenceMatch[1].replaceAll("-", "")}.signed`;
     payments.set(token, { purpose: "shop_order", status: "pending", amount: record.order.total, currency: "ARS", expires_at: new Date(Date.now() + 1800000).toISOString(), sandbox: true });
+    return json(response, 201, { checkout_url: `http://shop.localhost:3100/pago-demo/${token}`, status_token: token, ...payments.get(token) });
+  }
+  const appointmentPreferenceMatch = url.pathname.match(/^\/api\/v1\/payments\/appointments\/([0-9a-f-]{36})\/preference$/);
+  if (appointmentPreferenceMatch && request.method === "POST") {
+    const payload = await body(request);
+    const appointment = appointments.get(appointmentPreferenceMatch[1]);
+    if (!appointment || payload.capability_token !== appointment.payment_token) return json(response, 404, { detail: "turno inexistente" });
+    const token = `demo.${appointmentPreferenceMatch[1].replaceAll("-", "")}.appointment-signed`;
+    payments.set(token, { purpose: "appointment", status: "pending", amount: appointment.price, currency: "ARS", expires_at: new Date(Date.now() + 1800000).toISOString(), sandbox: true });
     return json(response, 201, { checkout_url: `http://shop.localhost:3100/pago-demo/${token}`, status_token: token, ...payments.get(token) });
   }
   const payAtStoreMatch = url.pathname.match(/^\/api\/v1\/payments\/shop-orders\/([0-9a-f-]{36})\/pay-at-store$/);

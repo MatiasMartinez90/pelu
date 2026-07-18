@@ -133,11 +133,38 @@ async def create_intent(
                    external_reference, idempotency_hash, request_hash, amount, currency,
                    payer_email, sandbox, expires_at
                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+               ON CONFLICT DO NOTHING
                RETURNING *""",
             intent_id, installation_id, purpose, shop_order_id, appointment_id, provider,
             external_reference, idempotency_hash, request_hash, target["amount"],
             target["currency"], effective_email, provider == "demo", expires_at,
         )
+        if row is None:
+            # Una carrera puede haber creado la misma idempotency key o el único
+            # intento activo permitido para el turno. En ambos casos devolvemos
+            # el recurso ganador sólo si representa exactamente este pedido.
+            winner = await connection.fetchrow(
+                """SELECT * FROM payment_intents
+                   WHERE installation_id = $1 AND idempotency_hash = $2""",
+                installation_id, idempotency_hash,
+            )
+            if winner is None and purpose == "appointment":
+                winner = await connection.fetchrow(
+                    """SELECT * FROM payment_intents
+                       WHERE appointment_id = $1 AND status IN ('created', 'pending')
+                       ORDER BY created_at DESC LIMIT 1""",
+                    target_id,
+                )
+            if winner is None:
+                raise PaymentConflict("no se pudo crear la intención")
+            if (
+                winner["purpose"] != purpose
+                or winner["provider"] != provider
+                or winner["amount"] != target["amount"]
+                or winner["currency"].strip() != target["currency"].strip()
+            ):
+                raise PaymentConflict("ya existe otra intención activa")
+            return _render(winner), False
         await connection.execute(
             """INSERT INTO payment_status_history (payment_intent_id, from_status, to_status, actor)
                VALUES ($1, NULL, 'created', 'api')""",
@@ -222,6 +249,93 @@ async def shop_order_belongs_to_cart(
            WHERE o.id = $1 AND c.token_hash = $2""",
         order_id, _sha256(cart_token),
     ))
+
+
+async def appointment_belongs_to_contact(
+    pool: asyncpg.Pool, appointment_id: UUID, contact_ref: str
+) -> bool:
+    """Autoriza tools internas sin confiar en un ID de turno aportado por el LLM."""
+    return bool(await pool.fetchval(
+        """SELECT 1 FROM appointments a
+           JOIN customers c ON c.id = a.customer_id
+           WHERE a.id = $1 AND c.phone = $2 AND a.status = 'active'""",
+        appointment_id, contact_ref,
+    ))
+
+
+async def expire_stale_appointment_intent(
+    pool: asyncpg.Pool, appointment_id: UUID
+) -> bool:
+    """Expira el link vencido sin cancelar el turno y habilita uno nuevo."""
+    async with pool.acquire() as connection, connection.transaction():
+        intent = await connection.fetchrow(
+            """SELECT * FROM payment_intents
+               WHERE appointment_id = $1 AND status IN ('created', 'pending')
+               ORDER BY created_at DESC LIMIT 1 FOR UPDATE""",
+            appointment_id,
+        )
+        if intent is None or intent["expires_at"] > datetime.now(timezone.utc):
+            return False
+        await connection.execute(
+            """UPDATE payment_intents SET status = 'expired', updated_at = now()
+               WHERE id = $1""",
+            intent["id"],
+        )
+        await connection.execute(
+            """INSERT INTO payment_status_history
+                   (payment_intent_id, from_status, to_status, actor)
+               VALUES ($1,$2,'expired','preference_refresh')""",
+            intent["id"], intent["status"],
+        )
+        await connection.execute(
+            """UPDATE appointments SET payment_method = 'pay_at_store',
+                      payment_status = 'unpaid', updated_at = now()
+               WHERE id = $1 AND payment_status <> 'approved'""",
+            appointment_id,
+        )
+        return True
+
+
+async def cancel_appointment_payment_to_store(
+    pool: asyncpg.Pool, appointment_id: UUID, contact_ref: str, *, actor: str
+) -> None:
+    """Vuelve al cobro local sin afectar la reserva ni aceptar doble cobro."""
+    async with pool.acquire() as connection, connection.transaction():
+        appointment = await connection.fetchrow(
+            """SELECT a.* FROM appointments a
+               JOIN customers c ON c.id = a.customer_id
+               WHERE a.id = $1 AND c.phone = $2 AND a.status = 'active'
+               FOR UPDATE OF a""",
+            appointment_id, contact_ref,
+        )
+        if appointment is None:
+            raise PaymentNotFound("turno inexistente")
+        if appointment["payment_status"] == "approved":
+            raise PaymentConflict("el turno ya figura abonado")
+        intent = await connection.fetchrow(
+            """SELECT * FROM payment_intents
+               WHERE appointment_id = $1 AND status IN ('created', 'pending')
+               ORDER BY created_at DESC LIMIT 1 FOR UPDATE""",
+            appointment_id,
+        )
+        if intent is not None:
+            await connection.execute(
+                """UPDATE payment_intents SET status = 'cancelled', updated_at = now()
+                   WHERE id = $1""",
+                intent["id"],
+            )
+            await connection.execute(
+                """INSERT INTO payment_status_history
+                       (payment_intent_id, from_status, to_status, actor)
+                   VALUES ($1,$2,'cancelled',$3)""",
+                intent["id"], intent["status"], actor,
+            )
+        await connection.execute(
+            """UPDATE appointments SET payment_method = 'pay_at_store',
+                      payment_status = 'unpaid', updated_at = now()
+               WHERE id = $1""",
+            appointment_id,
+        )
 
 
 async def cancel_shop_payment_to_store(
