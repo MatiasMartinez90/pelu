@@ -54,6 +54,7 @@ async def _prepare(pool: asyncpg.Pool) -> dict:
         payment_method="pay_at_store",
         customer_notes="",
     )
+    order["_cart_token"] = cart["token"]
     return order
 
 
@@ -347,6 +348,47 @@ async def test_demo_checkout_uses_the_same_signed_end_to_end_flow(monkeypatch):
         assert await pool.fetchval(
             "SELECT status FROM shop_orders WHERE id = $1", order["id"]
         ) == "confirmed"
+    finally:
+        await _cleanup(pool)
+        await pool.close()
+
+
+@pytest.mark.asyncio
+async def test_online_payment_can_fall_back_to_store_without_releasing_stock():
+    pool = await asyncpg.create_pool(os.environ["TEST_DATABASE_URL"], min_size=1, max_size=3)
+    order = await _prepare(pool)
+    try:
+        intent, _ = await payments.create_intent(
+            pool,
+            installation_id="test",
+            purpose="shop_order",
+            target_id=order["id"],
+            provider="demo",
+            payer_email=None,
+            idempotency_key="fallback-payment-intent-key",
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+        )
+        await payments.cancel_shop_payment_to_store(pool, order["id"], order["_cart_token"])
+        await payments.cancel_shop_payment_to_store(pool, order["id"], order["_cart_token"])
+        state = await pool.fetchrow(
+            """SELECT status, payment_method, payment_status
+               FROM shop_orders WHERE id = $1""",
+            order["id"],
+        )
+        assert dict(state) == {
+            "status": "confirmed", "payment_method": "pay_at_store", "payment_status": "unpaid"
+        }
+        assert await pool.fetchval(
+            "SELECT status FROM payment_intents WHERE id = $1", intent["id"]
+        ) == "cancelled"
+        assert await pool.fetchval(
+            "SELECT qty FROM products WHERE sku = 'TEST-PAY-01'"
+        ) == 3
+        assert await pool.fetchval(
+            """SELECT count(*) FROM payment_status_history
+               WHERE payment_intent_id = $1 AND to_status = 'cancelled'""",
+            intent["id"],
+        ) == 1
     finally:
         await _cleanup(pool)
         await pool.close()

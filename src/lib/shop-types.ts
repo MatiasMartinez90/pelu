@@ -70,3 +70,22 @@ export type ShopOrder = {
     line_total: number;
   }>;
 };
+
+export type PaymentPreference = {
+  checkout_url: string;
+  status_token: string;
+  status: string;
+  amount: number;
+  currency: string;
+  expires_at: string;
+  sandbox: boolean;
+};
+
+export type PaymentStatus = {
+  purpose: string;
+  status: "created" | "pending" | "approved" | "rejected" | "cancelled" | "refunded" | "expired";
+  amount: number;
+  currency: string;
+  expires_at: string;
+  sandbox: boolean;
+};

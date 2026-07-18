@@ -19,6 +19,8 @@ const products = [
   { slug: "aceite-barba", name: "Aceite para Barba", sku: "TEST-BAR", description: "Cuidado diario para barba.", short_description: "Cuidado diario para barba.", category_slug: "barba", category_name: "Barba", image_url: "/media/products/demo/beard-oil-cedro.v1.webp", gallery: [], price: 19000, available_qty: 50, in_stock: true, featured: false },
 ];
 const carts = new Map();
+const orders = new Map();
+const payments = new Map();
 const shopDelayMs = Math.max(0, Number(process.env.SHOP_FIXTURE_DELAY_MS ?? 0));
 
 async function shopDelay() {
@@ -99,7 +101,39 @@ createServer(async (request, response) => {
     if (!cart || !cart.items.size) return json(response, 422, { detail: "carrito vacío" });
     const rendered = renderedCart(cart);
     carts.delete(payload.cart_token);
-    return json(response, 201, { id: randomUUID(), order_number: 42, customer_name: payload.customer.name, customer_email: payload.customer.email, customer_phone: payload.customer.phone, status: "confirmed", payment_method: "pay_at_store", payment_status: "unpaid", currency: "ARS", subtotal: rendered.subtotal, total: rendered.subtotal, pickup_location: "Av. Demo 1234, Palermo", customer_notes: payload.customer_notes ?? "", cancellation_reason: "", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), items: rendered.items.map(({ product, quantity, line_total }) => ({ product_slug: product.slug, product_name: product.name, sku: product.sku, unit_price: product.price, quantity, line_total })) });
+    const order = { id: randomUUID(), order_number: 42, customer_name: payload.customer.name, customer_email: payload.customer.email, customer_phone: payload.customer.phone, status: "confirmed", payment_method: "pay_at_store", payment_status: "unpaid", currency: "ARS", subtotal: rendered.subtotal, total: rendered.subtotal, pickup_location: "Av. Demo 1234, Palermo", customer_notes: payload.customer_notes ?? "", cancellation_reason: "", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), items: rendered.items.map(({ product, quantity, line_total }) => ({ product_slug: product.slug, product_name: product.name, sku: product.sku, unit_price: product.price, quantity, line_total })) };
+    orders.set(order.id, { order, cartToken: payload.cart_token });
+    return json(response, 201, order);
+  }
+  const preferenceMatch = url.pathname.match(/^\/api\/v1\/payments\/shop-orders\/([0-9a-f-]{36})\/preference$/);
+  if (preferenceMatch && request.method === "POST") {
+    const payload = await body(request);
+    const record = orders.get(preferenceMatch[1]);
+    if (!record || record.cartToken !== payload.cart_token) return json(response, 404, { detail: "pedido inexistente" });
+    const token = `demo.${preferenceMatch[1].replaceAll("-", "")}.signed`;
+    payments.set(token, { purpose: "shop_order", status: "pending", amount: record.order.total, currency: "ARS", expires_at: new Date(Date.now() + 1800000).toISOString(), sandbox: true });
+    return json(response, 201, { checkout_url: `http://shop.localhost:3100/pago-demo/${token}`, status_token: token, ...payments.get(token) });
+  }
+  const payAtStoreMatch = url.pathname.match(/^\/api\/v1\/payments\/shop-orders\/([0-9a-f-]{36})\/pay-at-store$/);
+  if (payAtStoreMatch && request.method === "POST") {
+    const payload = await body(request);
+    const record = orders.get(payAtStoreMatch[1]);
+    if (!record || record.cartToken !== payload.cart_token) return json(response, 404, { detail: "pedido inexistente" });
+    response.writeHead(204);
+    return response.end();
+  }
+  const paymentStatusMatch = url.pathname.match(/^\/api\/v1\/payments\/status\/([A-Za-z0-9_.~-]+)$/);
+  if (paymentStatusMatch && request.method === "GET") {
+    const payment = payments.get(paymentStatusMatch[1]);
+    return payment ? json(response, 200, payment) : json(response, 404, { detail: "link de pago inexistente" });
+  }
+  const demoPaymentMatch = url.pathname.match(/^\/api\/v1\/payments\/demo\/([A-Za-z0-9_.~-]+)$/);
+  if (demoPaymentMatch && request.method === "POST") {
+    const payment = payments.get(demoPaymentMatch[1]);
+    if (!payment) return json(response, 404, { detail: "link de pago inexistente" });
+    const payload = await body(request);
+    payment.status = payload.outcome;
+    return json(response, 200, payment);
   }
   if (url.pathname === "/api/v1/telemetry/web-vitals" && request.method === "POST") {
     request.resume();
