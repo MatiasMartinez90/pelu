@@ -4,7 +4,7 @@
 **Última actualización:** 2026-07-18
 **Alcance de este documento:** fuente de verdad de planificación, estado, criterios de aceptación y evidencias del roadmap integral.
 **Repositorio analizado:** `Pelu`  
-**Branch de ejecución actual:** `chore/normalize-dev-main-demo`, creada desde `dev`
+**Branch de ejecución actual:** `docs/phase0-verification-evidence`, creada desde `dev`
 
 ### Decisiones confirmadas el 2026-07-17
 
@@ -44,7 +44,7 @@ Los estados permitidos son `pendiente`, `en curso`, `validando`, `listo en dev`,
 
 | Fase | Entrega | Dependencias | Criterio de aceptación resumido | Estado | Evidencia |
 |---|---|---|---|---|---|
-| 0 | Normalización de ramas | Ninguna | `dev`, `main` y `demo` sin divergencias funcionales; #16–#18 presentes; Telegram, persistencia, fechas y moderación reprobados | En curso | PRs #16, #17 y #18 ya mergeados en `dev`; auditoría 2026-07-18 registra divergencia desde `6e19ff1` |
+| 0 | Normalización de ramas | Ninguna | `dev`, `main` y `demo` sin divergencias funcionales; #16–#18 presentes; Telegram, persistencia, fechas y moderación reprobados | Validando | PRs #16–#18, #21 y #22; CI y E2E dev detallados en 0.3; falta promoción final `dev → main → demo` |
 | 1 | Mobile y responsive | Fase 0 | Home, turnero, shop, admin, barbero y cliente cubiertos por matriz responsive y pruebas visuales | Pendiente | — |
 | 2 | SEO y GEO | Fases 0–1 | sitemap/robots/canonical/metadata/schema/servicios/`llms.txt` válidos y consistentes | Pendiente | — |
 | 3 | Cloudflare y medios | Fase 4 parcial para tenancy; puede prototiparse antes | Medios publicados por tenant, formatos responsive, caché y fallback probados | Pendiente | — |
@@ -75,6 +75,25 @@ Los estados permitidos son `pendiente`, `en curso`, `validando`, `listo en dev`,
 ### 0.2 Registro de evidencias
 
 Cada fase agregará aquí o en su subsección: branch, PR, commits, migraciones, comandos de prueba y resultados, checks de CI, digest desplegado, estado Argo, URLs/escenarios E2E y defectos/correcciones. Los secretos, tokens y PII nunca se copiarán como evidencia.
+
+### 0.3 Evidencias de validación de Fase 0 en dev — 2026-07-18
+
+- PR [#21](https://github.com/MatiasMartinez90/pelu/pull/21), squash `437d5b2`: integración de los cambios recientes de `main` sobre `dev`, preservando #16–#18 y resolviendo el pipeline para que `dev` modifique sólo sus manifests.
+- Checks de #21: `dependencies`, `code-and-config` y `budgets` verdes. El gate de performance incluyó build, presupuestos y Lighthouse mobile/desktop.
+- PR [#22](https://github.com/MatiasMartinez90/pelu/pull/22), squash `b2e13b6`: arnés E2E capaz de ejercitar el webhook Telegram nativo sin guardar ni imprimir credenciales; agrega cobertura de fechas relativas y falso positivo de moderación de peluquería.
+- Checks de #22: `dependencies` y `code-and-config` verdes.
+- Verificación local de la integración: ESLint; build Next.js; presupuestos de performance; `npm audit --omit=dev`; Ruff; 58 tests backend verdes y 4 integraciones omitidas localmente; `pip-audit` sin vulnerabilidades conocidas; workflows YAML válidos. CI ejecutó las integraciones omitidas contra PostgreSQL y RabbitMQ descartables.
+- Pipeline dev [run 29621812546](https://github.com/MatiasMartinez90/pelu/actions/runs/29621812546) y pipeline final [run 29622900497](https://github.com/MatiasMartinez90/pelu/actions/runs/29622900497): builds y actualización GitOps exitosos.
+- Argo CD `nox-dev`: `Synced/Healthy` en revisión GitOps `45cbd97`; frontend `sha256:87f114e…` y backend `sha256:a76b410…`.
+- Smoke HTTP: Home dev `200`, `/admin` redirige al login esperado, API `/health` devuelve `200`, y catálogo PostgreSQL expone profesionales y servicios configurados.
+- E2E real: update Telegram nativo → Chatwoot → webhook firmado → RabbitMQ → worker LangGraph → OpenAI → respuesta Chatwoot/Telegram.
+- Reserva E2E con Bruno para `2026-07-20 15:30`: el slot permaneció libre antes de confirmar y dejó de estar disponible después de “Sí, confirmo”, demostrando persistencia real.
+- Idempotencia: un segundo “Confirmo” no creó otro turno.
+- Reprogramación E2E `15:30 → 10:00`: el slot anterior se liberó y el nuevo quedó ocupado sin duplicación.
+- Cancelación E2E: `10:00` volvió a quedar disponible; no quedó un turno QA activo.
+- Fechas relativas: test determinista cubre `mañana` desde `2026-07-17 → 2026-07-18` y el E2E mantuvo “mañana” sin sugerir un día contradictorio.
+- Moderación: “Quiero cortarme el pelo” continuó normalmente en el agente y pidió profesional/horario; no produjo el handoff falso observado antes del fix #16.
+- Producción y demo permanecieron sin cambios durante toda la validación dev y conservaron entre sí los mismos digests.
 
 ## 1. Objetivo
 
