@@ -45,7 +45,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 CHATWOOT_URL = os.environ.get("CHATWOOT_URL", "https://chatwoot2.cloud-it.com.ar").rstrip("/")
 ACCOUNT = int(os.environ.get("CHATWOOT_ACCOUNT", "2"))
@@ -62,6 +63,7 @@ TELEGRAM_WEBHOOK = os.environ.get("TELEGRAM_QA_WEBHOOK", "")
 QA_BARBER = os.environ.get("QA_BARBER", "bruno")
 QA_SERVICE = os.environ.get("QA_SERVICE", "corte-masculino-bruno")
 QA_SERVICE_NAME = os.environ.get("QA_SERVICE_NAME", "corte masculino")
+QA_TIMEZONE = os.environ.get("QA_TIMEZONE", "America/Argentina/Buenos_Aires")
 
 
 # ---------- HTTP helpers (stdlib only, sin deps) ----------
@@ -271,6 +273,38 @@ def scenario_catalogo(conv: Conversation) -> Result:
     return r
 
 
+def scenario_fecha_relativa(conv: Conversation) -> Result:
+    r = Result("fecha relativa")
+    expected = datetime.now(ZoneInfo(QA_TIMEZONE)).date() + timedelta(days=1)
+    reply = conv.ask(
+        f"Quiero reservar un {QA_SERVICE_NAME} con {QA_BARBER} mañana a las 15:00."
+    )
+    if reply is None:
+        r.fail("sin respuesta al pedido con 'mañana'")
+        return r
+    expected_day = SPANISH_DOW[expected.weekday()]
+    expected_numeric = f"{expected.day}/{expected.month}"
+    if not contains_any(reply, expected_day, expected_numeric):
+        r.fail(
+            f"la respuesta no ubica 'mañana' en {expected_day} {expected_numeric}: {reply[:160]}"
+        )
+    else:
+        r.notes.append(f"mañana resuelto como {expected_day} {expected_numeric}")
+    return r
+
+
+def scenario_moderacion_peluqueria(conv: Conversation) -> Result:
+    r = Result("moderación de peluquería")
+    reply = conv.ask("Quiero cortarme el pelo")
+    if reply is None:
+        r.fail("sin respuesta a una intención válida de peluquería")
+    elif contains_any(reply, "no puedo seguir", "derivar al equipo", "contenido inapropiado"):
+        r.fail("falso positivo de moderación/handoff ante una intención válida")
+    else:
+        r.notes.append("la intención de corte continuó en el agente")
+    return r
+
+
 def scenario_reserva(conv: Conversation, state: dict) -> Result:
     r = Result("reserva+confirmación")
     day = next_bookable_date()
@@ -410,7 +444,17 @@ def scenario_handoff(_: Conversation) -> Result:
     return r
 
 
-SCENARIOS = ["catalogo", "reserva", "idempotencia", "reprogramacion", "cancelacion", "injection", "handoff"]
+SCENARIOS = [
+    "catalogo",
+    "fecha_relativa",
+    "moderacion_peluqueria",
+    "reserva",
+    "idempotencia",
+    "reprogramacion",
+    "cancelacion",
+    "injection",
+    "handoff",
+]
 
 
 def main() -> int:
@@ -438,6 +482,8 @@ def main() -> int:
     results: list[Result] = []
     runners = {
         "catalogo": lambda: scenario_catalogo(conv),
+        "fecha_relativa": lambda: scenario_fecha_relativa(conv),
+        "moderacion_peluqueria": lambda: scenario_moderacion_peluqueria(conv),
         "reserva": lambda: scenario_reserva(conv, state),
         "idempotencia": lambda: scenario_idempotencia(conv, state),
         "reprogramacion": lambda: scenario_reprogramacion(conv, state),
