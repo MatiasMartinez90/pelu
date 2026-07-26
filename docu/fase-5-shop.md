@@ -2,11 +2,13 @@
 
 ## Estado
 
-Listo y verificado en `dev`. No se promovió a `main`, demo ni producción; cualquier promoción futura requiere autorización explícita.
+Funcionalmente listo y verificado en `dev`; extracción física en curso. No se promovió a `main`, demo ni producción; cualquier promoción futura requiere autorización explícita.
 
 ## Alcance
 
-El shop usa el mismo artefacto white-label, pero se publica en el dominio configurado para la tienda. Para NOX dev el host es `shop-dev-nox.cloud-it.com.ar`; un cliente nuevo obtiene otro host y catálogo sin un fork de código.
+El estado validado usa el mismo artefacto white-label y pod del sitio, publicado mediante otro hostname. Para NOX dev el host es `shop-dev-nox.cloud-it.com.ar`; esto demuestra la experiencia y configuración, pero no constituye todavía un deployment independiente.
+
+La decisión del 2026-07-26 exige extraerlo al producto genérico `ecommerce`, con repositorio, build, imagen, pod, release y límites de datos propios. Ver `docu/arquitectura-ecommerce-mercadopago.md`.
 
 Incluye:
 
@@ -59,7 +61,7 @@ Branch `feat/shop-admin-operations`:
 - separación explícita entre la ficha comercial y los ajustes auditados de stock;
 - E2E de contratos del admin y viewport mobile/desktop.
 
-El host `shop-dev-nox.cloud-it.com.ar` usa el mismo artefacto versionado y se monta mediante el dominio configurado para la instalación. La separación pública de canonical, sitemap, robots, navegación y URLs no depende de valores NOX en el código.
+El host `shop-dev-nox.cloud-it.com.ar` usa actualmente el mismo artefacto versionado y se monta mediante el dominio configurado para la instalación. La separación pública de canonical, sitemap, robots, navegación y URLs no depende de valores NOX en el código. La entrega pendiente moverá esas rutas a la imagen y Deployment de `ecommerce` sin cambiar el hostname.
 
 ## Invariantes
 

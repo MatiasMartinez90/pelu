@@ -3,6 +3,8 @@
 **Estado:** en progreso, sólo en `dev`  
 **Alcance:** pagos del shop y de turnos, con Checkout Pro real cuando existan credenciales y proveedor demo funcional mientras tanto.
 
+> Decisión posterior: la implementación validada en este repositorio es transitoria. Antes de cerrar la fase se extraerá al producto independiente `mercadopago`, con repo, API, imagen, pod, base/rol y releases propios. Los consumidores usarán contratos y eventos idempotentes. Ver `docu/arquitectura-ecommerce-mercadopago.md`.
+
 ## Objetivo y reglas de negocio
 
 - El shop cobra el total del pedido antes de confirmarlo.
@@ -66,7 +68,8 @@ La URL de retorno sólo mostrará `procesando`, `aprobado`, `pendiente` o `recha
 2. **API:** creación/consulta de intención, webhook real, checkout demo y reconciliación periódica.
 3. **Shop:** elección pagar ahora/local, redirección y página de resultado accesible.
 4. **Turnos y agente:** elección opcional en web/Telegram/WhatsApp, link y estado visible en agenda.
-5. **Operación:** filtros y auditoría admin, métricas, alertas, casos fuera de orden, expiración, rechazo y refund.
+5. **Extracción:** repo/servicio `mercadopago`, referencias opacas, OpenAPI, autenticación interna, outbox/inbox y despliegue aislado.
+6. **Operación:** filtros y auditoría admin, métricas, alertas, casos fuera de orden, expiración, rechazo y refund.
 
 ## Evidencia del núcleo
 
