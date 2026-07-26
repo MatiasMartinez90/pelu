@@ -1,10 +1,10 @@
 # Roadmap integral: mobile, SEO/GEO, shop, pagos, omnicanalidad y campañas
 
-**Estado:** roadmap maestro activo; Fases 0–2 y 4–5 listas en dev; Fases 3 y 6 en progreso
-**Última actualización:** 2026-07-18
+**Estado:** roadmap maestro activo; Fases 0–2 y 4 listas en dev; shop funcional en dev con extracción pendiente; Fases 3 y 6 en progreso
+**Última actualización:** 2026-07-26
 **Alcance de este documento:** fuente de verdad de planificación, estado, criterios de aceptación y evidencias del roadmap integral.
 **Repositorio analizado:** `Pelu`  
-**Branch de ejecución actual:** `docs/close-phase-2`, creada desde `dev`
+**Branch de ejecución actual:** las unidades funcionales parten de `dev`; la extracción se entrega en repos independientes y PRs de integración hacia `dev`
 
 ### Decisiones confirmadas el 2026-07-17
 
@@ -38,6 +38,19 @@
 - Esta pausa de promoción no reduce la Definition of Done de desarrollo: código, migraciones, tests, checks, documentación, GitOps y pruebas funcionales en dev siguen siendo obligatorios.
 - Producción y demo deben permanecer sobre el mismo código y los mismos digests. Sus únicas diferencias admitidas son configuración, secretos, dominios y datos.
 
+### Decisión de productos independientes confirmada el 2026-07-26
+
+- El storefront/comercio se extraerá a un repositorio y proyecto independiente llamado exactamente **`ecommerce`**.
+- La integración financiera se extraerá a un repositorio y proyecto independiente llamado exactamente **`mercadopago`**.
+- Ninguno de esos repositorios, paquetes, imágenes, recursos Kubernetes, APIs o contratos públicos llevará `NOX`, `Pelu` ni otra marca de un cliente en el nombre.
+- `ecommerce` tendrá build, imagen, Deployment/pod, release, configuración de instalación y dominio propios. El subdominio ya operativo es una separación de hostname, pero el estado actual todavía comparte repo, build y pod con el sitio; no se lo considerará completamente extraído hasta eliminar ese acoplamiento.
+- `mercadopago` será un servicio desplegable, no una colección de secretos o lógica copiada: API versionada, webhooks, máquina de estados, reconciliación, worker/CronJob, migraciones y observabilidad propias.
+- Se publicará un contrato OpenAPI y clientes mínimos; las aplicaciones consumidoras calcularán sus importes autoritativos y usarán autenticación service-to-service e idempotencia. El servicio emitirá eventos/callbacks firmados y no accederá directamente a tablas privadas de cada consumidor.
+- La consistencia distribuida reemplazará las transacciones cruzadas actuales mediante outbox/inbox, eventos idempotentes y reconciliación. Un redirect del navegador nunca acreditará un pago.
+- Cada despliegue seguirá siendo single-tenant aislado por instalación durante la POC: secretos, base/schema, dominios, callbacks y datos separados.
+- La extracción se realiza antes de declarar cerrada la Fase 6. El código integrado actualmente en `Pelu` se considera implementación de referencia transitoria y deberá sustituirse por clientes de los servicios.
+- Diseño, límites y migración se detallan en `docu/arquitectura-ecommerce-mercadopago.md`.
+
 ## 0. Control maestro de ejecución
 
 Los estados permitidos son `pendiente`, `en curso`, `validando`, `listo en dev`, `promoción autorizada` y `completo`. Ninguna fase se marca completa sólo por tener código; la evidencia debe cubrir PR, checks, despliegue y pruebas funcionales según el alcance autorizado.
@@ -49,8 +62,8 @@ Los estados permitidos son `pendiente`, `en curso`, `validando`, `listo en dev`,
 | 2 | SEO y GEO | Fases 0–1 | sitemap/robots/canonical/metadata/schema/servicios/`llms.txt` válidos y consistentes | Listo en dev | PR #33, squash `b0be56c`; GitOps #12/`6a4465e`; 108 E2E y smoke completo en `docu/fase-2-seo-geo.md` |
 | 3 | Cloudflare y medios | Fase 4 parcial para tenancy; puede prototiparse antes | Medios publicados por tenant, formatos responsive, caché y fallback probados | En progreso | Contrato, manifiesto y pipeline listos en `feat/cloudflare-media-pipeline`; cutover R2 dev pendiente. Ver `docu/fase-3-cloudflare-medios.md` |
 | 4 | Boilerplate integral | Fase 0 | Marca, negocio, dominios, módulos, pagos, canales y agente configurables sin hardcodes de NOX | Listo en dev | PRs #37 y #38; GitOps #13; bootstrap idempotente, fixture Aurora, CI completo, migración 011 y smoke `dev` verificados. Ver `docu/fase-4-boilerplate-white-label.md` |
-| 5 | Shop independiente | Fases 3–4 | Subdominio propio, catálogo, detalle, búsqueda, carrito, checkout, retiro, stock y pedidos administrables | Listo en dev | PRs #40, #41 y #42; GitOps #14; CI, deploy, Argo, checkout/cancelación y reposición de stock verificados. Sin promoción fuera de dev. Ver `docu/fase-5-shop.md` |
-| 6 | Mercado Pago | Fase 5; modelo de pagos reutilizable | Turnos opcionales y shop total; webhooks auténticos/idempotentes; conciliación y auditoría | En progreso | PRs #44–#45 y GitOps #15–#16: dominio, API, webhook, checkout demo y conciliación desplegados/smokeados en dev. Faltan UI shop, turnos/agente y operación admin. Ver `docu/fase-6-mercado-pago.md`. Activación real espera credenciales externas |
+| 5 | Shop independiente | Fases 3–4 | Repo `ecommerce`, subdominio, build/pod propios, catálogo, detalle, búsqueda, carrito, checkout, retiro, stock y pedidos administrables | En progreso | Funcionalidad validada con PRs #40–#42 y GitOps #14, pero todavía comparte repo/build/pod con el sitio. Falta extracción física a `ecommerce`. Ver `docu/fase-5-shop.md` y `docu/arquitectura-ecommerce-mercadopago.md` |
+| 6 | Mercado Pago | Fase 5; servicio `mercadopago` reutilizable | Repo/pod propios; turnos opcionales y shop total; webhooks auténticos/idempotentes; eventos, conciliación y auditoría | En progreso | PRs #44–#48 y GitOps #15–#16 validan la implementación de referencia, checkout demo y pago opcional de turnos. Falta extraer a `mercadopago`, integrar consumidores y cerrar operación admin. Activación real espera credenciales externas |
 | 7 | Instagram y multicanal | Fases 4 y 10 parcial | Instagram→Chatwoot→agente operativo, handoff y canal visible en toda la administración | Pendiente | — |
 | 8 | Identidad de clientes | Fase 4 | Gmail, teléfono+email OTP, vinculación segura, deduplicación y cambio de cuenta verificados | Pendiente | — |
 | 9 | Abandonos y automatizaciones | Fases 5, 7, 8 y consentimiento | Detección durable, cadencias, quiet hours, opt-out, límites y métricas por canal | Pendiente | — |
@@ -284,7 +297,7 @@ Reglas:
 
 ### 4.2 Separación del shop
 
-El shop será una aplicación desplegable de manera independiente en un hostname propio. Para la demo se confirma `shop-nox.cloud-it.com.ar` y para futuros clientes se podrá publicar como `shop.<dominio-del-cliente>` o el dominio que controlen.
+El shop será el producto independiente `ecommerce`, desplegable desde su repositorio en un hostname propio. Para la demo se confirma `shop-nox.cloud-it.com.ar` y para futuros clientes se podrá publicar como `shop.<dominio-del-cliente>` o el dominio que controlen.
 
 La primera versión será **single-tenant configurable**, coherente con el resto de la plataforma. El mismo código podrá desplegarse varias veces con configuración y datos aislados por cliente. Esto ofrece reutilización sin introducir desde la POC el riesgo de mezclar datos, pagos o campañas entre comercios.
 
@@ -319,7 +332,7 @@ shop application
 └── shared contracts with the backend
 ```
 
-Se podrán extraer paquetes compartidos de UI, contratos y cliente API, pero el shop no deberá quedar acoplado al routing, sesión administrativa o release del sitio principal.
+Se podrán publicar paquetes compartidos de contratos y cliente API, pero `ecommerce` no deberá quedar acoplado al routing, sesión administrativa o release del sitio principal.
 
 ### 4.3 Dominios funcionales
 
