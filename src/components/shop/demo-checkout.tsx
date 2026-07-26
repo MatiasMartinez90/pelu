@@ -4,16 +4,17 @@ import { useEffect, useState } from "react";
 import { paymentApi } from "@/lib/shop-client";
 import type { PaymentStatus } from "@/lib/shop-types";
 
-export function DemoCheckout({ token }: { token: string }) {
-  const [payment, setPayment] = useState<PaymentStatus | null>(null);
+export function DemoCheckout({ token, initialPayment }: { token: string; initialPayment: PaymentStatus | null }) {
+  const [payment, setPayment] = useState<PaymentStatus | null>(initialPayment);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (initialPayment) return;
     paymentApi<PaymentStatus>(`status/${token}`).then(setPayment).catch((cause) => {
       setError(cause instanceof Error ? cause.message : "Link inválido.");
     });
-  }, [token]);
+  }, [initialPayment, token]);
 
   async function settle(outcome: "approved" | "rejected") {
     setBusy(true);
