@@ -1,0 +1,4 @@
+# Development-only transitive dependency used by ESLint/Lighthouse glob matching.
+# Production dependencies are separately enforced with `npm audit --omit=dev`.
+# Remove when eslint-config-next and @lhci/cli accept brace-expansion >= 5.0.8.
+GHSA-mh99-v99m-4gvg
