@@ -33,7 +33,7 @@ export default defineConfig({
     command: "npm run build && npm run start -- --hostname 127.0.0.1 --port 3100",
     url: baseURL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 240_000,
     env: {
       ...process.env,
       AUTH_SECRET: "responsive-tests-only-secret-with-32-characters",

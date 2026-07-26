@@ -9,7 +9,7 @@ import pytest
 from fastapi import HTTPException, Response
 from starlette.requests import Request
 
-from src.api.payment_schemas import ShopPaymentPreferenceIn
+from src.api.payment_schemas import AppointmentPaymentPreferenceIn, ShopPaymentPreferenceIn
 from src.api.routers import payment_webhook, payments as payments_router
 from src.config import Settings
 
@@ -61,6 +61,30 @@ async def test_shop_preference_requires_cart_capability(monkeypatch):
             "idempotency-key-with-16-chars",
         )
     assert error.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_appointment_preference_rejects_wrong_capability(monkeypatch):
+    monkeypatch.setattr(payments_router, "rate_limit_exceeded", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        payments_router,
+        "get_settings",
+        lambda: Settings(payment_link_secret="payment-link-secret-with-more-than-32-chars"),
+    )
+    create = AsyncMock()
+    monkeypatch.setattr(
+        payments_router.payment_service, "create_appointment_preference", create
+    )
+    with pytest.raises(HTTPException) as error:
+        await payments_router.create_appointment_preference(
+            UUID("11111111-1111-4111-8111-111111111111"),
+            AppointmentPaymentPreferenceIn(capability_token="x" * 40),
+            request_for("/api/v1/payments/appointments/1/preference"),
+            Response(),
+            "idempotency-key-with-16-chars",
+        )
+    assert error.value.status_code == 404
+    create.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -122,4 +146,3 @@ async def test_mercado_pago_webhook_rejects_bad_signature(monkeypatch):
     with pytest.raises(HTTPException) as error:
         await payment_webhook.mercado_pago_webhook(request)
     assert error.value.status_code == 401
-

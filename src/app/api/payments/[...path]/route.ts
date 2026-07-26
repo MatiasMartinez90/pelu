@@ -6,13 +6,14 @@ type Context = { params: Promise<{ path: string[] }> };
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
 const TOKEN = "[A-Za-z0-9_.~-]{10,1000}";
 const PREFERENCE = new RegExp(`^shop-orders/${UUID}/preference$`);
+const APPOINTMENT_PREFERENCE = new RegExp(`^appointments/${UUID}/preference$`);
 const PAY_AT_STORE = new RegExp(`^shop-orders/${UUID}/pay-at-store$`);
 const STATUS = new RegExp(`^status/${TOKEN}$`);
 const DEMO = new RegExp(`^demo/${TOKEN}$`);
 
 function allowed(method: string, path: string): boolean {
   if (method === "GET") return STATUS.test(path);
-  if (method === "POST") return PREFERENCE.test(path) || PAY_AT_STORE.test(path) || DEMO.test(path);
+  if (method === "POST") return PREFERENCE.test(path) || APPOINTMENT_PREFERENCE.test(path) || PAY_AT_STORE.test(path) || DEMO.test(path);
   return false;
 }
 

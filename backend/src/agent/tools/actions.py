@@ -221,8 +221,10 @@ async def confirm_pending_action(state: Annotated[dict, InjectedState]) -> str:
             )
             result_text = (
                 f"Reserva confirmada: {result['service']} con {result['barber']}, "
-                f"{_fmt_dt(result['starts_at'])} hs. El pago es en el local."
+                f"{_fmt_dt(result['starts_at'])} hs. El turno ya está asegurado. "
+                "Preguntale si quiere abonar ahora con Mercado Pago o pagar en el local."
             )
+            payload["booking_id"] = str(result["id"])
             event_type = "booking_created"
         elif action["action_type"] == "reschedule":
             result = await booking_service.reschedule_booking(
@@ -253,12 +255,13 @@ async def confirm_pending_action(state: Annotated[dict, InjectedState]) -> str:
         """
         UPDATE agent_pending_actions
         SET status = 'completed', result_text = $2, completed_at = now(),
-            confirmed_turn_id = $3
+            confirmed_turn_id = $3, payload = $4::jsonb
         WHERE id = $1
         """,
         action["id"],
         result_text,
         UUID(str(state["turn_id"])),
+        json.dumps(payload),
     )
     await events.log_event(
         event_type,

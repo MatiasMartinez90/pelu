@@ -4,16 +4,17 @@ import { useEffect, useState } from "react";
 import { paymentApi } from "@/lib/shop-client";
 import type { PaymentStatus } from "@/lib/shop-types";
 
-export function DemoCheckout({ token }: { token: string }) {
-  const [payment, setPayment] = useState<PaymentStatus | null>(null);
+export function DemoCheckout({ token, initialPayment }: { token: string; initialPayment: PaymentStatus | null }) {
+  const [payment, setPayment] = useState<PaymentStatus | null>(initialPayment);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (initialPayment) return;
     paymentApi<PaymentStatus>(`status/${token}`).then(setPayment).catch((cause) => {
       setError(cause instanceof Error ? cause.message : "Link inválido.");
     });
-  }, [token]);
+  }, [initialPayment, token]);
 
   async function settle(outcome: "approved" | "rejected") {
     setBusy(true);
@@ -35,7 +36,7 @@ export function DemoCheckout({ token }: { token: string }) {
       <section className="shop-demo-payment" aria-labelledby="demo-payment-title">
         <p className="shop-eyebrow">Entorno de demostración</p>
         <h1 id="demo-payment-title">Checkout de prueba</h1>
-        <p>Este flujo usa el mismo dominio de pagos y auditoría que Mercado Pago, pero no mueve dinero real.</p>
+        <p>Este flujo usa el mismo dominio de pagos y auditoría que Mercado Pago, pero no mueve dinero real{payment?.purpose === "appointment" ? " y el turno ya está confirmado" : ""}.</p>
         {payment && <div className="shop-demo-total"><span>Total</span><strong>{new Intl.NumberFormat("es-AR", { style: "currency", currency: payment.currency, maximumFractionDigits: 0 }).format(payment.amount)}</strong></div>}
         {error && <p className="shop-alert" role="alert">{error}</p>}
         <div className="shop-confirmation-actions">

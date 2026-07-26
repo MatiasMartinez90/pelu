@@ -2,10 +2,16 @@ import type { Page } from "@playwright/test";
 
 export async function allowHttpTestOrigin(page: Page) {
   // Producción sirve HTTPS. WebKit aplica `upgrade-insecure-requests` también
-  // a localhost y bloquearía los chunks JS del servidor HTTP de Playwright.
+  // a localhost y sus subdominios, bloqueando los chunks JS de Playwright.
   await page.route("**/*", async (route) => {
     const request = route.request();
-    if (request.resourceType() !== "document" || new URL(request.url()).origin !== "http://localhost:3100") {
+    const url = new URL(request.url());
+    const isLocalTestOrigin = (
+      url.protocol === "http:"
+      && url.port === "3100"
+      && (url.hostname === "localhost" || url.hostname.endsWith(".localhost"))
+    );
+    if (request.resourceType() !== "document" || !isLocalTestOrigin) {
       return route.fallback();
     }
     const response = await route.fetch();

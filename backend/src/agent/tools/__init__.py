@@ -7,6 +7,7 @@ from .actions import (
 from .booking import check_availability, get_my_bookings
 from .catalog import get_barbers, get_services
 from .handoff import handoff_to_human
+from .payments import choose_booking_pay_at_store, create_booking_payment_link
 
 ALL_TOOLS = [
     get_services,
@@ -17,5 +18,7 @@ ALL_TOOLS = [
     prepare_reschedule,
     prepare_cancel,
     confirm_pending_action,
+    create_booking_payment_link,
+    choose_booking_pay_at_store,
     handoff_to_human,
 ]

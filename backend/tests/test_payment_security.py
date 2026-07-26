@@ -1,13 +1,16 @@
 import hashlib
 import hmac
+from uuid import UUID
 
 import pytest
 
 from src.payments.security import (
     InvalidSignature,
+    sign_appointment_capability,
     sign_public_reference,
     validate_mercado_pago_signature,
     verify_public_reference,
+    verify_appointment_capability,
 )
 
 
@@ -21,6 +24,15 @@ def test_public_payment_link_is_signed_and_tamper_evident():
     assert verify_public_reference(token, SECRET) == reference
     with pytest.raises(InvalidSignature):
         verify_public_reference(f"{token[:-1]}x", SECRET)
+
+
+def test_appointment_capability_is_bound_to_exact_booking():
+    appointment_id = UUID("11111111-1111-4111-8111-111111111111")
+    other_id = UUID("22222222-2222-4222-8222-222222222222")
+    token = sign_appointment_capability(appointment_id, SECRET)
+    verify_appointment_capability(token, appointment_id, SECRET)
+    with pytest.raises(InvalidSignature, match="turno inexistente"):
+        verify_appointment_capability(token, other_id, SECRET)
 
 
 def test_mercado_pago_signature_validates_manifest_and_skew():
@@ -56,4 +68,3 @@ def test_mercado_pago_signature_rejects_wrong_hash():
             secret=SECRET,
             now_ms=1_784_361_600_000,
         )
-

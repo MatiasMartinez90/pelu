@@ -10,10 +10,15 @@ from ...db.repositories import payments
 from ...integrations.redis_client import rate_limit_exceeded
 from ...observability import PAYMENT_OPERATIONS
 from ...payments.providers import PaymentProviderError
-from ...payments.security import InvalidSignature, sign_public_reference
+from ...payments.security import (
+    InvalidSignature,
+    sign_public_reference,
+    verify_appointment_capability,
+)
 from ...services import payment_service
 from ..client_ip import get_client_ip
 from ..payment_schemas import (
+    AppointmentPaymentPreferenceIn,
     DemoPaymentActionIn,
     PaymentPreferenceOut,
     PaymentStatusOut,
@@ -86,6 +91,51 @@ async def payment_status(token: str):
         return await payment_service.public_status(token)
     except (payments.PaymentError, InvalidSignature, ValueError) as error:
         raise _payment_error(error) from None
+
+
+@router.post(
+    "/appointments/{appointment_id}/preference",
+    response_model=PaymentPreferenceOut,
+    status_code=201,
+)
+async def create_appointment_preference(
+    appointment_id: UUID,
+    body: AppointmentPaymentPreferenceIn,
+    request: Request,
+    response: Response,
+    idempotency_key: str = Header(..., alias="Idempotency-Key", min_length=16, max_length=128),
+):
+    if await rate_limit_exceeded(f"payment-create:{get_client_ip(request)}"):
+        raise HTTPException(429, "Demasiados intentos de pago")
+    settings = get_settings()
+    try:
+        verify_appointment_capability(
+            body.capability_token, appointment_id, settings.payment_link_secret
+        )
+        intent, created = await payment_service.create_appointment_preference(
+            appointment_id,
+            idempotency_key=idempotency_key,
+            settings=settings,
+        )
+        status_token = sign_public_reference(
+            intent["external_reference"], settings.payment_link_secret
+        )
+    except (payments.PaymentError, PaymentProviderError, InvalidSignature, ValueError) as error:
+        raise _payment_error(error) from None
+    response.status_code = 201 if created else 200
+    PAYMENT_OPERATIONS.labels(
+        operation="preference", result="created" if created else "reused",
+        provider=settings.payment_provider,
+    ).inc()
+    return {
+        "checkout_url": intent["checkout_url"],
+        "status_token": status_token,
+        "status": intent["status"],
+        "amount": intent["amount"],
+        "currency": intent["currency"].strip(),
+        "expires_at": intent["expires_at"],
+        "sandbox": intent["sandbox"],
+    }
 
 
 @router.post("/shop-orders/{order_id}/pay-at-store", status_code=204)

@@ -96,3 +96,4 @@ class BookingOut(BaseModel):
     status: str
     price: int
     channel: str
+    payment_token: str | None = None
