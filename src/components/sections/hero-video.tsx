@@ -48,7 +48,7 @@ export function HeroVideo({ mp4, webm, poster }: { mp4: string; webm: string; po
       tabIndex={-1}
       poster={poster}
       preload="none"
-      onLoadedData={() => setReady(true)}
+      onCanPlay={() => setReady(true)}
       style={{
         position: "absolute",
         inset: 0,
@@ -57,7 +57,7 @@ export function HeroVideo({ mp4, webm, poster }: { mp4: string; webm: string; po
         objectFit: "cover",
         objectPosition: "55% 26%",
         opacity: ready ? 1 : 0,
-        transition: "opacity 400ms ease-in",
+        transition: "opacity 1s ease-in",
       }}
     >
       <source src={webm} type="video/webm" />
