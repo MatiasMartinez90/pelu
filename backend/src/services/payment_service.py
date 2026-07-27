@@ -55,7 +55,11 @@ async def _items(pool: asyncpg.Pool, intent: dict) -> tuple[PaymentItem, ...]:
 
 def _validate_urls(settings: Settings) -> tuple[str, str]:
     public_url = settings.payment_public_url.rstrip("/")
-    webhook_url = settings.payment_webhook_url
+    webhook_url = (
+        settings.payment_service_callback_url
+        if settings.payment_service_url
+        else settings.payment_webhook_url
+    )
     if not public_url or not webhook_url:
         raise PaymentProviderError("payment_urls_missing")
     if settings.environment.lower() == "production" and (

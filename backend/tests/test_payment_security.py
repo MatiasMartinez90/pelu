@@ -9,10 +9,10 @@ from src.payments.security import (
     sign_appointment_capability,
     sign_public_reference,
     validate_mercado_pago_signature,
-    verify_public_reference,
+    validate_payment_service_signature,
     verify_appointment_capability,
+    verify_public_reference,
 )
-
 
 SECRET = "payment-link-secret-with-more-than-32-chars"
 
@@ -67,4 +67,27 @@ def test_mercado_pago_signature_rejects_wrong_hash():
             data_id="123",
             secret=SECRET,
             now_ms=1_784_361_600_000,
+        )
+
+
+def test_payment_service_callback_signature_binds_timestamp_and_body():
+    timestamp = 1_784_361_600
+    payload = b'{"event":"payment.approved"}'
+    manifest = str(timestamp).encode() + b"." + payload
+    signature = hmac.new(SECRET.encode(), manifest, hashlib.sha256).hexdigest()
+    result = validate_payment_service_signature(
+        payload=payload,
+        timestamp=str(timestamp),
+        signature=signature,
+        secret=SECRET,
+        now=timestamp + 10,
+    )
+    assert result.manifest == manifest
+    with pytest.raises(InvalidSignature, match="vencido"):
+        validate_payment_service_signature(
+            payload=payload,
+            timestamp=str(timestamp),
+            signature=signature,
+            secret=SECRET,
+            now=timestamp + 301,
         )

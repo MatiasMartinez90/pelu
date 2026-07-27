@@ -101,7 +101,7 @@ class CheckoutCustomerIn(BaseModel):
 class CheckoutIn(BaseModel):
     cart_token: str = Field(min_length=32, max_length=128)
     customer: CheckoutCustomerIn
-    payment_method: Literal["pay_at_store"] = "pay_at_store"
+    payment_method: Literal["pay_at_store", "mercado_pago"] = "pay_at_store"
     customer_notes: str = Field(default="", max_length=1000)
 
 

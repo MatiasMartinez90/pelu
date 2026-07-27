@@ -97,3 +97,34 @@ def validate_mercado_pago_signature(
     if not signatures or not any(hmac.compare_digest(value, expected) for value in signatures):
         raise InvalidSignature("firma de webhook inválida")
     return MercadoPagoSignature(timestamp_ms=timestamp_ms, manifest=manifest)
+
+
+@dataclass(frozen=True)
+class PaymentServiceSignature:
+    timestamp: int
+    manifest: bytes
+
+
+def validate_payment_service_signature(
+    *,
+    payload: bytes,
+    timestamp: str,
+    signature: str,
+    secret: str,
+    now: int | None = None,
+    max_skew_seconds: int = 300,
+) -> PaymentServiceSignature:
+    if len(secret) < 32:
+        raise InvalidSignature("firma del servicio de pagos no configurada")
+    try:
+        parsed_timestamp = int(timestamp)
+    except ValueError as error:
+        raise InvalidSignature("timestamp del servicio de pagos inválido") from error
+    current = now if now is not None else int(time.time())
+    if abs(current - parsed_timestamp) > max_skew_seconds:
+        raise InvalidSignature("callback del servicio de pagos vencido")
+    manifest = timestamp.encode() + b"." + payload
+    expected = hmac.new(secret.encode(), manifest, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        raise InvalidSignature("firma del servicio de pagos inválida")
+    return PaymentServiceSignature(timestamp=parsed_timestamp, manifest=manifest)
