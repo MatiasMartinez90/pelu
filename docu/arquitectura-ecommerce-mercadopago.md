@@ -1,7 +1,7 @@
 # Arquitectura independiente: `ecommerce` y `mercadopago`
 
-**Estado:** decisión aprobada; extracción en curso  
-**Fecha:** 2026-07-26  
+**Estado:** servicios extraídos y operativos en `dev`; desacople de datos de `ecommerce` aún en curso
+**Fecha:** 2026-07-27
 **Alcance inicial:** ambiente `dev`; no autoriza cambios en producción ni demo.
 
 ## Resultado requerido
@@ -92,6 +92,24 @@ Para turnos, expiración o rechazo no cancela la reserva y vuelve a pago local. 
 6. Adaptar `ecommerce`, turnero y agente como consumidores.
 7. Ejecutar compatibilidad, migración de datos dev, E2E y fallos inducidos.
 8. Eliminar del monolito las implementaciones transitorias sólo cuando el cutover esté probado y sea reversible.
+
+## Evidencia de implementación en dev — 2026-07-27
+
+- Repos genéricos creados: `MatiasMartinez90/ecommerce` y `MatiasMartinez90/mercadopago`, ambos con branch protegida `dev`, CI e imágenes propias.
+- `ecommerce` PRs #1–#4: base reproducible, storefront funcional, runtime endurecido y checkout opcional Mercado Pago con página de resultado.
+- `mercadopago` PRs #1–#6: dominio PostgreSQL aislado, API idempotente, proveedor demo/real, webhook, outbox de callbacks, worker, conciliación, migraciones y fixes de PgBouncer/JSONB.
+- Pelu PR #61: cliente service-to-service, callback HMAC con protección temporal, inbox idempotente y proyección sobre pedidos/turnos.
+- GitOps PRs #17–#22: base/rol `payments_dev`, secretos sellados, API/worker/CronJob y storefront independientes, NetworkPolicies, digests inmutables y configuración exclusiva de `nox-dev`.
+- Digests verificados: `ecommerce@sha256:edc545c…`, `mercadopago@sha256:c99b7b5…` y `nox-backend@sha256:b1c1f77…`.
+- Argo CD quedó `Synced/Healthy` para `nox-dev` y `pg-cluster`.
+- E2E real en clúster: carrito → pedido #6 → intención `pending` → checkout demo `approved` → callback firmado/outbox → pedido e intención local `approved`. El callback quedó marcado `delivered_at`, sin dead letter.
+- Producción y demo no recibieron estos cambios.
+
+### Pendiente para cerrar la extracción total
+
+- Mover catálogo, carrito, pedidos, stock y administración desde las tablas/API de Pelu hacia un data plane propio de `ecommerce`.
+- Retirar los adaptadores directos de Mercado Pago del monolito cuando exista una ventana de rollback ya probada.
+- Completar operación administrativa de pagos/devoluciones y pruebas inducidas de expiración, duplicados y restauración.
 
 ## Criterios de aceptación
 
