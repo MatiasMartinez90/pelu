@@ -81,6 +81,8 @@ def normalize_provider_status(value: str) -> str:
         return "cancelled"
     if value in {"refunded", "charged_back"}:
         return "refunded"
+    if value == "expired":
+        return "expired"
     raise PaymentProviderError("provider_status_unknown")
 
 
@@ -101,6 +103,120 @@ class DemoPaymentProvider:
 
     async def get_payment(self, payment_id: str) -> ProviderPayment:
         raise PaymentProviderError("demo_payment_lookup_not_supported")
+
+    async def find_payment(self, external_reference: str) -> ProviderPayment | None:
+        return None
+
+
+class PaymentServiceProvider:
+    def __init__(
+        self,
+        *,
+        provider_name: str,
+        tenant_id: str,
+        service_url: str,
+        api_key: str,
+        client: httpx.AsyncClient | None = None,
+    ):
+        if provider_name not in {"demo", "mercado_pago"}:
+            raise ValueError("PAYMENT_PROVIDER inválido")
+        if not service_url or len(api_key) < 32:
+            raise ValueError("servicio de pagos incompleto")
+        self.name = provider_name
+        self.tenant_id = tenant_id
+        self.service_url = service_url.rstrip("/")
+        self.api_key = api_key
+        self.client = client
+
+    async def _request(self, method: str, path: str, **kwargs) -> dict:
+        owns_client = self.client is None
+        client = self.client or httpx.AsyncClient(timeout=httpx.Timeout(10, connect=5))
+        try:
+            response = await client.request(method, f"{self.service_url}{path}", **kwargs)
+        except (httpx.TimeoutException, httpx.NetworkError) as error:
+            raise PaymentProviderError("payment_service_unavailable", retryable=True) from error
+        finally:
+            if owns_client:
+                await client.aclose()
+        if response.status_code >= 400:
+            retryable = response.status_code in {408, 423, 429} or response.status_code >= 500
+            raise PaymentProviderError(
+                f"payment_service_http_{response.status_code}", retryable=retryable
+            )
+        try:
+            value = response.json()
+        except ValueError as error:
+            raise PaymentProviderError("payment_service_invalid_response") from error
+        if not isinstance(value, dict):
+            raise PaymentProviderError("payment_service_invalid_response")
+        return value
+
+    async def create_preference(self, request: PreferenceRequest) -> PreferenceResult:
+        payload = {
+            "tenant_id": self.tenant_id,
+            "external_reference": request.external_reference,
+            "amount": request.amount,
+            "currency": request.currency,
+            "description": request.description,
+            "payer_email": request.payer_email,
+            "items": [
+                {
+                    "reference": item.id,
+                    "title": item.title,
+                    "quantity": item.quantity,
+                    "unit_price": item.unit_price,
+                }
+                for item in request.items
+            ],
+            "success_url": request.success_url,
+            "pending_url": request.pending_url,
+            "failure_url": request.failure_url,
+            "callback_url": request.notification_url,
+            "expires_at": request.expires_at.isoformat(),
+            "metadata": {"consumer": "appointments-platform"},
+        }
+        value = await self._request(
+            "POST",
+            "/v1/payment-intents",
+            json=payload,
+            headers={
+                "accept": "application/json",
+                "x-api-key": self.api_key,
+                "idempotency-key": request.idempotency_key[:150],
+            },
+        )
+        status_token = value.get("status_token")
+        checkout_url = value.get("checkout_url")
+        if (
+            not isinstance(status_token, str)
+            or not status_token
+            or not isinstance(checkout_url, str)
+            or not checkout_url.startswith(("http://", "https://"))
+        ):
+            raise PaymentProviderError("payment_service_invalid_preference")
+        return PreferenceResult(
+            provider_preference_id=status_token,
+            checkout_url=checkout_url,
+            sandbox=bool(value.get("sandbox")),
+        )
+
+    async def get_payment(self, payment_id: str) -> ProviderPayment:
+        value = await self._request(
+            "GET",
+            f"/v1/public/payment-status/{quote(payment_id, safe='')}",
+            headers={"accept": "application/json"},
+        )
+        try:
+            return ProviderPayment(
+                provider_payment_id=payment_id,
+                external_reference=str(value["external_reference"]),
+                status=normalize_provider_status(str(value["status"])),
+                amount=int(value["amount"]),
+                currency=str(value["currency"]),
+                raw=value,
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise PaymentProviderError("payment_service_invalid_payment") from error
 
     async def find_payment(self, external_reference: str) -> ProviderPayment | None:
         return None
@@ -247,6 +363,14 @@ class MercadoPagoProvider:
 
 
 def payment_provider(settings: Settings, *, client: httpx.AsyncClient | None = None) -> PaymentProvider:
+    if settings.payment_service_url:
+        return PaymentServiceProvider(
+            provider_name=settings.payment_provider,
+            tenant_id=settings.installation_id,
+            service_url=settings.payment_service_url,
+            api_key=settings.payment_service_api_key,
+            client=client,
+        )
     if settings.payment_provider == "demo":
         return DemoPaymentProvider(settings.payment_public_url, settings.payment_link_secret)
     if settings.payment_provider == "mercado_pago":

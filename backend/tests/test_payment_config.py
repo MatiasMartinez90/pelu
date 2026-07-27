@@ -21,3 +21,19 @@ def test_real_payment_configuration_requires_provider_credentials():
             payment_webhook_url="https://api.example.com/webhook/mercado-pago",
             payment_link_secret="payment-link-secret-with-more-than-32-chars",
         )
+
+
+def test_external_payment_service_owns_provider_credentials():
+    settings = Settings(
+        installation_id="nox-dev",
+        payment_provider="mercado_pago",
+        payment_public_url="https://shop.example.com",
+        payment_link_secret="payment-link-secret-with-more-than-32-chars",
+        payment_service_url="https://payments.example.com",
+        payment_service_api_key="payment-service-api-key-with-more-than-32-chars",
+        payment_service_callback_url="https://api.example.com/api/v1/payments/callbacks/service",
+        payment_service_callback_secret=(
+            "payment-service-callback-secret-with-more-than-32-chars"
+        ),
+    )
+    assert settings.mercado_pago_access_token == ""

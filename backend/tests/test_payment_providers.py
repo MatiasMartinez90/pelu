@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -8,6 +8,7 @@ from src.payments.providers import (
     MercadoPagoProvider,
     PaymentItem,
     PaymentProviderError,
+    PaymentServiceProvider,
     PreferenceRequest,
 )
 
@@ -24,7 +25,7 @@ def preference() -> PreferenceRequest:
         pending_url="https://example.com/pago?result=pending",
         failure_url="https://example.com/pago?result=failure",
         notification_url="https://example.com/api/webhooks/mercado-pago",
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+        expires_at=datetime.now(UTC) + timedelta(minutes=30),
         idempotency_key="11111111-1111-4111-8111-111111111111",
     )
 
@@ -62,6 +63,46 @@ async def test_mercado_pago_preference_uses_server_credentials_and_idempotency()
     assert payload["notification_url"].startswith("https://")
     assert payload["items"][0]["unit_price"] == 21000
     assert result.provider_preference_id == "pref-42"
+
+
+@pytest.mark.asyncio
+async def test_payment_service_preference_uses_consumer_contract_and_api_key():
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["request"] = request
+        return httpx.Response(
+            201,
+            json={
+                "checkout_url": "https://payments.example.com/demo-checkout/token",
+                "status_token": "signed-status-token",
+                "status": "pending",
+                "amount": 21000,
+                "currency": "ARS",
+                "expires_at": preference().expires_at.isoformat(),
+                "sandbox": True,
+            },
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await PaymentServiceProvider(
+            provider_name="demo",
+            tenant_id="nox-dev",
+            service_url="https://payments.example.com",
+            api_key="payment-service-api-key-with-32-characters",
+            client=client,
+        ).create_preference(preference())
+    request = captured["request"]
+    assert request.url.path == "/v1/payment-intents"
+    assert request.headers["x-api-key"] == "payment-service-api-key-with-32-characters"
+    assert request.headers["idempotency-key"] == preference().idempotency_key
+    payload = __import__("json").loads(request.content)
+    assert payload["tenant_id"] == "nox-dev"
+    assert payload["external_reference"] == preference().external_reference
+    assert payload["callback_url"] == preference().notification_url
+    assert payload["items"][0]["reference"] == "SKU-1"
+    assert result.provider_preference_id == "signed-status-token"
+    assert result.sandbox is True
 
 
 @pytest.mark.asyncio

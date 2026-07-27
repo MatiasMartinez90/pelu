@@ -110,6 +110,12 @@ class Settings(BaseSettings):
     payment_webhook_url: str = ""
     payment_link_secret: str = ""
     payment_preference_expiration_minutes: int = 30
+    payment_service_url: str = ""
+    payment_service_api_key: str = ""
+    payment_service_callback_url: str = ""
+    payment_service_callback_secret: str = ""
+    payment_service_callback_max_skew_seconds: int = 300
+    payment_service_callback_max_body_bytes: int = 65_536
     mercado_pago_access_token: str = ""
     mercado_pago_webhook_secret: str = ""
     mercado_pago_api_url: str = "https://api.mercadopago.com"
@@ -129,18 +135,42 @@ class Settings(BaseSettings):
             raise ValueError("PAYMENT_PROVIDER inválido")
         if self.payment_provider == "disabled":
             return self
-        if not self.payment_public_url or not self.payment_webhook_url:
-            raise ValueError("PAYMENT_PUBLIC_URL y PAYMENT_WEBHOOK_URL son obligatorias")
+        if not self.payment_public_url:
+            raise ValueError("PAYMENT_PUBLIC_URL es obligatoria")
+        if not self.payment_service_url and not self.payment_webhook_url:
+            raise ValueError("PAYMENT_WEBHOOK_URL es obligatoria")
         if len(self.payment_link_secret) < 32:
             raise ValueError("PAYMENT_LINK_SECRET debe tener al menos 32 caracteres")
         if not 5 <= self.payment_preference_expiration_minutes <= 1440:
             raise ValueError("PAYMENT_PREFERENCE_EXPIRATION_MINUTES fuera de rango")
+        if self.payment_service_url:
+            if not self.payment_service_url.startswith(("http://", "https://")):
+                raise ValueError("PAYMENT_SERVICE_URL inválida")
+            if len(self.payment_service_api_key) < 32:
+                raise ValueError("PAYMENT_SERVICE_API_KEY debe tener al menos 32 caracteres")
+            if not self.payment_service_callback_url.startswith(("http://", "https://")):
+                raise ValueError("PAYMENT_SERVICE_CALLBACK_URL inválida")
+            if len(self.payment_service_callback_secret) < 32:
+                raise ValueError(
+                    "PAYMENT_SERVICE_CALLBACK_SECRET debe tener al menos 32 caracteres"
+                )
+            if not 30 <= self.payment_service_callback_max_skew_seconds <= 900:
+                raise ValueError("PAYMENT_SERVICE_CALLBACK_MAX_SKEW_SECONDS fuera de rango")
+            if not 1_024 <= self.payment_service_callback_max_body_bytes <= 1_048_576:
+                raise ValueError("PAYMENT_SERVICE_CALLBACK_MAX_BODY_BYTES fuera de rango")
         if self.environment.lower() == "production" and (
             not self.payment_public_url.startswith("https://")
-            or not self.payment_webhook_url.startswith("https://")
+            or (
+                self.payment_service_url
+                and not self.payment_service_callback_url.startswith("https://")
+            )
+            or (
+                not self.payment_service_url
+                and not self.payment_webhook_url.startswith("https://")
+            )
         ):
             raise ValueError("las URLs de pagos deben usar HTTPS")
-        if self.payment_provider == "mercado_pago" and (
+        if not self.payment_service_url and self.payment_provider == "mercado_pago" and (
             not self.mercado_pago_access_token or len(self.mercado_pago_webhook_secret) < 16
         ):
             raise ValueError("credenciales de Mercado Pago incompletas")

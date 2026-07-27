@@ -10,7 +10,8 @@ from fastapi import HTTPException, Response
 from starlette.requests import Request
 
 from src.api.payment_schemas import AppointmentPaymentPreferenceIn, ShopPaymentPreferenceIn
-from src.api.routers import payment_webhook, payments as payments_router
+from src.api.routers import payment_webhook
+from src.api.routers import payments as payments_router
 from src.config import Settings
 
 
@@ -85,6 +86,80 @@ async def test_appointment_preference_rejects_wrong_capability(monkeypatch):
         )
     assert error.value.status_code == 404
     create.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_payment_service_callback_updates_consumer_payment(monkeypatch):
+    secret = "payment-service-callback-secret-with-more-than-32-chars"
+    timestamp = int(time.time())
+    raw = json.dumps(
+        {
+            "event": "payment.approved",
+            "payment_intent_id": "33333333-3333-4333-8333-333333333333",
+            "tenant_id": "nox-dev",
+            "external_reference": "nox-dev:shop_order:11111111-1111-4111-8111-111111111111",
+            "status": "approved",
+            "amount": 21000,
+            "currency": "ARS",
+            "occurred_at": "2026-07-27T20:00:00Z",
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    signature = hmac.new(
+        secret.encode(), str(timestamp).encode() + b"." + raw, hashlib.sha256
+    ).hexdigest()
+    request = request_for(
+        "/api/v1/payments/callbacks/service",
+        body=raw,
+        headers=[
+            (b"content-type", b"application/json"),
+            (b"content-length", str(len(raw)).encode()),
+        ],
+    )
+    settings = Settings(
+        installation_id="nox-dev",
+        payment_provider="demo",
+        payment_public_url="https://shop-dev.example.com",
+        payment_service_url="http://mercadopago:8080",
+        payment_service_api_key="payment-service-api-key-with-more-than-32-chars",
+        payment_service_callback_url="http://nox-api/api/v1/payments/callbacks/service",
+        payment_service_callback_secret=secret,
+        payment_link_secret="payment-link-secret-with-more-than-32-chars",
+    )
+    monkeypatch.setattr(payments_router, "get_settings", lambda: settings)
+    monkeypatch.setattr(payments_router, "get_pool", AsyncMock(return_value=object()))
+    monkeypatch.setattr(
+        payments_router.payments,
+        "get_intent_by_reference",
+        AsyncMock(return_value={
+            "id": UUID("22222222-2222-4222-8222-222222222222"),
+            "installation_id": "nox-dev",
+            "provider": "demo",
+        }),
+    )
+    register = AsyncMock(return_value=(7, True))
+    apply_payment = AsyncMock(return_value={
+        "id": UUID("22222222-2222-4222-8222-222222222222")
+    })
+    finish = AsyncMock()
+    monkeypatch.setattr(payments_router.payments, "register_event", register)
+    monkeypatch.setattr(payments_router.payments, "apply_provider_payment", apply_payment)
+    monkeypatch.setattr(payments_router.payments, "finish_event", finish)
+
+    response = await payments_router.payment_service_callback(
+        request,
+        x_payment_timestamp=str(timestamp),
+        x_payment_signature=signature,
+        idempotency_key="payment-callback-42",
+    )
+
+    assert response.status_code == 204
+    assert apply_payment.await_args.kwargs["status"] == "approved"
+    assert apply_payment.await_args.kwargs["provider_payment_id"] == (
+        "33333333-3333-4333-8333-333333333333"
+    )
+    assert finish.await_args.kwargs["status"] == "processed"
 
 
 @pytest.mark.asyncio
