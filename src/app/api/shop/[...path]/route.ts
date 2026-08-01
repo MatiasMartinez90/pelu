@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { backendUrl } from "@/lib/backend-url";
 
+const commerceUrl = process.env.ECOMMERCE_API_URL?.replace(/\/$/, "");
+
 type Context = { params: Promise<{ path: string[] }> };
 
 const CATALOG = /^((categories)|(products(\/[a-z0-9-]+)?))$/;
@@ -27,7 +29,9 @@ async function proxy(request: NextRequest, context: Context) {
     }
   }
 
-  const target = new URL(`${backendUrl}/api/v1/shop/${joined}`);
+  const target = commerceUrl
+    ? new URL(`/v1/${joined}`, commerceUrl)
+    : new URL(`${backendUrl}/api/v1/shop/${joined}`);
   request.nextUrl.searchParams.forEach((value, key) => target.searchParams.append(key, value));
   const headers: Record<string, string> = {
     accept: "application/json",

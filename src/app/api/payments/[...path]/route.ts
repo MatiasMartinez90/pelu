@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { backendUrl } from "@/lib/backend-url";
 
+const commerceUrl = process.env.ECOMMERCE_API_URL?.replace(/\/$/, "");
+
 type Context = { params: Promise<{ path: string[] }> };
 
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
@@ -31,7 +33,12 @@ async function proxy(request: NextRequest, context: Context) {
     }
   }
 
-  const target = new URL(`${backendUrl}/api/v1/payments/${joined}`);
+  const externalPath = STATUS.test(joined)
+    ? `/v1/payment-status/${joined.slice("status/".length)}`
+    : `/v1/${joined}`;
+  const target = commerceUrl
+    ? new URL(externalPath, commerceUrl)
+    : new URL(`${backendUrl}/api/v1/payments/${joined}`);
   const headers: Record<string, string> = {
     accept: "application/json",
     "content-type": request.headers.get("content-type") ?? "application/json",
