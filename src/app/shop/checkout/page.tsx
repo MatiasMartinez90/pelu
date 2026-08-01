@@ -49,7 +49,7 @@ export default function CheckoutPage() {
         headers: { "idempotency-key": idempotencyKey.current },
         body: JSON.stringify({
           cart_token: cart.token,
-          payment_method: "pay_at_store",
+          payment_method: paymentMethod,
           customer: {
             name: data.get("name"),
             email: data.get("email"),
