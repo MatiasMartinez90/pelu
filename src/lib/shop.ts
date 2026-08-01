@@ -3,7 +3,10 @@ import { site } from "@/lib/site";
 import type { ShopCategory, ShopProduct, ShopProductList } from "@/lib/shop-types";
 
 async function get<T>(path: string, tags: string[]): Promise<T> {
-  const response = await fetch(`${backendUrl}/api/v1/shop${path}`, {
+  const target = process.env.ECOMMERCE_API_URL
+    ? `${process.env.ECOMMERCE_API_URL.replace(/\/$/, "")}/v1${path}`
+    : `${backendUrl}/api/v1/shop${path}`;
+  const response = await fetch(target, {
     next: { revalidate: 60, tags },
     headers: { accept: "application/json" },
   });
@@ -36,7 +39,10 @@ export function getShopProducts(params: {
 }
 
 export async function getShopProduct(slug: string): Promise<ShopProduct | null> {
-  const response = await fetch(`${backendUrl}/api/v1/shop/products/${encodeURIComponent(slug)}`, {
+  const target = process.env.ECOMMERCE_API_URL
+    ? `${process.env.ECOMMERCE_API_URL.replace(/\/$/, "")}/v1/products/${encodeURIComponent(slug)}`
+    : `${backendUrl}/api/v1/shop/products/${encodeURIComponent(slug)}`;
+  const response = await fetch(target, {
     next: { revalidate: 60, tags: ["shop-products", `shop-product-${slug}`] },
     headers: { accept: "application/json" },
   });
