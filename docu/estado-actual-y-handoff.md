@@ -27,6 +27,8 @@ Producción y demo permanecen sin cambios de las fases posteriores a Fase 0.
 - Fases 1 y 2 listas en dev: responsive, performance/SEO/GEO y smoke/E2E documentados.
 - Servicio `mercadopago` independiente con API, proveedor demo, HMAC, idempotencia, outbox, worker y reconciliación.
 - Repo `ecommerce` independiente con storefront, catálogo inicial, carrito, checkout, retiro en local y opción de pago en local/MP.
+- PR ecommerce #7 mergeado: API administrativa para productos, categorías, pedidos, estados y stock auditado.
+- PR Pelu #64 mergeado: BFF `/api/ecommerce-admin/*` autenticado con Keycloak; Stock y Pedidos del admin consumen ecommerce sin exponer la API key.
 - GitOps despliega imágenes por digest y secretos como `SealedSecret`; no hay secretos nuevos en texto plano en Git.
 - E2E previo validó carrito → pedido → intención de pago → aprobación demo → callback firmado → proyección local.
 
@@ -35,7 +37,7 @@ Producción y demo permanecen sin cambios de las fases posteriores a Fase 0.
 El Deployment `ecommerce-api` ya declara el digest corregido:
 
 ```text
-sha256:83dbefd6249a988562840882544c9265d1b1dbdb9699699d0df87d58bae484db
+sha256:11ff4b42b8136f7c7f07a552d16bc18b3e89f5762c2ba7aa557e37712ea53567
 ```
 
 El pod viejo no pudo ser reemplazado porque el namespace `nox-dev` alcanzó su cuota de `limits.cpu=4`. Durante un rollout `RollingUpdate`, Kubernetes intentó mantener la revisión vieja y crear la nueva simultáneamente.
@@ -49,15 +51,15 @@ kubectl get pods -n nox-dev -l app=ecommerce-api
 kubectl logs -n nox-dev deploy/ecommerce-api -c migrate
 ```
 
-Resultado observado: pod `ecommerce-api` `1/1 Running`, migración exitosa, API lista y aplicación `nox-dev` `Synced`. Argo conserva estado global `Degraded` histórico aunque los recursos actuales de ecommerce están sincronizados; revisar el detalle de salud general antes de declarar el ambiente completo `Healthy`.
+Resultado observado: pod `ecommerce-api` `1/1 Running`, migración exitosa, API lista y aplicación `nox-dev` `Synced`. El frontend, API y ecommerce también quedaron listos con los nuevos digests; Home y endpoints de catálogo responden `200`.
 
 La cuota también está siendo tensionada por Jobs históricos de reconciliación. No aumentar cuota ni eliminar recursos a ciegas: primero confirmar que el nuevo pod arranca y luego revisar retención de Jobs/CronJobs como tarea de operación.
 
 ## Próximas tareas en orden
 
 1. **Cerrar rollout de `ecommerce-api` en dev.** Reconciliar Argo, validar migración, readiness, catálogo y checkout.
-2. **Finalizar extracción de ecommerce.** Mover catálogo, stock, pedidos y operación administrativa desde tablas/API de Pelu al data plane de `ecommerce`; retirar adaptadores transitorios sólo después de un rollback probado.
-3. **Integrar el admin.** Agregar BFF/cliente server-to-server para productos, stock, pedidos, estados de pago y acciones operativas; mantener credenciales sólo en backend.
+2. **Finalizar extracción de ecommerce.** Retirar adaptadores transitorios de Pelu sólo después de un rollback probado; el shop y el admin ya consumen el data plane independiente en dev.
+3. **Completar operación del admin.** Agregar edición avanzada de categorías, estados de pago/devoluciones y E2E contra el servicio real autenticado.
 4. **Completar pagos.** Probar expiración, duplicados, callbacks fuera de orden, rechazo, conciliación, devolución y operación admin. El proveedor real requiere credenciales externas; la POC usa proveedor demo.
 5. **Cloudflare/R2.** Ejecutar cutover de medios por tenant, formatos responsive, caché, fallback y purga controlada. No publicar fotos de productos sin media kit autorizado.
 6. **Instagram/Chatwoot.** Crear/configurar cuenta de Meta, inbox, webhook, consentimiento y canal visible en admin/agente.
