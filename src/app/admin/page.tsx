@@ -51,6 +51,25 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return val;
 }
 
+async function commerceApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`/api/ecommerce-admin/${path.replace(/^\//, "")}`, {
+    ...init,
+    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+  });
+  if (res.status === 401) {
+    if (!reauthing) {
+      reauthing = true;
+      signIn("keycloak", { callbackUrl: "/admin" });
+    }
+    return new Promise<T>(() => {});
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail || `Error ${res.status}`);
+  }
+  return res.status === 204 ? (undefined as T) : await res.json();
+}
+
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const DOW = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
@@ -136,7 +155,7 @@ function prefetchSection(section: string) {
     ajustes: ["/barbers", "/services", "/settings", "/admins", "/site-profile", "/schedule-rules"],
   };
   for (const path of paths[section] ?? []) {
-    if (!GET_CACHE.has(path)) void api(path).catch(() => {});
+    if (!GET_CACHE.has(path)) void (section === "stock" || section === "pedidos" ? commerceApi(path) : api(path)).catch(() => {});
   }
 }
 
@@ -534,7 +553,7 @@ function Stock() {
   const [error, setError] = useState("");
 
   const load = useCallback(() => {
-    Promise.all([api<Product[]>("/products"), api<ProductCategory[]>("/product-categories")])
+    Promise.all([commerceApi<Product[]>("/products"), commerceApi<ProductCategory[]>("/categories")])
       .then(([nextProducts, nextCategories]) => {
         setProducts(nextProducts);
         setCategories(nextCategories);
@@ -547,7 +566,7 @@ function Stock() {
 
   async function adjust(p: Product, delta: number) {
     try {
-      await api(`/products/${p.id}/adjust`, { method: "POST", body: JSON.stringify({ delta, reason: "ajuste manual" }) });
+      await commerceApi(`/products/${p.id}/stock`, { method: "POST", body: JSON.stringify({ delta, reason: "ajuste manual" }) });
       load();
     } catch (e) { setError((e as Error).message); }
   }
@@ -558,7 +577,7 @@ function Stock() {
     const price = Math.round(Number(raw.replace(/[^\d]/g, "")));
     if (!price || price <= 0) { alert("Precio inválido"); return; }
     try {
-      await api(`/products/${p.id}`, { method: "PATCH", body: JSON.stringify({ price }) });
+      await commerceApi(`/products/${p.id}`, { method: "PATCH", body: JSON.stringify({ price }) });
       load();
     } catch (e) { setError((e as Error).message); }
   }
@@ -570,7 +589,7 @@ function Stock() {
     const slug = prompt("Slug de la categoría:", suggested);
     if (!slug?.trim()) return;
     try {
-      await api("/product-categories", { method: "POST", body: JSON.stringify({ name: name.trim(), slug: slug.trim(), description: "", sort_order: categories.length }) });
+      await commerceApi("/categories", { method: "POST", body: JSON.stringify({ name: name.trim(), slug: slug.trim(), description: "", sort_order: categories.length }) });
       load();
     } catch (e) { setError((e as Error).message); }
   }
@@ -648,7 +667,7 @@ function ProductEditor({ product, categories, onClose, onSaved }: { product: Pro
     setSaving(true);
     setError("");
     try {
-      await api(`/products/${product.id}/shop`, {
+      await commerceApi(`/products/${product.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           ...form,
@@ -745,13 +764,13 @@ function Orders() {
 
   const load = useCallback(() => {
     const path = `/orders?limit=50${filter ? `&status=${filter}` : ""}`;
-    api<OrderSummary[]>(path).then((value) => { setOrders(value); setError(""); }).catch((cause) => setError(cause.message));
+    commerceApi<OrderSummary[]>(path).then((value) => { setOrders(value); setError(""); }).catch((cause) => setError(cause.message));
   }, [filter]);
   useEffect(load, [load]);
 
   async function open(order: OrderSummary) {
     try {
-      setSelected(await api<ShopOrder>(`/orders/${order.id}`));
+      setSelected(await commerceApi<ShopOrder>(`/orders/${order.id}`));
       setError("");
     } catch (cause) { setError((cause as Error).message); }
   }
@@ -765,7 +784,7 @@ function Orders() {
     }
     setBusy(true);
     try {
-      const updated = await api<ShopOrder>(`/orders/${selected.id}/status`, { method: "PATCH", body: JSON.stringify({ status, note }) });
+      const updated = await commerceApi<ShopOrder>(`/orders/${selected.id}/status`, { method: "PATCH", body: JSON.stringify({ status, note }) });
       setSelected(updated);
       load();
     } catch (cause) {
