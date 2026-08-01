@@ -815,7 +815,7 @@ function Orders() {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}><OrderBadge status={selected.status} /><button type="button" className="qbtn" aria-label="Cerrar detalle" onClick={() => setSelected(null)}>×</button></div>
           </div>
           <div className="adm-order-meta" style={{ marginTop: 20 }}>
-            <div><small>Pago</small><strong>En el local · {selected.payment_status === "paid" ? "Pagado" : "Pendiente"}</strong></div>
+            <div><small>Pago</small><strong>{selected.payment_method === "mercado_pago" ? "Mercado Pago" : "En el local"} · {selected.payment_status === "paid" ? "Pagado" : "Pendiente"}</strong></div>
             <div><small>Retiro</small><strong>{selected.pickup_location}</strong></div>
             <div><small>Creado</small><strong>{new Date(selected.created_at).toLocaleString(site.locale)}</strong></div>
           </div>
