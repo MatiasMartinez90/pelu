@@ -28,7 +28,11 @@ Producción y demo permanecen sin cambios de las fases posteriores a Fase 0.
 - Servicio `mercadopago` independiente con API, proveedor demo, HMAC, idempotencia, outbox, worker y reconciliación.
 - Repo `ecommerce` independiente con storefront, catálogo inicial, carrito, checkout, retiro en local y opción de pago en local/MP.
 - PR ecommerce #7 mergeado: API administrativa para productos, categorías, pedidos, estados y stock auditado.
+- PR ecommerce #8 mergeado: cambio explícito a pago en local y protección contra callbacks de Mercado Pago tardíos después del cambio.
 - PR Pelu #64 mergeado: BFF `/api/ecommerce-admin/*` autenticado con Keycloak; Stock y Pedidos del admin consumen ecommerce sin exponer la API key.
+- PR Pelu #67 mergeado: checkout dev selecciona Mercado Pago/pago en local y los BFF de shop/pagos enrutan al servicio ecommerce independiente.
+- GitOps PR #27/#28 mergeados: configuración de `ECOMMERCE_API_URL`, API key sellada y digests de ecommerce en `nox-dev`.
+- GitOps PR #29/#30/#31 mergeados: allowlist y recarga segura del callback de pagos; se acepta el DNS completo del servicio ecommerce dentro del cluster.
 - GitOps despliega imágenes por digest y secretos como `SealedSecret`; no hay secretos nuevos en texto plano en Git.
 - E2E previo validó carrito → pedido → intención de pago → aprobación demo → callback firmado → proyección local.
 
@@ -37,7 +41,7 @@ Producción y demo permanecen sin cambios de las fases posteriores a Fase 0.
 El Deployment `ecommerce-api` ya declara el digest corregido:
 
 ```text
-sha256:11ff4b42b8136f7c7f07a552d16bc18b3e89f5762c2ba7aa557e37712ea53567
+sha256:efe75a0ce42d4b56343134cecb3726335e56f0667c7966d9d32fe4391e99100f
 ```
 
 El pod viejo no pudo ser reemplazado porque el namespace `nox-dev` alcanzó su cuota de `limits.cpu=4`. Durante un rollout `RollingUpdate`, Kubernetes intentó mantener la revisión vieja y crear la nueva simultáneamente.
@@ -57,10 +61,9 @@ La cuota también está siendo tensionada por Jobs históricos de reconciliació
 
 ## Próximas tareas en orden
 
-1. **Cerrar rollout de `ecommerce-api` en dev.** Reconciliar Argo, validar migración, readiness, catálogo y checkout.
-2. **Finalizar extracción de ecommerce.** Retirar adaptadores transitorios de Pelu sólo después de un rollback probado; el shop y el admin ya consumen el data plane independiente en dev.
-3. **Completar operación del admin.** Agregar edición avanzada de categorías, estados de pago/devoluciones y E2E contra el servicio real autenticado.
-4. **Completar pagos.** Probar expiración, duplicados, callbacks fuera de orden, rechazo, conciliación, devolución y operación admin. El proveedor real requiere credenciales externas; la POC usa proveedor demo.
+1. **Cerrar extracción de ecommerce en dev.** El catálogo, carrito, checkout, preferencia MP y pago en local ya están operativos; queda probar rollback y retirar adaptadores legacy cuando el smoke final esté aprobado.
+2. **Completar operación del admin.** Agregar edición avanzada de categorías, estados de pago/devoluciones y E2E contra el servicio real autenticado.
+3. **Completar pagos.** Probar expiración, duplicados, callbacks fuera de orden, rechazo, conciliación, devolución y operación admin. El proveedor real requiere credenciales externas; la POC usa proveedor demo.
 5. **Cloudflare/R2.** Ejecutar cutover de medios por tenant, formatos responsive, caché, fallback y purga controlada. No publicar fotos de productos sin media kit autorizado.
 6. **Instagram/Chatwoot.** Crear/configurar cuenta de Meta, inbox, webhook, consentimiento y canal visible en admin/agente.
 7. **Identidad y campañas.** Gmail para web; teléfono + OTP a correo registrado; deduplicación; consentimientos, suppression list, segmentación y quiet hours antes de campañas.
