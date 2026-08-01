@@ -40,7 +40,7 @@ sha256:83dbefd6249a988562840882544c9265d1b1dbdb9699699d0df87d58bae484db
 
 El pod viejo no pudo ser reemplazado porque el namespace `nox-dev` alcanzó su cuota de `limits.cpu=4`. Durante un rollout `RollingUpdate`, Kubernetes intentó mantener la revisión vieja y crear la nueva simultáneamente.
 
-Se creó y mergeó GitOps PR #25 (`fix: evitar doble pod durante rollout de ecommerce en dev`) para usar estrategia `Recreate` en `ecommerce-api`. Falta que Argo reconcilie el commit y comprobar:
+Se creó y mergeó GitOps PR #25 y su ajuste #26 (`fix: evitar doble pod durante rollout de ecommerce en dev`) para usar estrategia `Recreate` en `ecommerce-api`. El rollout ya fue reconciliado: el pod corre con el digest nuevo y la migración terminó correctamente.
 
 ```bash
 kubectl get application nox-dev -n argocd -o json \
@@ -49,7 +49,7 @@ kubectl get pods -n nox-dev -l app=ecommerce-api
 kubectl logs -n nox-dev deploy/ecommerce-api -c migrate
 ```
 
-Resultado esperado: pod `ecommerce-api` `1/1 Running`, migración exitosa y aplicación `nox-dev` `Synced/Healthy`.
+Resultado observado: pod `ecommerce-api` `1/1 Running`, migración exitosa, API lista y aplicación `nox-dev` `Synced`. Argo conserva estado global `Degraded` histórico aunque los recursos actuales de ecommerce están sincronizados; revisar el detalle de salud general antes de declarar el ambiente completo `Healthy`.
 
 La cuota también está siendo tensionada por Jobs históricos de reconciliación. No aumentar cuota ni eliminar recursos a ciegas: primero confirmar que el nuevo pod arranca y luego revisar retención de Jobs/CronJobs como tarea de operación.
 
@@ -96,4 +96,3 @@ kubectl annotate application nox-dev -n argocd \
 - No copiar datos de producción a dev.
 - Antes de cambiar arquitectura o alcance, actualizar este handoff y el roadmap maestro.
 - Si otro agente retoma, comenzar leyendo este archivo, el roadmap y la arquitectura; después verificar el estado real de Argo/Kubernetes porque los estados operativos cambian.
-

@@ -49,7 +49,7 @@ async function demoLogin(page: Page) {
 }
 
 async function mockAdmin(page: Page, onMutation?: (route: Route) => void) {
-  await page.route("**/api/backoffice/**", async (route) => {
+  const handler = async (route: Route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() !== "GET") onMutation?.(route);
@@ -61,10 +61,12 @@ async function mockAdmin(page: Page, onMutation?: (route: Route) => void) {
       return route.fulfill({ json: { ...order, status: payload.status } });
     }
     if (path.endsWith("/products") && request.method() === "GET") return route.fulfill({ json: [product] });
-    if (path.endsWith("/product-categories")) return route.fulfill({ json: [{ id: "cat-1", slug: "styling", name: "Styling", description: "", sort_order: 1, active: true }] });
-    if (path.endsWith(`/products/${product.id}/shop`) && request.method() === "PATCH") return route.fulfill({ json: { ...product, ...request.postDataJSON() } });
+    if (path.endsWith("/categories")) return route.fulfill({ json: [{ id: "cat-1", slug: "styling", name: "Styling", description: "", sort_order: 1, active: true }] });
+    if (path.endsWith(`/products/${product.id}`) && request.method() === "PATCH") return route.fulfill({ json: { ...product, ...request.postDataJSON() } });
     return route.fulfill({ json: [] });
-  });
+  };
+  await page.route("**/api/backoffice/**", handler);
+  await page.route("**/api/ecommerce-admin/**", handler);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -91,7 +93,7 @@ test("admin edita la ficha pública sin tocar el stock", async ({ page }, testIn
   test.skip(testInfo.project.name !== "desktop");
   let payload: Record<string, unknown> | null = null;
   await mockAdmin(page, (route) => {
-    if (route.request().url().endsWith("/shop")) payload = route.request().postDataJSON();
+    if (route.request().url().endsWith(`/products/${product.id}`)) payload = route.request().postDataJSON();
   });
   await demoLogin(page);
   await page.getByRole("button", { name: "Stock", exact: true }).click();
