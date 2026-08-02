@@ -31,7 +31,11 @@ _CONFIRMATION = re.compile(
 
 
 def _contact_channel(contact_ref: str) -> str:
-    return "telegram" if contact_ref.startswith("telegram:") else "whatsapp"
+    if contact_ref.startswith("telegram:"):
+        return "telegram"
+    if contact_ref.startswith("instagram:"):
+        return "instagram"
+    return "whatsapp"
 
 
 def _latest_user_text(state: dict) -> str:
