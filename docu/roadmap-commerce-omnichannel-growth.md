@@ -1575,7 +1575,7 @@ Una fase no está terminada hasta que:
 #### Identidad y correo
 
 5. ¿Cómo registra por primera vez el correo un cliente que sólo habló por WhatsApp? Recomendación: el agente pide el correo, envía OTP y recién después lo vincula.
-6. Se aprobó elegir un proveedor de correo, pero falta confirmar el dominio remitente. Se evaluará Resend como opción simple para la POC y un adapter evitará acoplar el negocio al proveedor.
+6. Resend quedó elegido para la POC. El dominio `cloud-it.com.ar` está verificado, el remitente dev es `notificaciones-dev@cloud-it.com.ar` y las credenciales viven en un SealedSecret de `nox-dev`. El backend ya tiene un adapter HTTP reutilizable (`src/integrations/email.py`); OTP y delivery de campañas deben consumirlo, sin enviar campañas masivas por defecto.
 7. ¿El login de clientes usará un client/flow de Keycloak separado del administrativo? Se recomienda separar privilegios y flujos.
 
 #### Canales, campañas y privacidad
