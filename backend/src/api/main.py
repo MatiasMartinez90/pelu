@@ -24,6 +24,7 @@ from .routers import (
     admin_settings,
     admin_stock,
     barber,
+    identity,
     me,
     payment_webhook,
     payments,
@@ -123,6 +124,7 @@ app.include_router(admin_orders.router)
 app.include_router(admin_settings.router)
 app.include_router(admin_conversations.router)
 app.include_router(admin_campaigns.router)
+app.include_router(identity.router)
 app.include_router(webhook.router)
 app.include_router(payment_webhook.router)
 
