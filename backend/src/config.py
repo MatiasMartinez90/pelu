@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     langfuse_secret_key: str = ""
     langfuse_host: str = ""
 
+    # Email transaccional (Resend en dev/prod; sin envío si queda vacío).
+    email_provider: str = "disabled"
+    resend_api_key: str = ""
+    email_from: str = ""
+    email_timeout_seconds: float = 10.0
+
     # Keycloak (validación JWT admin)
     auth_disabled: bool = False  # SOLO dev local: desactiva el gate admin
     keycloak_issuer: str = ""  # ej: https://keycloak.../realms/cloudfleet
