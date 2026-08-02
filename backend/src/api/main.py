@@ -18,6 +18,7 @@ from ..queue.producer import dispatch_outbox, get_producer
 from .routers import (
     admin_agenda,
     admin_conversations,
+    admin_campaigns,
     admin_dashboard,
     admin_orders,
     admin_settings,
@@ -121,6 +122,7 @@ app.include_router(admin_stock.router)
 app.include_router(admin_orders.router)
 app.include_router(admin_settings.router)
 app.include_router(admin_conversations.router)
+app.include_router(admin_campaigns.router)
 app.include_router(webhook.router)
 app.include_router(payment_webhook.router)
 
