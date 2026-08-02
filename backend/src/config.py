@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     email_from: str = ""
     email_timeout_seconds: float = 10.0
+    otp_ttl_minutes: int = 10
+    otp_max_attempts: int = 5
+    otp_pepper: str = ""
 
     # Keycloak (validación JWT admin)
     auth_disabled: bool = False  # SOLO dev local: desactiva el gate admin
