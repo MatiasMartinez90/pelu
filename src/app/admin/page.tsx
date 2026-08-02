@@ -83,6 +83,13 @@ function Dot({ color, size = 7 }: { color: string; size?: number }) {
   return <span style={{ width: size, height: size, borderRadius: "50%", background: color, display: "inline-block" }} />;
 }
 const chColor = (ch: string) => (ch === "whatsapp" || ch === "WhatsApp" ? "#25D366" : "rgba(255,255,255,0.6)");
+const conversationChannel = (ref: string | null | undefined) => {
+  const value = (ref ?? "").toLowerCase();
+  if (value.startsWith("instagram:")) return { label: "Instagram", color: "#e1306c", icon: "◎" };
+  if (value.startsWith("telegram:")) return { label: "Telegram", color: "#2aabee", icon: "✈" };
+  if (value.startsWith("whatsapp") || value.startsWith("+")) return { label: "WhatsApp", color: "#25D366", icon: "◉" };
+  return { label: "Web", color: "rgba(255,255,255,0.6)", icon: "⌂" };
+};
 
 function ErrorBox({ msg }: { msg: string }) {
   return (
@@ -137,10 +144,10 @@ const NAV = [
   { key: "resumen", label: "Resumen" }, { key: "agenda", label: "Agenda" },
   { key: "clientes", label: "Clientes" }, { key: "stock", label: "Stock" },
   { key: "pedidos", label: "Pedidos" },
-  { key: "ia", label: "Agente IA" }, { key: "conversaciones", label: "Conversaciones" },
+  { key: "ia", label: "Agente y conversaciones" }, { key: "conversaciones", label: "Bandeja multicanal" },
   { key: "ajustes", label: "Administración" }, { key: "disponibilidad", label: "Disponibilidad" },
 ];
-const TITLES: Record<string, string> = { resumen: "Resumen", agenda: "Agenda", clientes: "Clientes", stock: "Catálogo y stock", pedidos: "Pedidos del shop", ia: "Agente IA · WhatsApp", conversaciones: "Conversaciones · WhatsApp", ajustes: "Administración del sitio", disponibilidad: "Disponibilidad de la agenda" };
+const TITLES: Record<string, string> = { resumen: "Resumen", agenda: "Agenda", clientes: "Clientes", stock: "Catálogo y stock", pedidos: "Pedidos del shop", ia: "Agente y conversaciones", conversaciones: "Bandeja multicanal", ajustes: "Administración del sitio", disponibilidad: "Disponibilidad de la agenda" };
 
 function prefetchSection(section: string) {
   const today = dateKey(new Date());
@@ -1001,6 +1008,7 @@ function Conversaciones() {
           <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
             {list.map((c) => {
               const m = STATUS_META[c.status] ?? STATUS_META.bot;
+              const channel = conversationChannel(c.phone);
               const sel = c.id === selId;
               return (
                 <button type="button" key={c.id} aria-pressed={sel} onClick={() => select(c.id)} style={{ width: "100%", display: "flex", gap: 12, padding: "14px 16px", border: 0, borderBottom: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", background: sel ? "rgba(255,255,255,0.08)" : "transparent", color: "#fff", borderLeft: `2px solid ${sel ? "#fff" : "transparent"}`, fontFamily: SANS, textAlign: "left" }}>
@@ -1012,6 +1020,7 @@ function Conversaciones() {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 7, fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.7 }}>
                       <Dot color={m.color} size={6} />{m.label}{c.assignee ? ` · ${c.assignee}` : ""}
+                      <span style={{ color: channel.color, marginLeft: 4 }} title={channel.label} aria-label={`Canal ${channel.label}`}>{channel.icon} {channel.label}</span>
                     </div>
                   </div>
                 </button>
@@ -1028,7 +1037,7 @@ function Conversaciones() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{active.name}</div>
-                  <div style={{ fontSize: 12, opacity: 0.5 }}>{active.phone}</div>
+                  <div style={{ fontSize: 12, opacity: 0.5 }}>{conversationChannel(active.phone).icon} {conversationChannel(active.phone).label} · {active.phone}</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: (STATUS_META[active.status] ?? STATUS_META.bot).color }}>
