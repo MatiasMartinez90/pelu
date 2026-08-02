@@ -144,10 +144,10 @@ const NAV = [
   { key: "resumen", label: "Resumen" }, { key: "agenda", label: "Agenda" },
   { key: "clientes", label: "Clientes" }, { key: "stock", label: "Stock" },
   { key: "pedidos", label: "Pedidos" },
-  { key: "ia", label: "Agente y conversaciones" }, { key: "conversaciones", label: "Bandeja multicanal" },
+  { key: "conversaciones", label: "Agente y conversaciones" },
   { key: "ajustes", label: "Administración" }, { key: "disponibilidad", label: "Disponibilidad" },
 ];
-const TITLES: Record<string, string> = { resumen: "Resumen", agenda: "Agenda", clientes: "Clientes", stock: "Catálogo y stock", pedidos: "Pedidos del shop", ia: "Agente y conversaciones", conversaciones: "Bandeja multicanal", ajustes: "Administración del sitio", disponibilidad: "Disponibilidad de la agenda" };
+const TITLES: Record<string, string> = { resumen: "Resumen", agenda: "Agenda", clientes: "Clientes", stock: "Catálogo y stock", pedidos: "Pedidos del shop", conversaciones: "Agente y conversaciones", ajustes: "Administración del sitio", disponibilidad: "Disponibilidad de la agenda" };
 
 function prefetchSection(section: string) {
   const today = dateKey(new Date());
@@ -158,7 +158,7 @@ function prefetchSection(section: string) {
     clientes: ["/customers?search=&limit=50"],
     stock: ["/products", "/product-categories"],
     pedidos: ["/orders?limit=50"],
-    ia: ["/agent/metrics?days=30", "/agent/events?limit=20"],
+    conversaciones: ["/agent/metrics?days=30", "/agent/events?limit=20", "/conversations"],
     ajustes: ["/barbers", "/services", "/settings", "/admins", "/site-profile", "/schedule-rules"],
   };
   for (const path of paths[section] ?? []) {
@@ -215,8 +215,7 @@ export default function AdminPage() {
         {section === "clientes" && <Clientes />}
         {section === "stock" && <Stock />}
         {section === "pedidos" && <Orders />}
-        {section === "ia" && <IA />}
-        {section === "conversaciones" && <Conversaciones />}
+        {section === "conversaciones" && <AgentAndConversations />}
         {section === "ajustes" && <Ajustes />}
         {section === "disponibilidad" && <Disponibilidad />}
       </main>
@@ -925,6 +924,21 @@ function IA() {
         </div>
       </div>
     </>
+  );
+}
+
+function AgentAndConversations() {
+  return (
+    <div style={{ display: "grid", gap: 24 }}>
+      <section aria-labelledby="agent-metrics-title">
+        <h2 id="agent-metrics-title" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Métricas del agente</h2>
+        <IA />
+      </section>
+      <section aria-labelledby="conversation-inbox-title">
+        <h2 id="conversation-inbox-title" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Bandeja multicanal</h2>
+        <Conversaciones />
+      </section>
+    </div>
   );
 }
 
