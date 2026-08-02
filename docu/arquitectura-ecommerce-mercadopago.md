@@ -1,6 +1,6 @@
 # Arquitectura independiente: `ecommerce` y `mercadopago`
 
-**Estado:** servicios extraídos y operativos en `dev`; desacople de datos de `ecommerce` aún en curso
+**Estado:** servicios extraídos y operativos en `dev`; cutover de catálogo, stock, pedidos y administración completado en `dev` con fallback reversible
 **Fecha:** 2026-07-27
 **Alcance inicial:** ambiente `dev`; no autoriza cambios en producción ni demo.
 
@@ -107,7 +107,7 @@ Para turnos, expiración o rechazo no cancela la reserva y vuelve a pago local. 
 
 ### Pendiente para cerrar la extracción total
 
-- Mover catálogo, carrito, pedidos, stock y administración desde las tablas/API de Pelu hacia un data plane propio de `ecommerce`.
+- Retirar los adaptadores legacy del monolito sólo después de una ventana de rollback aprobada; en `dev` ya no son el camino activo.
 - Retirar los adaptadores directos de Mercado Pago del monolito cuando exista una ventana de rollback ya probada.
 - Completar operación administrativa de pagos/devoluciones y pruebas inducidas de expiración, duplicados y restauración.
 
