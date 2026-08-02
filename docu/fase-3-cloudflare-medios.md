@@ -1,6 +1,6 @@
 # Fase 3 — Cloudflare y medios
 
-**Estado:** implementación base lista para PR a `dev`; activación R2 dev pendiente de credenciales de alcance mínimo. Producción y demo permanecen intactos.
+**Estado:** fallback local y caché de origen listos en `dev`; R2 queda opcional porque requiere billing. Producción y demo permanecen intactos.
 
 ## Objetivo
 
@@ -31,6 +31,7 @@ Referencias verificadas el 2026-07-18:
 - `NEXT_PUBLIC_MEDIA_TRANSFORM_URL`: zona que atiende `/cdn-cgi/image`; por defecto es el origen público.
 - `NEXT_PUBLIC_MEDIA_TENANT`: prefijo aislado; default seguro `nox`.
 - Sin estas variables, la aplicación conserva los archivos locales y URLs remotas anteriores. Esto permite mergear y revertir sin romper el sitio.
+- El storefront independiente aplica `Cache-Control: public, max-age=31536000, immutable` a `/products/*` y revalidación semanal a videos; Cloudflare puede cachear estos assets cuando el DNS esté proxied, sin R2.
 - Con estas variables, fotos, poster, OG y videos resuelven al dominio propio. Los componentes `next/image` usan el loader Cloudflare y `srcset` allowlisted.
 - CSP agrega únicamente los orígenes configurados a `img-src` y `media-src`.
 
@@ -81,6 +82,8 @@ No se deben reutilizar tokens DNS existentes ni conceder acceso a buckets produc
 - `npm audit --omit=dev --audit-level=high`: 0 vulnerabilidades productivas.
 
 ## Cutover dev y criterios de cierre
+
+El camino sin tarjeta ya está operativo: los medios demo locales se sirven desde el origen con headers de caché inmutables. R2 no se activará en esta POC.
 
 1. Crear `CLOUDFLARE_R2_ADMIN_TOKEN` y ejecutar `publish-dev-media` con etapa `provision`.
 2. Esperar ownership y TLS `active` del custom domain.
