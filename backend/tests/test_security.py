@@ -198,6 +198,25 @@ def test_chatwoot_contact_ref_uses_stable_telegram_identity():
     assert webhook._contact_ref(body) == "telegram:889507955"
 
 
+def test_chatwoot_contact_ref_uses_stable_instagram_identity():
+    body = webhook.ChatwootWebhook.model_validate(
+        {
+            "event": "message_created",
+            "conversation": {
+                "channel": "Channel::Instagram",
+                "meta": {
+                    "sender": {
+                        "additional_attributes": {
+                            "social_instagram_user_id": "ig-123"
+                        }
+                    }
+                },
+            },
+        }
+    )
+    assert webhook._contact_ref(body) == "instagram:ig-123"
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("dependency", "claims"),

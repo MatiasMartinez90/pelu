@@ -56,8 +56,9 @@ class ChatwootWebhook(BaseModel):
 def _contact_ref(body: ChatwootWebhook) -> str:
     """Return a stable channel identity for the Chatwoot contact.
 
-    WhatsApp contacts are keyed by their E.164 phone number. Telegram does not
-    expose a phone number, so use the Telegram user id supplied by Chatwoot.
+    WhatsApp contacts are keyed by their E.164 phone number. Telegram and
+    Instagram do not expose a phone number, so use the stable social id
+    supplied by Chatwoot.
     Never return a shared empty identity for Telegram users.
     """
     sender: dict = {}
@@ -73,16 +74,26 @@ def _contact_ref(body: ChatwootWebhook) -> str:
             return str(phone)
 
     channel = (body.conversation.channel if body.conversation else "") or ""
-    if "telegram" not in channel.lower():
+    channel_name = channel.lower()
+    if "telegram" not in channel_name and "instagram" not in channel_name:
         return ""
 
     attributes = sender.get("additional_attributes") or {}
-    telegram_id = attributes.get("social_telegram_user_id")
-    if not telegram_id and body.conversation:
-        telegram_id = body.conversation.contact_inbox.get("source_id")
-    if not telegram_id:
-        telegram_id = sender.get("id")
-    return f"telegram:{telegram_id}" if telegram_id else ""
+    if "instagram" in channel_name:
+        social_id = (
+            attributes.get("social_instagram_user_id")
+            or attributes.get("social_instagram_user_name")
+            or (body.conversation.contact_inbox.get("source_id") if body.conversation else None)
+            or sender.get("id")
+        )
+        return f"instagram:{social_id}" if social_id else ""
+
+    social_id = attributes.get("social_telegram_user_id")
+    if not social_id and body.conversation:
+        social_id = body.conversation.contact_inbox.get("source_id")
+    if not social_id:
+        social_id = sender.get("id")
+    return f"telegram:{social_id}" if social_id else ""
 
 
 async def _authenticate_webhook(request: Request, body: bytes, legacy_token: str) -> None:

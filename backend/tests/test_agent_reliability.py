@@ -74,6 +74,7 @@ def test_confirmation_does_not_accept_changes_mixed_with_yes():
 
 def test_contact_channel_is_derived_from_stable_contact_ref():
     assert actions._contact_channel("telegram:889507955") == "telegram"
+    assert actions._contact_channel("instagram:profile-123") == "instagram"
     assert actions._contact_channel("+5491112345678") == "whatsapp"
 
 
