@@ -1,7 +1,7 @@
 # Roadmap integral: mobile, SEO/GEO, shop, pagos, omnicanalidad y campañas
 
 **Estado:** roadmap maestro activo; Fases 0–2 y 4 listas en dev; shop funcional en dev con extracción pendiente; Fases 3 y 6 en progreso
-**Última actualización:** 2026-07-26
+**Última actualización:** 2026-08-02
 **Alcance de este documento:** fuente de verdad de planificación, estado, criterios de aceptación y evidencias del roadmap integral.
 **Repositorio analizado:** `Pelu`  
 **Branch de ejecución actual:** las unidades funcionales parten de `dev`; la extracción se entrega en repos independientes y PRs de integración hacia `dev`
@@ -64,7 +64,7 @@ Los estados permitidos son `pendiente`, `en curso`, `validando`, `listo en dev`,
 | 4 | Boilerplate integral | Fase 0 | Marca, negocio, dominios, módulos, pagos, canales y agente configurables sin hardcodes de NOX | Listo en dev | PRs #37 y #38; GitOps #13; bootstrap idempotente, fixture Aurora, CI completo, migración 011 y smoke `dev` verificados. Ver `docu/fase-4-boilerplate-white-label.md` |
 | 5 | Shop independiente | Fases 3–4 | Repo `ecommerce`, subdominio, build/pod propios, catálogo, detalle, búsqueda, carrito, checkout, retiro, stock y pedidos administrables | Listo en dev | `ecommerce` PR #7/#8, Pelu #64/#66/#67/#69 y GitOps #27/#28/#29/#30/#31: catálogo, carrito, checkout, pagos, stock y pedidos/admin consumen el data plane independiente en dev; rollback legacy se conserva para producción. Ver `docu/fase-5-shop.md` y `docu/arquitectura-ecommerce-mercadopago.md` |
 | 6 | Mercado Pago | Fase 5; servicio `mercadopago` reutilizable | Repo/pod propios; turnos opcionales y shop total; webhooks auténticos/idempotentes; eventos, conciliación y auditoría | Listo en dev | Repo `mercadopago` PRs #1–#6, Pelu #61 y GitOps #17–#22: API/DB/worker/reconciliación propios, callbacks HMAC e idempotencia. E2E pedido #6 terminó `approved` en proveedor y consumidor; Argo `Synced/Healthy`. Falta operación admin y credenciales externas para proveedor real |
-| 7 | Instagram y multicanal | Fases 4 y 10 parcial | Instagram→Chatwoot→agente operativo, handoff y canal visible en toda la administración | Pendiente | — |
+| 7 | Instagram y multicanal | Fases 4 y 10 parcial | Instagram→Chatwoot→agente operativo, handoff y canal visible en toda la administración | En progreso | Pelu PR #71 agrega identidad estable `instagram:*`, atribución de reservas y constraint PostgreSQL; falta crear/configurar la app Meta, inbox Chatwoot y validación E2E real |
 | 8 | Identidad de clientes | Fase 4 | Gmail, teléfono+email OTP, vinculación segura, deduplicación y cambio de cuenta verificados | Pendiente | — |
 | 9 | Abandonos y automatizaciones | Fases 5, 7, 8 y consentimiento | Detección durable, cadencias, quiet hours, opt-out, límites y métricas por canal | Pendiente | — |
 | 10 | Admin unificado | Fases 7–8 | “Agente y conversaciones”, bandeja multicanal, filtros, estados, handoff, cliente y métricas | Pendiente | — |
