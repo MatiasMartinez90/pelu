@@ -12,6 +12,7 @@ El estado sale de 'abandonado'/'descartado' solo cuando el cliente responde (web
 """
 
 import asyncio
+import hashlib
 import logging
 import time
 
@@ -22,6 +23,33 @@ from ..services import conversation_state as cstate
 
 logging.basicConfig(level=get_settings().log_level)
 logger = logging.getLogger("followups")
+
+
+async def _eligible_whatsapp_followup(pool, phone: str) -> bool:
+    """Require an explicit service consent and honor the suppression list."""
+    if not phone:
+        return False
+    destination_hash = hashlib.sha256(phone.strip().lower().encode()).digest()
+    return bool(await pool.fetchval(
+        """
+        SELECT EXISTS (
+          SELECT 1
+            FROM customers c
+            JOIN customer_consents cc ON cc.customer_id = c.id
+           WHERE c.phone = $1
+             AND cc.channel = 'whatsapp'
+             AND cc.purpose = 'service'
+             AND cc.granted_at IS NOT NULL
+             AND cc.revoked_at IS NULL
+             AND NOT EXISTS (
+               SELECT 1 FROM marketing_suppressions ms
+                WHERE ms.channel = 'whatsapp' AND ms.destination_hash = $2
+             )
+        )
+        """,
+        phone,
+        destination_hash,
+    ))
 
 
 def _phone_of(conv: dict) -> str:
@@ -78,6 +106,9 @@ async def run() -> None:
             state, n_aband = "abandonado", n_aband + 1
 
         if state == "abandonado" and sent == 0:
+            if not await _eligible_whatsapp_followup(pool, phone):
+                logger.info("follow-up omitido por falta de consentimiento/suppression para conv %s", cid)
+                continue
             # Marcamos el envío ANTES de mandarlo: si el proceso muere entre
             # el 200 de WhatsApp y este UPDATE, el peor caso es "no se marcó
             # y no se reintenta hasta mañana" en vez de "se manda duplicado" —
