@@ -2,11 +2,11 @@
 
 ## Estado
 
-Funcionalmente listo y verificado en `dev`; extracción física en curso. No se promovió a `main`, demo ni producción; cualquier promoción futura requiere autorización explícita.
+Listo en `dev` con extracción operativa. El storefront, catálogo, carrito, checkout, pagos, stock y administración consumen el servicio independiente `ecommerce`; se conserva un fallback legacy para rollback y producción. No se promovió a `main`, demo ni producción.
 
 ## Alcance
 
-El estado validado usa el mismo artefacto white-label y pod del sitio, publicado mediante otro hostname. Para NOX dev el host es `shop-dev-nox.cloud-it.com.ar`; esto demuestra la experiencia y configuración, pero no constituye todavía un deployment independiente.
+El estado validado usa el storefront, imagen y Deployment propios de `ecommerce`. Para NOX dev el host es `shop-dev-nox.cloud-it.com.ar`; Pelu conserva sólo BFFs autenticados y fallback reversible.
 
 La decisión del 2026-07-26 exige extraerlo al producto genérico `ecommerce`, con repositorio, build, imagen, pod, release y límites de datos propios. Ver `docu/arquitectura-ecommerce-mercadopago.md`.
 
@@ -61,7 +61,14 @@ Branch `feat/shop-admin-operations`:
 - separación explícita entre la ficha comercial y los ajustes auditados de stock;
 - E2E de contratos del admin y viewport mobile/desktop.
 
-El host `shop-dev-nox.cloud-it.com.ar` usa actualmente el mismo artefacto versionado y se monta mediante el dominio configurado para la instalación. La separación pública de canonical, sitemap, robots, navegación y URLs no depende de valores NOX en el código. La entrega pendiente moverá esas rutas a la imagen y Deployment de `ecommerce` sin cambiar el hostname.
+El host `shop-dev-nox.cloud-it.com.ar` usa el artefacto y Deployment independientes de `ecommerce`. La separación pública de canonical, sitemap, robots, navegación y URLs no depende de valores NOX en el código. El fallback legacy queda sólo como mecanismo reversible.
+
+### 5.4 Cutover de datos y administración en dev
+
+- `ecommerce` PR #7/#8: API administrativa, stock auditado, pedidos, pago en local y protección contra callbacks tardíos.
+- Pelu PR #64/#66/#67/#69: BFF autenticado para administración, catálogo/shop/payment cutover y visualización correcta del método de pago.
+- GitOps PR #27/#28/#29/#30/#31: URL/API key sellada, digests independientes y callback interno permitido con DNS completo.
+- Smoke real: catálogo → carrito → checkout en local y Mercado Pago demo; preferencia online generada correctamente en `dev`.
 
 ## Invariantes
 
