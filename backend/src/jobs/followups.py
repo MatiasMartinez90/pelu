@@ -23,6 +23,7 @@ from ..services import conversation_state as cstate
 
 logging.basicConfig(level=get_settings().log_level)
 logger = logging.getLogger("followups")
+MAX_FOLLOWUP_ATTEMPTS = 3
 
 
 async def _eligible_whatsapp_followup(pool, phone: str) -> bool:
@@ -85,6 +86,7 @@ async def run() -> None:
         local = states.get(cid) or {}
         state = local.get("state")
         sent = local.get("followups_sent") or 0
+        attempts = local.get("followup_attempts") or 0
         if state in ("archivado", "descartado"):
             continue
         phone = _phone_of(conv)
@@ -105,25 +107,43 @@ async def run() -> None:
             await cstate.set_state(pool, cid, "abandonado", phone)
             state, n_aband = "abandonado", n_aband + 1
 
-        if state == "abandonado" and sent == 0:
+        next_attempt = local.get("followup_next_attempt_at")
+        if state == "abandonado" and sent == 0 and attempts < MAX_FOLLOWUP_ATTEMPTS:
+            if next_attempt is not None and next_attempt.timestamp() > now:
+                continue
             if not await _eligible_whatsapp_followup(pool, phone):
                 logger.info("follow-up omitido por falta de consentimiento/suppression para conv %s", cid)
                 continue
-            # Marcamos el envío ANTES de mandarlo: si el proceso muere entre
-            # el 200 de WhatsApp y este UPDATE, el peor caso es "no se marcó
-            # y no se reintenta hasta mañana" en vez de "se manda duplicado" —
-            # un follow-up perdido es mucho menos grave que uno repetido.
-            await pool.execute(
-                "UPDATE conversation_states SET followups_sent = followups_sent + 1, updated_at = now() WHERE conversation_id = $1",
-                cid,
-            )
-            ok = await send_whatsapp_template(
-                phone, s.whatsapp_followup_template, s.whatsapp_followup_lang
-            )
+            attempt = attempts + 1
+            try:
+                ok = await send_whatsapp_template(
+                    phone, s.whatsapp_followup_template, s.whatsapp_followup_lang
+                )
+            except Exception as exc:  # noqa: BLE001 — persist bounded retry
+                ok = False
+                error = str(exc)
+            else:
+                error = None if ok else "provider_rejected"
             if ok:
+                await pool.execute(
+                    """UPDATE conversation_states
+                           SET followups_sent = followups_sent + 1,
+                               followup_attempts = $2, followup_last_attempt_at = now(),
+                               followup_last_error = NULL, updated_at = now()
+                         WHERE conversation_id = $1""", cid, attempt,
+                )
                 n_follow += 1
             else:
-                logger.warning("followup marcado pero el envío falló para conv %s", cid)
+                delay = min(3600, 900 * (2 ** (attempt - 1)))
+                await pool.execute(
+                    """UPDATE conversation_states
+                           SET followup_attempts = $2,
+                               followup_last_attempt_at = now(),
+                               followup_next_attempt_at = now() + ($3::int * interval '1 second'),
+                               followup_last_error = $4, updated_at = now()
+                         WHERE conversation_id = $1""", cid, attempt, delay, (error or "delivery_failed")[:160],
+                )
+                logger.warning("follow-up attempt %d failed for conv %s", attempt, cid)
         elif state == "abandonado" and sent >= 1 and age_h >= s.discard_after_hours:
             await cstate.set_state(pool, cid, "descartado", phone)
             n_discard += 1

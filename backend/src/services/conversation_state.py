@@ -15,7 +15,9 @@ async def get_states_map(pool: asyncpg.Pool, conversation_ids: list[int]) -> dic
     if not conversation_ids:
         return {}
     rows = await pool.fetch(
-        "SELECT conversation_id, state, followups_sent FROM conversation_states WHERE conversation_id = ANY($1)",
+        """SELECT conversation_id, state, followups_sent, followup_attempts,
+                          followup_next_attempt_at
+             FROM conversation_states WHERE conversation_id = ANY($1)""",
         conversation_ids,
     )
     return {r["conversation_id"]: dict(r) for r in rows}
