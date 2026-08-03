@@ -145,9 +145,10 @@ const NAV = [
   { key: "clientes", label: "Clientes" }, { key: "stock", label: "Stock" },
   { key: "pedidos", label: "Pedidos" },
   { key: "conversaciones", label: "Agente y conversaciones" },
+  { key: "campanas", label: "Campañas" },
   { key: "ajustes", label: "Administración" }, { key: "disponibilidad", label: "Disponibilidad" },
 ];
-const TITLES: Record<string, string> = { resumen: "Resumen", agenda: "Agenda", clientes: "Clientes", stock: "Catálogo y stock", pedidos: "Pedidos del shop", conversaciones: "Agente y conversaciones", ajustes: "Administración del sitio", disponibilidad: "Disponibilidad de la agenda" };
+const TITLES: Record<string, string> = { resumen: "Resumen", agenda: "Agenda", clientes: "Clientes", stock: "Catálogo y stock", pedidos: "Pedidos del shop", conversaciones: "Agente y conversaciones", campanas: "Campañas", ajustes: "Administración del sitio", disponibilidad: "Disponibilidad de la agenda" };
 
 function prefetchSection(section: string) {
   const today = dateKey(new Date());
@@ -159,6 +160,7 @@ function prefetchSection(section: string) {
     stock: ["/products", "/product-categories"],
     pedidos: ["/orders?limit=50"],
     conversaciones: ["/agent/metrics?days=30", "/agent/events?limit=20", "/conversations"],
+    campanas: ["/campaigns?limit=50"],
     ajustes: ["/barbers", "/services", "/settings", "/admins", "/site-profile", "/schedule-rules"],
   };
   for (const path of paths[section] ?? []) {
@@ -216,6 +218,7 @@ export default function AdminPage() {
         {section === "stock" && <Stock />}
         {section === "pedidos" && <Orders />}
         {section === "conversaciones" && <AgentAndConversations />}
+        {section === "campanas" && <Campanas />}
         {section === "ajustes" && <Ajustes />}
         {section === "disponibilidad" && <Disponibilidad />}
       </main>
@@ -1305,6 +1308,64 @@ function HorarioSemanal() {
         );
       })}
     </div>
+  );
+}
+
+type Campaign = { id: string; name: string; kind: "marketing" | "operational"; status: string; content: Record<string, unknown>; audience: Record<string, unknown>; scheduled_at: string | null; created_at: string };
+
+function Campanas() {
+  const [rows, setRows] = useState<Campaign[] | null>(() => getCached<Campaign[]>("/campaigns?limit=50"));
+  const [name, setName] = useState("");
+  const [message, setMessage] = useState("");
+  const [channel, setChannel] = useState("email");
+  const [kind, setKind] = useState<"marketing" | "operational">("marketing");
+  const [segment, setSegment] = useState("all_consented");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(() => {
+    api<Campaign[]>("/campaigns?limit=50").then(setRows).catch((e) => setError(e.message));
+  }, []);
+  useEffect(load, [load]);
+
+  async function create() {
+    if (name.trim().length < 2 || message.trim().length < 2) return setError("Completá un nombre y un mensaje.");
+    setSaving(true); setError("");
+    try {
+      await api("/campaigns", { method: "POST", body: JSON.stringify({ name, kind, content: { channel, message }, audience: { segment } }) });
+      setName(""); setMessage(""); load();
+    } catch (e) { setError((e as Error).message); } finally { setSaving(false); }
+  }
+
+  async function approve(id: string) {
+    try { await api(`/campaigns/${id}/approve`, { method: "POST" }); load(); }
+    catch (e) { setError((e as Error).message); }
+  }
+
+  return (
+    <>
+      <div style={{ marginTop: 26, display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(280px,.8fr)", gap: 18 }}>
+        <div style={{ ...CARD, padding: 24 }}>
+          <p style={{ margin: 0, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: .55 }}>Nueva campaña</p>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre interno" aria-label="Nombre de campaña" style={{ width: "100%", marginTop: 18, padding: "12px 0", border: 0, borderBottom: "1px solid rgba(255,255,255,.25)", background: "transparent", color: "#fff", outline: 0 }} />
+          <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Escribí el mensaje…" aria-label="Mensaje de campaña" rows={5} style={{ width: "100%", marginTop: 18, padding: "12px", border: "1px solid rgba(255,255,255,.18)", background: "#111", color: "#fff", resize: "vertical" }} />
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+            <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} aria-label="Tipo" style={{ background: "#161616", color: "#fff", border: "1px solid rgba(255,255,255,.2)", padding: "9px 10px" }}><option value="marketing">Promoción (requiere consentimiento)</option><option value="operational">Aviso operativo</option></select>
+            <select value={channel} onChange={(e) => setChannel(e.target.value)} aria-label="Canal" style={{ background: "#161616", color: "#fff", border: "1px solid rgba(255,255,255,.2)", padding: "9px 10px" }}><option value="email">Correo</option><option value="whatsapp">WhatsApp</option><option value="telegram">Telegram (dev)</option><option value="instagram">Instagram</option></select>
+            <select value={segment} onChange={(e) => setSegment(e.target.value)} aria-label="Segmento" style={{ background: "#161616", color: "#fff", border: "1px solid rgba(255,255,255,.2)", padding: "9px 10px" }}><option value="all_consented">Todos con consentimiento</option><option value="frequent">Clientes frecuentes</option><option value="high_spend">Mayor gasto</option><option value="recent">Visita reciente</option></select>
+          </div>
+          <button className="miniact" disabled={saving} onClick={create} style={{ marginTop: 18 }}>{saving ? "Guardando…" : "Guardar borrador"}</button>
+          {kind === "marketing" && <p style={{ margin: "14px 0 0", fontSize: 12, color: "rgba(255,255,255,.55)" }}>Las promociones no se envían automáticamente: primero requieren aprobación y consentimiento vigente por canal.</p>}
+        </div>
+        <div style={{ ...CARD, padding: 24 }}><p style={{ margin: 0, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", opacity: .55 }}>Reglas activas</p><ul style={{ margin: "18px 0 0", paddingLeft: 18, color: "rgba(255,255,255,.7)", fontSize: 13, lineHeight: 1.8 }}><li>Se excluyen suppression lists.</li><li>Se valida consentimiento antes de cada entrega.</li><li>Los envíos quedan auditados e idempotentes.</li></ul></div>
+      </div>
+      {error && <ErrorBox msg={error} />}
+      {rows === null ? <SkTable rows={4} cols={5} /> : <div className="tbl-wrap" style={{ marginTop: 22, ...CARD }}>
+        <div className="tbl-row" style={{ display: "grid", gridTemplateColumns: "1.5fr .8fr .9fr 1fr .8fr", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,.12)", fontSize: 10, letterSpacing: ".16em", textTransform: "uppercase", opacity: .5 }}><span>Campaña</span><span>Canal</span><span>Segmento</span><span>Estado</span><span /></div>
+        {rows.map((row) => <div key={row.id} className="tbl-row" style={{ display: "grid", gridTemplateColumns: "1.5fr .8fr .9fr 1fr .8fr", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,.08)", fontSize: 13 }}><span>{row.name}</span><span>{String(row.content?.channel ?? "—")}</span><span>{String(row.audience?.segment ?? "—")}</span><span style={{ opacity: .7 }}>{row.status}</span><span style={{ textAlign: "right" }}>{row.status === "draft" && <button className="miniact" onClick={() => approve(row.id)}>Aprobar</button>}</span></div>)}
+        {!rows.length && <div style={{ padding: 30, textAlign: "center", opacity: .55 }}>Todavía no hay campañas.</div>}
+      </div>}
+    </>
   );
 }
 
